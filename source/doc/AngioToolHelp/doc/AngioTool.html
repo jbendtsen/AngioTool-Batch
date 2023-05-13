@@ -1,0 +1,215 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html>
+<head>
+	<style type="text/css">
+    body {
+  	    font-family: Georgia, "Times New Roman",
+            Times, serif;
+      color: black;
+      background-color: white }
+			li {font-size:15px;}
+    </style>
+  
+  <base target="_blank"/>
+  
+  <title>AngioTool Quick Tutorial</title>
+</head>
+<body>
+<center><big><font size="20"><font color="black"><u><b>AngioTool</b></u></font></font></big></center>
+
+<p></p>
+&nbsp
+<p></p>
+&nbsp
+
+<b><center><font size="5">Installation</font></center></b>
+<ol>
+  <li>Upgrade your Java version to 7 at <a href="http://dlc.sun.com.edgesuite.net/jdk7/binaries/index.html">http://dlc.sun.com.edgesuite.net/jdk7/binaries/index.html</a>. 
+  Download and install the Windows Platform, Multi-Language JDK version 
+  (jdk-7-ea-bin-bXXX-windows-i586-18_feb_2011.exe in the website above).</li> 
+  <p></p>
+  <li>Confirm that your computer is running the appropriate java version at 
+  <a href="http://www.java.com/en/download/installed.jsp">http://www.java.com/en/download/installed.jsp</a>. 
+  The test should confirm "Your Java version is 1.7.0-ea". </li>
+  <p></p>
+  <li>Download AngioToolSetup.exe from <a href="http://angiotool.nci.nih.gov"> http://angiotool.nci.nih.gov </a> to your computer. Double click and follow 
+  the installation Wizard (it is recommended to add the AntgioTool Icon to the 
+  computer desktop).</li>
+  <p></p>
+</ol>
+
+<p>&nbsp </p>
+
+<b><center><font face="" size="5">AngioTool Quick Guide</font></center></b>
+
+<ol>
+
+  <li>  Double click on the <strong>AngioTool</strong> icon in your desktop &nbsp   
+    <img alt="ATIcon20 128x128 (6K)" src="../images/ATIcon20%20128x128.gif" height="32" width="32" />
+  	&nbsp or on the executable file (AngioTool.exe) located in the folder where the program was installed.
+  	The main GUI has two separate tabs: "<strong>Analysis</strong>" and "<strong>Settings</strong>" <p>&nbsp </p>
+  	<center>	<img alt="GUI1 (60K)" src="../images/GUI1.PNG" height="400" width="273" /> &nbsp
+  	<img alt="GUI2 (53K)" src="../images/GUI2.PNG" height="400" width="273" /></center>
+  	<p></p>
+	</li>
+	
+  <li>  Open an image by clicking the <strong>Open Image</strong> button &nbsp  
+    <img alt="OpenImages642 (8K)" src="../images/OpenImages642.png" height="32" width="32" /> 
+  	&nbsp in the Analysis tab (see instruction #9 for how to resize the image). AngioTool will open the image in a separate window and will perform an initial 
+  	selection of vessels based on pre-set parameters. The vessel selection is shown by a yellow overlay on the 
+  	image. In order to tune the selection of the vessels the analysis parameters can be adjusted. <p></p>
+  	<center><img alt="ImageExample (871K)" src="../images/ImageExample.png" height="600" width="637" /></center>
+  	<p></p>
+	</li>
+  	
+  <li>  Adjust the <strong>Vessel diameter</strong> and <strong>Vessel intensity</strong> controls. <p></p>
+    <center><img alt="VesselDiameterIntensity (5K)" src="../images/VesselDiameterIntensity.PNG" height="176" width="497" /></center><p></p>
+  	Click on the <strong>Vessel diameter</strong> control to select vessels based on their diameter. Selections 
+  	are shown as red ticks which can be individually toggled off by clicking on them. 
+		Clicking on higher diameter values will select thicker vessels and vice versa.
+		Multiple selections are allowed.
+		The vessels outline will dynamically update its shape in response to the 
+		adjustments done to the controls. 
+		This enables rapid visual fine tuning of the selection. 
+		By default, this control presents the user with a broad range of possible 
+		thicknesses. However if necessary, the upper limit of this range can be 
+		dynamically modified by adjusting the spinner next to the control.
+  	<p></p>
+		The second control, <strong>Vessel intensity</strong>, allows to select 
+		vessels based on their intensity. In order to detect 
+  	fainter vessels drag the lower thumb to lower numbers. To eliminate 
+		nonspecific high intensity pixels from the selection lower the higher thumb. 
+		<p></p>
+	</li> 
+  	
+  <li>
+  	Two additional controls are provided to fine tune the vessel selection. <p></p>
+  	<center><img alt="ForeBackParticles (7K)" src="../images/ForeBackParticles.PNG" height="180" width="498" /></center>
+  	<p></p>
+  	To eliminate background particles by size adjust the <strong>Remove small particles</strong> 
+		control. Particles smaller than the size selected in the control will be 
+		removed from the selection.  
+		To fill unselected areas inside vessels adjsut the <strong>Fill holes</strong> control. 
+		To activate these controls click on their associated checkbox. The 
+		associated spiners can be used to dynamically modify the range of the 
+		controls. Remember to always consult the actual changes in the outline 
+		overlay of the test image.  
+  	<p></p> 
+  </li>	
+	
+	<li>
+		The <strong>Hide Overlay</strong> button toggles the overlay on and off 
+		helping to evaluate the accuracy of the selection at every 
+		moment during the analysis. 
+		<p></p>
+		<center><img alt="HideOverlay (11K)" src="../images/HideOverlay.PNG" height="246" width="288" /></center>
+		<p></p>
+	</li>
+		
+	<li>
+	  Click on the Excel icon in the <strong>Saving Preferences</strong> panel to 
+		select the file in which to save the data generated in the analysis. The path 
+		of the selected file will be shown on the associated textbox. 
+		If a directory and a name are not set, an Excel file will be generated and 
+		saved with a unique name (ResultsXXXXXX.xls) in the folder where the test 
+		image is located. 		
+		Click on the <strong>Save result image</strong> checkbox to instruct the 
+		program to save the image resulting from the analysis. By default, the 
+		resulting this image will be saved to the same location where the test image 
+		is located. 
+	 <p></p>
+	<center><img alt="SavingPreferences (13K)" src="../images/SavingPreferences.PNG" height="148" width="500" /></center>
+	<p></p>
+	</li>	
+	
+	<li>
+	Once the outline overlay best matches the vessels in the test image, click the 
+	<strong>Run analysis</strong> button &nbsp
+	<img alt="RunAnalysis64-2 (7K)" src="../images/RunAnalysis64-2.png" height="32" width="32" /> &nbsp 
+	to start the analysis (see instruction #10 to learn how to set the calibration). 
+	The progress bar at the bottom of the main GUI will 
+	update on the progress of the analysis. Once the analysis is completed the 
+	resulting overlay will show the outline of the area covered by vessels, the 
+	skeleton and the 
+	branching points (points in the image where two or more skeleton segments
+	meet).
+	<p></p>
+	<center><img alt="ResultImage (851K)" src="../images/ResultImage.png" height="600" width="639" /> </center>
+	<p></p>
+	</li>
+	
+	
+  <li>
+	Both the analysis settings and the computed parameters are written in 
+	separated blocks to the indicated Excel file. The recorded analysis settings 
+	include the date and time of the analysis, the location of the test image, and 
+	the user selected values for the controls in the <strong>Analysis tab </strong>
+	and the calibration information in the <strong>Setting tab</strong>.  
+	Data generated in separate AngioTool sessions but written to the same Excel 
+	file are appended at the end of the file each with bold headings (red arrows). 
+	<p></p>
+	<center><img alt="ExcelFile (138K)" src="../images/ExcelFile.png" height="192" width="640" /></center>
+	<p></p>
+	</li>	
+
+	<li>
+	The <strong>Settings</strong> tab provides with controls to customize the 
+	analysis and the results. Use the <strong>Resize Image</strong> control to 
+	downsize the test image. Resizing the test image will result in significantly 
+	faster ananlysis often without impact on the results of the analysis. 
+	To activate this control click the <strong>Resize Image</strong> checkbox and 
+	use the associated spinner to enter the desired resizing factor. This control 
+	needs to be set prior to opening the test image and will lock after the image 
+	is openes. Click on the unlock/lock icon &nbsp
+	<img alt="locked (3K)" src="../images/locked.png" height="36" width="29" /> &nbsp / &nbsp
+	<img alt="unlocked (3K)" src="../images/unlocked.png" height="36" width="38" /> &nbsp 
+	to lock/unlock the control.<p></p>
+	<center><img alt="ResizeImage (4K)" src="../images/ResizeImage.PNG" height="116" width="497" /></center>
+	<p></p>
+	</li>
+	
+	<li>
+	Use the <strong>Calibration</strong> control to define a correlation between 
+	pixels and an alternative unit length in the image (AngioTool uses millimeters 
+	as unit of length). To set a calibration type the length in pixels in the 
+	<strong>Distance in pixels</strong> box and the corresponding length in 
+	millimeters in the <strong>Distance in mm</strong> box. 
+	This control needs to be set before running the analysis of the image.  <p></p>
+	<center><img alt="Calibration (3K)" src="../images/Calibration.PNG" height="116" width="496" /></center>
+	<p></p>
+	</li>
+	
+	<li>
+	Use the <strong>Overlay Settings</strong> to customize the appearance 
+	(stroke width and colour) of the different components of the overlay. 
+	Click on the checkboxes to show or 	hide the different components of the 
+	overlay and the associated spinners and color boxes to customize their 
+	width and color. Use the <strong>Save Image</strong> button to save the 
+	resulting image after adjusting the Overlay Settings. The format of the 
+	image can be set in the associated listbox.  
+	<p></p>
+	<center><img alt="OverlaySettings (10K)" src="../images/OverlaySettings.PNG" height="258" width="503" /></center>
+	<p></p>
+	</li>
+	
+  <li>
+	The <strong>Help</strong> button 
+	&nbsp 
+	<img alt="help64 (8K)" src="../images/help64.png" height="32" width="32" />
+	&nbsp shows this guide. 
+	<p></p>
+	</li>
+	
+	<li>
+	Use the <strong>Exit</strong> button 
+	&nbsp 
+	<img alt="Close64 (4K)" src="../images/Close64.png" height="32" width="32" /> 
+	&nbsp to exit AngioTool.
+	<p></p>
+	</li>
+	
+</ol> 
+
+</controls body>
+</html>
