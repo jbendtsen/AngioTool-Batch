@@ -28,12 +28,12 @@ public class AngioToolMain {
          JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), "Your application license has expired!", "Error", 0);
          System.exit(0);
       }
-      */
 
       if (!ApplicationInstanceManager.registerInstance()) {
          JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), "Another instance of this application is already running.  Exiting...", "Error", 0);
          System.exit(0);
       }
+      */
 
       EventQueue.invokeLater(new Runnable() {
          @Override
