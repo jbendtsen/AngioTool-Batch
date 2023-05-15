@@ -860,6 +860,8 @@ public class AnalyzeSkeleton implements PlugInFilter {
          }
       }
 
+      this.numOfTrees = this.numOfTrees > 0 ? this.numOfTrees : 1;
+
       this.resetVisited();
       return outputImage;
    }

@@ -24,6 +24,7 @@ public class BatchProgressUi
     JLabel imageLabel;
     JProgressBar imageProgress;
     JButton cancelBtn;
+    int nErrors = 0;
 
     public AtomicBoolean isClosed;
 
@@ -87,6 +88,17 @@ public class BatchProgressUi
         jdialog.setVisible(true);
     }
 
+    public void notifyNoImages()
+    {
+        SwingUtilities.invokeLater(() -> {
+            if (isClosed.get())
+                return;
+
+            overallLabel.setText("No images were found!");
+            cancelBtn.setText("OK");
+        });
+    }
+
     public void startProgressBars(int nImages, int maxProgressPerImage)
     {
         SwingUtilities.invokeLater(() -> {
@@ -114,10 +126,12 @@ public class BatchProgressUi
                 absPath;
 
             int current = overallProgress.getValue() + 1;
-            overallLabel.setText(
-                "" + current + "/" + overallProgress.getMaximum() +
-                " Processing " + partialFileName + "..."
-            );
+            String status = "" + current + "/" + overallProgress.getMaximum();
+            if (nErrors > 0)
+                status += ", " + nErrors + (nErrors == 1 ? " error." : " errors.");
+
+            status += " Processing " + partialFileName + "...";
+            overallLabel.setText(status);
         });
     }
 
@@ -132,11 +146,14 @@ public class BatchProgressUi
         });
     }
 
-    public void onImageDone()
+    public void onImageDone(Exception error)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
                 return;
+
+            if (error != null)
+                nErrors++;
 
             overallProgress.setValue(overallProgress.getValue() + 1);
         });
@@ -149,7 +166,17 @@ public class BatchProgressUi
                 return;
 
             int nImages = overallProgress.getMaximum();
-            overallLabel.setText("" + nImages + "/" + nImages + " Done!");
+            String status = "" + nImages + "/" + nImages;
+            if (nErrors > 0) {
+                status += " Finished with " + nErrors + " error";
+                if (nErrors != 1)
+                    status += "s";
+            }
+            else {
+                status += " Done!";
+            }
+
+            overallLabel.setText(status);
             imageLabel.setText("Saved Excel results to " + sheetFileName);
             imageProgress.setValue(imageProgress.getMaximum());
             cancelBtn.setText("OK");

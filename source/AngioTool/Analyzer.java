@@ -73,6 +73,8 @@ public class Analyzer {
             public double meanEl;
         }
 
+        public Exception exception;
+
         public Stats stats = new Stats();
 
         public ArrayList<Point> al2;
@@ -110,6 +112,7 @@ public class Analyzer {
 
         public void cleanup()
         {
+            exception = null;
             allantoisOverlay = null;
             convexHull = null;
             convexHullRoi = null;
@@ -154,6 +157,11 @@ public class Analyzer {
                 return;
         }
 
+        if (inputs.isEmpty()) {
+            uiToken.notifyNoImages();
+            return;
+        }
+
         SpreadsheetWriter sheet = null;
         try {
             sheet = createNewSheet("AngioTool-batch");
@@ -170,16 +178,31 @@ public class Analyzer {
 
             uiToken.onStartImage(inFile.getAbsolutePath());
 
-            Result result = analyze(inFile, params, uiToken);
-            saveResult(sheet, result, inFile, params, uiToken);
+            Result result = null;
+            Exception exception = null;
+            boolean analyzeSucceeded = false;
+            try {
+                result = analyze(inFile, params, uiToken);
+                analyzeSucceeded = true;
+                saveResult(sheet, result, inFile, params, uiToken);
+            }
+            catch (Exception ex) { exception = ex; }
 
-            uiToken.updateImageProgress(110, "Saving result image...");
-
-            if (params.shouldSaveResultImage)
-                IJ.saveAs(result.imageResult.flatten(), "jpg", inFile.getAbsolutePath() + " result.jpg");
+            if (exception == null) {
+                uiToken.updateImageProgress(110, "Saving result image...");
+     
+                if (params.shouldSaveResultImage)
+                    IJ.saveAs(result.imageResult.flatten(), "jpg", inFile.getAbsolutePath() + " result.jpg");
+            }
+            else if (!analyzeSucceeded) {
+                try {
+                    writeError(sheet, exception, inFile);
+                }
+                catch (Exception ignored) {}
+            }
 
             result.cleanup();
-            uiToken.onImageDone();
+            uiToken.onImageDone(exception);
         }
 
         uiToken.onFinished(sheet.fileName);
@@ -443,9 +466,7 @@ public class Analyzer {
         try {
             writeResultToSheet(sheet, result.stats);
         }
-        catch (IOException ex) {
-            // do a thing
-        }
+        catch (IOException ignored) {}
     }
 
     static SpreadsheetWriter createNewSheet(String sheetName) throws IOException
@@ -523,6 +544,29 @@ public class Analyzer {
             stats.FLacunaritySlope,
             stats.meanFl,
             stats.meanEl
+        );
+    }
+    
+    static void writeError(SpreadsheetWriter sheet, Exception exception, File inFile) throws IOException
+    {
+        Throwable cause = exception.getCause();
+        cause = cause == null ? exception : cause;
+
+        String imageFileName = inFile.getName();
+        String imageAbsolutePath = inFile.getAbsolutePath();
+
+        Date today = new Date();
+        String dateOut = sheet.dateFormatter.format(today);
+        String timeOut = sheet.timeFormatter.format(today);
+
+        sheet.writeRow(
+            imageFileName,
+            dateOut,
+            timeOut,
+            imageAbsolutePath,
+            "Error",
+            cause.getClass().getName(),
+            exception.getMessage()
         );
     }
 }
