@@ -306,7 +306,6 @@ public class SpreadsheetWriter {
         sb.append(sheetCount);
         sb.append("\" baseType=\"lpstr\">");
 
-        
         for (int i = 0; i < sheetCount; i++) {
             sb.append("<vt:lpstr>");
             sb.append(escapeXmlString(sheets.get(i).name));
@@ -603,12 +602,12 @@ public class SpreadsheetWriter {
                 ((key[off+i+6] & 0xffL) << 48L) |
                 ((key[off+i+7] & 0xffL) << 56L);
 
-            k *= m; 
-            k ^= k >>> r; 
-            k *= m; 
+            k *= m;
+            k ^= k >>> r;
+            k *= m;
 
             h ^= k;
-            h *= m; 
+            h *= m;
         }
 
         int tail = off + (blocks << 3);

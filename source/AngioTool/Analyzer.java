@@ -27,7 +27,7 @@ import Utils.Utils;
 import vesselThickness.EDT_S1D;
 
 public class Analyzer {
-public static class Parameters {
+    public static class Parameters {
         public int branchingPointsSize;
         public int fillHolesValue;
         public double linearScalingFactor;
