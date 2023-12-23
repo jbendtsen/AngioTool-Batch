@@ -63,7 +63,7 @@ public class ATPreferences {
 
     public static void setPreferences() {
         StringBuilder sb = new StringBuilder();
-        sb.append("# AngioTool-Batch 0.6a (14.05.23) Preferences\n");
+        sb.append("# " + AngioTool.VERSION + " Preferences\n");
         sb.append("# " + new Date() + "\n\n");
 
         Field[] fields = settings.getClass().getDeclaredFields();
@@ -91,8 +91,8 @@ public class ATPreferences {
             }
         }
         catch (IllegalAccessException ex) {
-            ex.printStackTrace();
-            System.exit(1);
+            Utils.showExceptionInDialogBox(ex);
+            return;
         }
 
         try {
@@ -102,7 +102,7 @@ public class ATPreferences {
             out.close();
         }
         catch (IOException ex) {
-            ex.printStackTrace();
+            Utils.showExceptionInDialogBox(ex);
         }
     }
 
@@ -210,8 +210,7 @@ public class ATPreferences {
             }
         }
         catch (IllegalAccessException ex) {
-            ex.printStackTrace();
-            System.exit(1);
+            Utils.showExceptionInDialogBox(ex);
         }
     }
 
@@ -222,7 +221,9 @@ public class ATPreferences {
             int y = Integer.parseInt(parts[1].strip());
             return new Point(x, y);
         }
-        catch (Exception ignored) {throw ignored;}
+        catch (Exception ex) {
+            throw ex;
+        }
         //return new Point(0, 0);
     }
 
@@ -235,21 +236,21 @@ public class ATPreferences {
     public static Integer parseInt(String value) {
         Integer n = 0;
         try { n = Integer.parseInt(value); }
-        catch (Exception ignored) {throw ignored;}
+        catch (Exception ex) { throw ex; }
         return n;
     }
 
     public static Float parseFloat(String value) {
         Float n = 0.0f;
         try { n = Float.parseFloat(value); }
-        catch (Exception ignored) {throw ignored;}
+        catch (Exception ex) { throw ex; }
         return n;
     }
 
     public static Double parseDouble(String value) {
         Double n = 0.0;
         try { n = Double.parseDouble(value); }
-        catch (Exception ignored) {throw ignored;}
+        catch (Exception ex) { throw ex; }
         return n;
     }
 

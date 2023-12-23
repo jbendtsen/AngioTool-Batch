@@ -185,7 +185,7 @@ public class SaveToExcel {
    private int writeHeadingAnalysisInfo(Results results) {
       this.s.setColumnWidth(0, 8000);
       this.r = this.s.createRow(0);
-      this.createCell((short)(this.r.getLastCellNum() + 1), "AngioTool v 0.6a (02.18.14)", this.headingCellStyle);
+      this.createCell((short)(this.r.getLastCellNum() + 1), AngioTool.VERSION, this.headingCellStyle);
       this.r = this.s.createRow((short)this.s.getLastRowNum() + 2);
       this.r = this.s.createRow((short)this.s.getLastRowNum() + 1);
       this.createCell(this.r.getLastCellNum() + 1, "Image Name", this.headingCellStyle);

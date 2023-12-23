@@ -85,7 +85,6 @@ public class Analyzer {
         public ArrayList<Double> currentSigmas;
         public Graph[] graphs;
         public TubenessProcessor tubenessProcessor;
-        public ImagePlus imageCopy;
         public ImagePlus imageResult;
         public ImagePlus imageThickness;
         public ImagePlus imageThresholded;
@@ -93,10 +92,8 @@ public class Analyzer {
         public ImagePlus iplus;
         public ImagePlus iplusTemp;
         public ImagePlus iplusSkeleton;
-        public ImageProcessor ipOriginal;
         public ImageProcessor ipThresholded;
         public ImageProcessor ipSkeleton;
-        public ImageProcessor tempProcessor1;
         public ImageProcessor tempProcessor2;
         public ImageProcessor tempProcessor3;
         public AnalyzeSkeleton skeleton;
@@ -119,7 +116,6 @@ public class Analyzer {
             currentSigmas = null;
             graphs = null;
             tubenessProcessor = null;
-            imageCopy = null;
             imageResult = null;
             imageThickness = null;
             imageThresholded = null;
@@ -127,10 +123,8 @@ public class Analyzer {
             iplus = null;
             iplusTemp = null;
             iplusSkeleton = null;
-            ipOriginal = null;
             ipThresholded = null;
             ipSkeleton = null;
-            tempProcessor1 = null;
             tempProcessor2 = null;
             tempProcessor3 = null;
             skeleton = null;
@@ -164,7 +158,7 @@ public class Analyzer {
 
         SpreadsheetWriter sheet = null;
         try {
-            sheet = createNewSheet("AngioTool-batch");
+            sheet = createNewSheet(new File(System.getProperty("user.dir")), "AngioTool-batch");
         }
         catch (IOException ex) {
             // do a thing
@@ -179,14 +173,17 @@ public class Analyzer {
             uiToken.onStartImage(inFile.getAbsolutePath());
 
             Result result = null;
-            Exception exception = null;
+            Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
                 result = analyze(inFile, params, uiToken);
                 analyzeSucceeded = true;
                 saveResult(sheet, result, inFile, params, uiToken);
             }
-            catch (Exception ex) { exception = ex; }
+            catch (Throwable ex) {
+                ex.printStackTrace();
+                exception = ex;
+            }
 
             if (exception == null) {
                 uiToken.updateImageProgress(110, "Saving result image...");
@@ -200,6 +197,9 @@ public class Analyzer {
                 }
                 catch (Exception ignored) {}
             }
+
+            if (exception != null)
+                Utils.showExceptionInDialogBox(exception);
 
             result.cleanup();
             uiToken.onImageDone(exception);
@@ -220,7 +220,11 @@ public class Analyzer {
             else if (f.isFile()) {
                 String name = f.getName().toLowerCase();
                 int extIdx = name.lastIndexOf('.');
-                if (extIdx <= 0 || (extIdx > 6 && name.substring(extIdx - 6, extIdx).equals("result")))
+                if (extIdx <= 0)
+                    continue;
+
+                String baseName = name.substring(0, extIdx);
+                if (baseName.endsWith("result") || baseName.endsWith("tubeness") || baseName.endsWith("filtered") || baseName.endsWith("overlay"))
                     continue;
 
                 String ext = name.substring(extIdx);
@@ -248,16 +252,20 @@ public class Analyzer {
             result.imageResult.setProcessor(resized);
         }
 
-        result.ipOriginal = result.imageResult.getProcessor().convertToByte(false);
+        //result.ipOriginal = result.imageResult.getProcessor().convertToByte(false);
 
         uiToken.updateImageProgress(10, "Calculating tubeness...");
 
         //for (Integer s : params.sigmasMarks)
 
+        if (true) {
+            params.sigmas[0] = 5;
+        }
+
         double[] sigmasDouble = new double[] {(double)params.sigmas[0]};
         result.tubenessProcessor = new TubenessProcessor(100, sigmasDouble);
-        result.imageCopy = new ImagePlus("imageTubeness", result.ipOriginal);
-        result.imageTubeness = result.tubenessProcessor.generateImage(result.imageCopy);
+        //result.imageCopy = new ImagePlus("imageTubeness", result.ipOriginal);
+        result.imageTubeness = result.tubenessProcessor.generateImage(result.imageResult);
         result.tubenessIp = result.imageTubeness.getProcessor();
         //result.sI.add(new AngioToolGUI.sigmaImages(sigma, result.imageTubeness.getProcessor()));
         /*
@@ -300,12 +308,16 @@ public class Analyzer {
         }
         */
 
+        //IJ.saveAs(result.imageThresholded.flatten(), "jpg", inFile.getAbsolutePath() + " tubeness.jpg");
+
         uiToken.updateImageProgress(20, "Filtering image...");
 
+        /*
         result.tempProcessor1 = result.tubenessIp.duplicate().convertToByte(true);
         Utils.thresholdFlexible(result.tempProcessor1, params.thresholdLow, params.thresholdHigh);
         result.imageThresholded.setProcessor(result.tempProcessor1);
         result.tempProcessor1.setThreshold(255.0, 255.0, 2);
+        */
 
         int iterations = 2;
 
@@ -326,6 +338,8 @@ public class Analyzer {
             result.tempProcessor2.invert();
         }
 
+        //IJ.saveAs(result.imageThresholded.flatten(), "jpg", inFile.getAbsolutePath() + " filtered.jpg");
+
         uiToken.updateImageProgress(30, "Drawing Allantois overlay...");
 
         result.iplus = new ImagePlus("tubenessIp", result.imageThresholded.getProcessor());
@@ -336,13 +350,15 @@ public class Analyzer {
         result.allantoisOverlay.setStrokeColor(params.outlineColor);
         result.imageResult.setOverlay(result.allantoisOverlay);
 
+        //IJ.saveAs(result.imageResult.flatten(), "jpg", inFile.getAbsolutePath() + " overlay.jpg");
+
         uiToken.updateImageProgress(40, "Computing lacunarity...");
 
         result.vesselPixelArea = Utils.thresholdedPixelArea(result.imageThresholded.getProcessor());
         if (params.shouldComputeLacunarity) {
-            result.tempProcessor3 = result.imageThresholded.getProcessor().duplicate();
-            result.iplusTemp = new ImagePlus("iplusTemp", result.tempProcessor3);
-            result.lacunarity = new Lacunarity(result.iplusTemp, 10, 10, 5, true);
+            //result.tempProcessor3 = result.imageThresholded.getProcessor().duplicate();
+            //result.iplusTemp = new ImagePlus("iplusTemp", result.tempProcessor3);
+            result.lacunarity = new Lacunarity(result.imageThresholded /* iplusTemp */, 10, 10, 5, true);
         }
 
         uiToken.updateImageProgress(50, "Computing convex hull...");
@@ -469,9 +485,9 @@ public class Analyzer {
         catch (IOException ignored) {}
     }
 
-    static SpreadsheetWriter createNewSheet(String sheetName) throws IOException
+    static SpreadsheetWriter createNewSheet(File folder, String sheetName) throws IOException
     {
-        SpreadsheetWriter sheet = new SpreadsheetWriter(sheetName);
+        SpreadsheetWriter sheet = new SpreadsheetWriter(folder, sheetName);
 
         sheet.writeRow(
             "Image Name",
@@ -547,7 +563,7 @@ public class Analyzer {
         );
     }
     
-    static void writeError(SpreadsheetWriter sheet, Exception exception, File inFile) throws IOException
+    static void writeError(SpreadsheetWriter sheet, Throwable exception, File inFile) throws IOException
     {
         Throwable cause = exception.getCause();
         cause = cause == null ? exception : cause;

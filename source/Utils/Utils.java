@@ -3,6 +3,7 @@ package Utils;
 import AnalyzeSkeleton.Edge;
 import AnalyzeSkeleton.Graph;
 import AnalyzeSkeleton.Point;
+import AngioTool.AngioTool;
 import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
 import Skeleton.Skeletonize3D;
@@ -35,13 +36,9 @@ import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 
 public class Utils {
-   public static boolean isReleaseVersion = true;
-   public static String NAME = "AngioTool64-Batch";
-   public static final String INTERNAL_NAME = "AngioToolSpicy"; // "AngioToolKike";
-   public static final String VERSION = "0.6a";
-   public static final String VERSION_Title = "0.6a-spicy (03.03.23)";
    //public static final String URL = "https://ccrod.cancer.gov/confluence/";
    //public static final String Updates_URL = "https://ccrod.cancer.gov/confluence/display/ROB2/updates@232014";
+   public static boolean isReleaseVersion = true;
    public static String osName;
    public static String osArch;
    public static String osVersion;
@@ -132,7 +129,7 @@ public class Utils {
 
    public static String getSystemInfo() {
       Runtime runtime = Runtime.getRuntime();
-      String str = "\nAngioTool v 0.6a (02.18.14)\nIP Address:\t"
+      String str = AngioTool.VERSION + "\nIP Address:\t"
          + myIPAddr
          + "\nIP HostName: \t"
          + myIPHostName
@@ -190,6 +187,23 @@ public class Utils {
          || p1.x == p2.x + 1 && p1.y == p2.y - 1
          || p1.x == p2.x + 1 && p1.y == p2.y
          || p1.x == p2.x + 1 && p1.y == p2.y + 1;
+   }
+
+   public static void showDialogBox(String title, String message) {
+      JOptionPane.showMessageDialog(
+         JOptionPane.getRootFrame(),
+         message,
+         title,
+         0
+      );
+   }
+
+   public static void showExceptionInDialogBox(Throwable t) {
+      if (t == null)
+         return;
+      String name = t.getClass().getName();
+      String message = t.getMessage();
+      showDialogBox(name, message != null ? message : "No message provided");
    }
 
    public static boolean checkJavaVersion(int Major, int minor, int point) {

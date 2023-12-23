@@ -146,7 +146,7 @@ public class BatchProgressUi
         });
     }
 
-    public void onImageDone(Exception error)
+    public void onImageDone(Throwable error)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())

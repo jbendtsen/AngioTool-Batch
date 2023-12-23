@@ -5,7 +5,7 @@ import AnalyzeSkeleton.Edge;
 import AnalyzeSkeleton.Graph;
 import AnalyzeSkeleton.Point;
 import AnalyzeSkeleton.SkeletonResult;
-import AngioTool.AASendEmail;
+import AngioTool.AngioTool;
 import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
 import AngioTool.PolygonPlus;
@@ -285,7 +285,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    public AngioToolGUI() {
       this.initLookAndFeel();
-      Utils.NAME = "AngioTool-Batch";
+      //Utils.NAME = "AngioTool-Batch";
 
       //Utils.checkJavaVersion(1, 7, 0);
       //Utils.checkImageJVersion(1, 47, "s");
@@ -440,7 +440,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             ExitButtonActionPerformed(null);
          }
       });
-      this.setTitle(Utils.NAME + " " + "0.6a");
+      this.setTitle(AngioTool.VERSION); // Utils.NAME + " " + "0.6a"
       this.setCursor(new Cursor(0));
       this.setMinimumSize(new Dimension(540, 790));
       this.setName("mainFrame");
@@ -1891,28 +1891,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    private void exit() {
       this.stopDate = new Date();
-      /*
-      if (Utils.isInternetActive && !Utils.isReleaseVersion) {
-         try {
-            InetAddress addr = InetAddress.getLocalHost();
-            Utils.myIP = InetAddress.getLocalHost();
-            Utils.myIPAddr = addr.getHostAddress();
-            Utils.myIPHostName = addr.getHostName();
-         } catch (UnknownHostException var2) {
-         }
-
-         try {
-            String msg = Utils.getSystemInfo();
-            msg = msg + "\n\n ****** RuntimeMXBean *******\n" + Utils.getRuntimeMXBean();
-            new AASendEmail().sendSSLMessage(Utils.MY_EMAIL_ADDRESS, "AngioTool " + Utils.myIPHostName, msg, "enriquezudaire1@gmail.com");
-         } catch (Exception var3) {
-            if (!Utils.isReleaseVersion) {
-               System.out.println(var3.toString());
-            }
-         }
-      }
-      */
-
       this.updatePreferences();
       ATPreferences.setPreferences();
    }

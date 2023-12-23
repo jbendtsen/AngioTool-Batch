@@ -1,6 +1,6 @@
 package GUI;
 
-import Utils.Utils;
+import AngioTool.AngioTool;
 import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -111,7 +111,7 @@ public class AngioToolAboutBox extends JDialog implements MouseListener {
       this.aboutBoxPanel.setLayout(new AbsoluteLayout());
       appTitleLabel.setFont(appTitleLabel.getFont().deriveFont(appTitleLabel.getFont().getStyle() | 1, (float)(appTitleLabel.getFont().getSize() + 19)));
       appTitleLabel.setHorizontalAlignment(0);
-      appTitleLabel.setText(Utils.NAME);
+      appTitleLabel.setText(AngioTool.VERSION);
       this.aboutBoxPanel.add(appTitleLabel, new AbsoluteConstraints(310, 20, -1, -1));
       this.aboutBoxPanel.add(appDescLabel, new AbsoluteConstraints(160, 40, 270, -1));
       versionLabel.setFont(versionLabel.getFont().deriveFont(versionLabel.getFont().getStyle() | 1, (float)(versionLabel.getFont().getSize() + 3)));
