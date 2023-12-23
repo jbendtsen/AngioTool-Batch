@@ -16,6 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Date;
 import java.lang.reflect.Field;
@@ -171,6 +172,8 @@ public class ATPreferences {
         for (Field f : fields)
             map.put(f.getName(), f);
 
+        ArrayList<String> errors = new ArrayList<>();
+
         String[] lines = text.split("\n");
         try {
             for (String l : lines) {
@@ -192,66 +195,52 @@ public class ATPreferences {
                 if (f != null) {
                     Object value;
 
-                    if (type.equals("Point"))
-                        value = parsePoint(valueStr);
-                    else if (type.equals("boolean") || type.equals("bool"))
-                        value = parseBool(valueStr);
-                    else if (type.equals("int"))
-                        value = parseInt(valueStr);
-                    else if (type.equals("float"))
-                        value = parseFloat(valueStr);
-                    else if (type.equals("double"))
-                        value = parseDouble(valueStr);
-                    else
-                        value = valueStr;
+                    try {
+                        if (type.equals("Point"))
+                            value = parsePoint(valueStr);
+                        else if (type.equals("boolean") || type.equals("bool"))
+                            value = parseBool(valueStr);
+                        else if (type.equals("int"))
+                            value = Integer.parseInt(valueStr);
+                        else if (type.equals("float"))
+                            value = Float.parseFloat(valueStr);
+                        else if (type.equals("double"))
+                            value = Double.parseDouble(valueStr);
+                        else
+                            value = valueStr;
+                    }
+                    catch (Exception ex) {
+                        String message = ex.getMessage();
+                        message = message != null ? message : ex.getClass().getSimpleName();
+                        errors.add(message);
+                        continue;
+                    }
 
                     f.set(settings, value);
                 }
             }
         }
         catch (IllegalAccessException ex) {
-            Utils.showExceptionInDialogBox(ex);
+            String message = ex.getMessage();
+            message = message != null ? message : ex.getClass().getSimpleName();
+            errors.add(message);
         }
+
+        if (!errors.isEmpty())
+            Utils.showDialogBox("Configuration Parsing Error", String.join("\n", errors));
     }
 
     public static Point parsePoint(String value) {
-        String[] parts = value.split(",");
-        try {
-            int x = Integer.parseInt(parts[0].strip());
-            int y = Integer.parseInt(parts[1].strip());
-            return new Point(x, y);
-        }
-        catch (Exception ex) {
-            throw ex;
-        }
-        //return new Point(0, 0);
+        int[] numbers = Utils.getSomeInts(value);
+        int x = numbers[0];
+        int y = numbers[1];
+        return new Point(x, y);
     }
 
     public static Boolean parseBool(String value) {
         char c = value.charAt(0);
         c = c >= 'A' && c <= 'Z' ? (char)(c + 0x20) : c;
         return c == 't' || c == 'y';
-    }
-
-    public static Integer parseInt(String value) {
-        Integer n = 0;
-        try { n = Integer.parseInt(value); }
-        catch (Exception ex) { throw ex; }
-        return n;
-    }
-
-    public static Float parseFloat(String value) {
-        Float n = 0.0f;
-        try { n = Float.parseFloat(value); }
-        catch (Exception ex) { throw ex; }
-        return n;
-    }
-
-    public static Double parseDouble(String value) {
-        Double n = 0.0;
-        try { n = Double.parseDouble(value); }
-        catch (Exception ex) { throw ex; }
-        return n;
     }
 
     public static String getHomeDir() {

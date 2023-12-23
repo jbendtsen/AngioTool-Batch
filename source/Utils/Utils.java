@@ -189,6 +189,35 @@ public class Utils {
          || p1.x == p2.x + 1 && p1.y == p2.y + 1;
    }
 
+   public static int[] getSomeInts(String str) {
+      ArrayList<Integer> numbers = new ArrayList<>();
+      boolean wasNum = false;
+      int n = 0;
+      int len = str.length();
+
+      for (int i = 0; i < len; i++) {
+         int c = str.codePointAt(i);
+         if (c >= 0x30 && c <= 0x39) {
+            n = n * 10 + (c - 0x30);
+            wasNum = true;
+         }
+         else {
+            if (wasNum)
+               numbers.add(n);
+            n = 0;
+            wasNum = false;
+         }
+      }
+      if (wasNum)
+         numbers.add(n);
+
+      int[] result = new int[numbers.size()];
+      for (int i = 0; i < result.length; i++)
+         result[i] = (int)numbers.get(i);
+
+      return result;
+   }
+
    public static void showDialogBox(String title, String message) {
       JOptionPane.showMessageDialog(
          JOptionPane.getRootFrame(),
