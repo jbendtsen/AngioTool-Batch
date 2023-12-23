@@ -27,7 +27,7 @@ import Utils.Utils;
 import vesselThickness.EDT_S1D;
 
 public class Analyzer {
-    public static class Parameters {
+public static class Parameters {
         public int branchingPointsSize;
         public int fillHolesValue;
         public double linearScalingFactor;
@@ -85,6 +85,7 @@ public class Analyzer {
         public ArrayList<Double> currentSigmas;
         public Graph[] graphs;
         public TubenessProcessor tubenessProcessor;
+        public ImagePlus imageCopy;
         public ImagePlus imageResult;
         public ImagePlus imageThickness;
         public ImagePlus imageThresholded;
@@ -92,8 +93,10 @@ public class Analyzer {
         public ImagePlus iplus;
         public ImagePlus iplusTemp;
         public ImagePlus iplusSkeleton;
+        public ImageProcessor ipOriginal;
         public ImageProcessor ipThresholded;
         public ImageProcessor ipSkeleton;
+        public ImageProcessor tempProcessor1;
         public ImageProcessor tempProcessor2;
         public ImageProcessor tempProcessor3;
         public AnalyzeSkeleton skeleton;
@@ -116,6 +119,7 @@ public class Analyzer {
             currentSigmas = null;
             graphs = null;
             tubenessProcessor = null;
+            imageCopy = null;
             imageResult = null;
             imageThickness = null;
             imageThresholded = null;
@@ -123,8 +127,10 @@ public class Analyzer {
             iplus = null;
             iplusTemp = null;
             iplusSkeleton = null;
+            ipOriginal = null;
             ipThresholded = null;
             ipSkeleton = null;
+            tempProcessor1 = null;
             tempProcessor2 = null;
             tempProcessor3 = null;
             skeleton = null;
@@ -252,20 +258,16 @@ public class Analyzer {
             result.imageResult.setProcessor(resized);
         }
 
-        //result.ipOriginal = result.imageResult.getProcessor().convertToByte(false);
+        result.ipOriginal = result.imageResult.getProcessor().convertToByte(false);
 
         uiToken.updateImageProgress(10, "Calculating tubeness...");
 
         //for (Integer s : params.sigmasMarks)
 
-        if (true) {
-            params.sigmas[0] = 5;
-        }
-
         double[] sigmasDouble = new double[] {(double)params.sigmas[0]};
         result.tubenessProcessor = new TubenessProcessor(100, sigmasDouble);
-        //result.imageCopy = new ImagePlus("imageTubeness", result.ipOriginal);
-        result.imageTubeness = result.tubenessProcessor.generateImage(result.imageResult);
+        result.imageCopy = new ImagePlus("imageTubeness", result.ipOriginal);
+        result.imageTubeness = result.tubenessProcessor.generateImage(result.imageCopy);
         result.tubenessIp = result.imageTubeness.getProcessor();
         //result.sI.add(new AngioToolGUI.sigmaImages(sigma, result.imageTubeness.getProcessor()));
         /*
@@ -308,16 +310,12 @@ public class Analyzer {
         }
         */
 
-        //IJ.saveAs(result.imageThresholded.flatten(), "jpg", inFile.getAbsolutePath() + " tubeness.jpg");
-
         uiToken.updateImageProgress(20, "Filtering image...");
 
-        /*
         result.tempProcessor1 = result.tubenessIp.duplicate().convertToByte(true);
         Utils.thresholdFlexible(result.tempProcessor1, params.thresholdLow, params.thresholdHigh);
         result.imageThresholded.setProcessor(result.tempProcessor1);
         result.tempProcessor1.setThreshold(255.0, 255.0, 2);
-        */
 
         int iterations = 2;
 
@@ -338,8 +336,6 @@ public class Analyzer {
             result.tempProcessor2.invert();
         }
 
-        //IJ.saveAs(result.imageThresholded.flatten(), "jpg", inFile.getAbsolutePath() + " filtered.jpg");
-
         uiToken.updateImageProgress(30, "Drawing Allantois overlay...");
 
         result.iplus = new ImagePlus("tubenessIp", result.imageThresholded.getProcessor());
@@ -350,15 +346,13 @@ public class Analyzer {
         result.allantoisOverlay.setStrokeColor(params.outlineColor);
         result.imageResult.setOverlay(result.allantoisOverlay);
 
-        //IJ.saveAs(result.imageResult.flatten(), "jpg", inFile.getAbsolutePath() + " overlay.jpg");
-
         uiToken.updateImageProgress(40, "Computing lacunarity...");
 
         result.vesselPixelArea = Utils.thresholdedPixelArea(result.imageThresholded.getProcessor());
         if (params.shouldComputeLacunarity) {
-            //result.tempProcessor3 = result.imageThresholded.getProcessor().duplicate();
-            //result.iplusTemp = new ImagePlus("iplusTemp", result.tempProcessor3);
-            result.lacunarity = new Lacunarity(result.imageThresholded /* iplusTemp */, 10, 10, 5, true);
+            result.tempProcessor3 = result.imageThresholded.getProcessor().duplicate();
+            result.iplusTemp = new ImagePlus("iplusTemp", result.tempProcessor3);
+            result.lacunarity = new Lacunarity(result.iplusTemp, 10, 10, 5, true);
         }
 
         uiToken.updateImageProgress(50, "Computing convex hull...");
