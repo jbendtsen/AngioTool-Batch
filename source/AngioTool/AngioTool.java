@@ -11,7 +11,7 @@ import java.net.UnknownHostException;
 import javax.swing.ImageIcon;
 
 public class AngioTool {
-   public static final String VERSION = "AngioTool-Batch 0.6a r3 (21.12.23)";
+   public static final String VERSION = "AngioTool-Batch 0.6a r3 (23.12.23)";
    public static AngioToolGUI angioToolGUI;
 
    AngioTool() {
