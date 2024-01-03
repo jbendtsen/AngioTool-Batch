@@ -49,6 +49,10 @@ public class SpreadsheetWriter {
         this.currentSheetIdx = 0;
     }
 
+    public static void maybeBackup(File xlsxFile) {
+        
+    }
+
     public static String makeColumnNumber(int n) {
         if (n <= 1)
             return "A";

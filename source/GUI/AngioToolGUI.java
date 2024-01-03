@@ -5,6 +5,8 @@ import AnalyzeSkeleton.Edge;
 import AnalyzeSkeleton.Graph;
 import AnalyzeSkeleton.Point;
 import AnalyzeSkeleton.SkeletonResult;
+import AngioTool.Analyzer;
+import AngioTool.AnalyzerParameters;
 import AngioTool.AngioTool;
 import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
@@ -87,14 +89,11 @@ import org.netbeans.lib.awtextra.AbsoluteConstraints;
 import org.netbeans.lib.awtextra.AbsoluteLayout;
 import vesselThickness.EDT_S1D;
 
-import AngioTool.Analyzer;
-
 public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private Image imgIcon;
    private File currentDir;
    private File imageFile;
    private File[] imageFiles;
-   private String[] batchFolders = null;
    private SaveToExcel ste;
    private boolean doScaling = false;
    private boolean fillHoles = false;
@@ -978,7 +977,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       fc.setFileFilter(new ImageFilter());
       int returnVal = fc.showOpenDialog(this);
       if (returnVal == 0) {
-         setAnalyzeBatchFolders(null);
          this.initVariables();
          this.imageFile = fc.getSelectedFile();
          this.currentDir = fc.getCurrentDirectory();
@@ -1085,46 +1083,11 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private void BatchButtonActionPerformed(ActionEvent evt) {
-      JFileChooser fc = new JFileChooser();
-      fc.setPreferredSize(new Dimension(1000, 600));
-      //fc.setFileView(new ImageFileView());
-      //fc.setAccessory(new ImagePreview(fc));
-      fc.setDialogTitle("Select Folders");
-      fc.setDialogType(JFileChooser.OPEN_DIALOG);
-      fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-      fc.setMultiSelectionEnabled(true);
-      fc.setCurrentDirectory(this.currentDir);
-      //fc.setFileFilter(new ImageFilter());
-
-      if (fc.showOpenDialog(this) == 0) {
-         File[] folderList = fc.getSelectedFiles();
-         String[] paths = new String[folderList.length];
-         for (int i = 0; i < folderList.length; i++)
-            paths[i] = folderList[i].getAbsolutePath();
-         setAnalyzeBatchFolders(paths);
-
-         this.currentDir = fc.getCurrentDirectory();
-         this.initVariables();
-         this.resizeImageCheckBox.setEnabled(false);
-         this.resizingFactorSpinner.setEnabled(false);
-         this.resizingFactorLabel.setEnabled(false);
-         this.unlockButton.setText(this.resizeImageCheckBox.isEnabled() ? "Lock" : "Unlock");
-         this.unlockButton.setSelected(true);
-         this.AnalyzeButton.setEnabled(true);
-         this.initControls();
-      }
-   }
-
-   private void setAnalyzeBatchFolders(String[] absPaths) {
-      this.batchFolders = absPaths;
-      String status = "";
-      if (absPaths != null && absPaths.length > 0)
-         status = absPaths.length == 1 ? "Selected " + absPaths[0] : "Multiple folders selected";
-      this.batchStatusLabel.setText(status);
+      new BatchAnalysisUi(this, procureAnalyzerSettings()).showDialog();
    }
 
    private void AnalyzeButtonActionPerformed(ActionEvent evt) {
-      new AngioToolGUI.AngioToolWorker(batchFolders).execute();
+      new AngioToolGUI.AngioToolWorker().execute();
    }
 
    private void resizeImageCheckBoxActionPerformed(ActionEvent evt) {
@@ -1895,6 +1858,56 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       ATPreferences.setPreferences();
    }
 
+   private AnalyzerParameters procureAnalyzerSettings() {
+      double scale = 1.0;
+      if (!this.distanceInMMNumberTextField.getText().equals("") && !AngioToolGUI.this.distanceInPixelsNumberTextField.getText().equals("")) {
+         int pixelDistance = Math.max(AngioToolGUI.this.distanceInPixelsNumberTextField.getInt(), 1);
+         scale = this.distanceInMMNumberTextField.getDouble() / (double)pixelDistance;
+      }
+
+      ArrayList<Integer> marks = this.sigmasMarkSlider.getMarks();
+      if (marks.isEmpty())
+         marks.add((int)this.firstSigma[0]);
+
+      int[] marksArray = new int[marks.size()];
+      for (int i = 0; i < marksArray.length; i++)
+         marksArray[i] = marks.get(i);
+
+      AnalyzerParameters params = new AnalyzerParameters(
+         null,
+         "",
+         this.saveResultImageCheckBox.isSelected(),
+         "",
+         this.resizeImageCheckBox.isSelected(),
+         this.resizingFactor,
+         this.smallParticles,
+         (int)this.smallParticlesRangeSlider2.getValue(),
+         this.fillHoles,
+         (int)this.fillHolesRangeSlider2.getValue(),
+         marksArray,
+         this.thresholdRangeSliderHigh.getValue(),
+         this.thresholdRangeSliderLow.getValue(),
+         true,
+         scale,
+         this.showOutlineCheckBox.isSelected(),
+         this.outlineRoundedPanel.getBackground(),
+         (float)((Integer)this.outlineSpinner.getValue()).intValue(),
+         this.showSkeletonCheckBox.isSelected(),
+         this.skeletonColorRoundedPanel.getBackground(),
+         (int)this.skeletonSpinner.getValue(),
+         this.showBranchingPointsCheckBox.isSelected(),
+         this.branchingPointsRoundedPanel.getBackground(),
+         (int)this.branchingPointsSpinner.getValue(),
+         this.showConvexHullCheckBox.isSelected(),
+         this.convexHullRoundedPanel.getBackground(),
+         (int)this.convexHullSizeSpinner.getValue(),
+         this.computeLacunarity,
+         false
+      );
+
+      return params;
+   }
+
    private String doSingleAnalysis() {
         int progress = 0;
         progressBar.setMinimum(0);
@@ -1990,88 +2003,21 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    class AngioToolWorker extends SwingWorker<Object, Object> {
-      public String[] folders;
-      public BatchProgressUi batchProgress;
-
-      public AngioToolWorker(String[] folderList) {
-         super();
-         if (folderList != null) {
-            this.folders = folderList.clone();
-            this.batchProgress = new BatchProgressUi(AngioToolGUI.this);
-            SwingUtilities.invokeLater(() -> batchProgress.build());
-         }
-         else {
-            this.folders = null;
-            this.batchProgress = null;
-         }
-      }
 
       @Override
       public Object doInBackground() {
-         return this.folders != null && this.folders.length > 0 ?
-            doBatchAnalysis() :
-            doSingleAnalysis();
-      }
-
-      private String doBatchAnalysis() {
-         if (this.folders == null || this.folders.length == 0)
-            return "Bad";
-
-         double scale = 1.0;
-         if (!AngioToolGUI.this.distanceInMMNumberTextField.getText().equals("") && !AngioToolGUI.this.distanceInPixelsNumberTextField.getText().equals("")) {
-            int pixelDistance = Math.max(AngioToolGUI.this.distanceInPixelsNumberTextField.getInt(), 1);
-            scale = AngioToolGUI.this.distanceInMMNumberTextField.getDouble() / (double)pixelDistance;
-         }
-
-         ArrayList<Integer> marks = AngioToolGUI.this.sigmasMarkSlider.getMarks();
-         if (marks.isEmpty())
-            marks.add((int)AngioToolGUI.this.firstSigma[0]);
-
-         int[] marksArray = new int[marks.size()];
-         for (int i = 0; i < marksArray.length; i++)
-            marksArray[i] = marks.get(i);
-
-         Analyzer.Parameters params = new Analyzer.Parameters();
-         params.sigmas = marksArray;
-         params.branchingPointsSize = (int)AngioToolGUI.this.branchingPointsSpinner.getValue();
-         params.fillHolesValue = (int)AngioToolGUI.this.fillHolesRangeSlider2.getValue();
-         params.linearScalingFactor = scale;
-         params.resizingFactor = AngioToolGUI.this.resizingFactor;
-         params.skeletonSize = (int)AngioToolGUI.this.skeletonSpinner.getValue();
-         params.removeSmallParticlesThreshold = (int)AngioToolGUI.this.smallParticlesRangeSlider2.getValue();
-         params.thresholdHigh = AngioToolGUI.this.thresholdRangeSliderHigh.getValue();
-         params.thresholdLow = AngioToolGUI.this.thresholdRangeSliderLow.getValue();
-         params.outlineColor = AngioToolGUI.this.outlineRoundedPanel.getBackground();
-         params.outlineSize = (float)((Integer)AngioToolGUI.this.outlineSpinner.getValue()).intValue();
-         params.shouldComputeLacunarity = AngioToolGUI.this.computeLacunarity;
-         params.shouldComputeThickness = false;
-         params.shouldFillHoles = AngioToolGUI.this.fillHoles;
-         params.shouldFillSmallParticles = AngioToolGUI.this.smallParticles;
-         params.shouldResizeImage = AngioToolGUI.this.resizeImageCheckBox.isSelected();
-         params.shouldSaveResultImage = AngioToolGUI.this.saveResultImageCheckBox.isSelected();
-
-         try {
-            Analyzer.doAnalysis(this.folders, params, batchProgress);
-         }
-         catch (Throwable ex) {
-            System.out.println("not ok");
-            ex.printStackTrace();
-            return "Bad";
-         }
-         return "Good";
+         return doSingleAnalysis();
       }
 
       @Override
       protected void done() {
-         if (this.folders == null || this.folders.length == 0) {
-             try {
-                if (!Utils.isReleaseVersion) {
-                   System.out.println("Done starting worker");
-                }
+         try {
+            if (!Utils.isReleaseVersion) {
+               System.out.println("Done starting worker");
+            }
 
-                AngioToolGUI.this.populateResults();
-             } catch (Exception var2) {
-             }
+            AngioToolGUI.this.populateResults();
+         } catch (Exception var2) {
          }
       }
    }

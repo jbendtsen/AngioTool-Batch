@@ -3,6 +3,7 @@ package AngioTool;
 import GUI.AngioToolGUI;
 import Utils.Utils;
 import ij.IJ;
+import java.awt.Image;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.net.InetAddress;
@@ -11,7 +12,7 @@ import java.net.UnknownHostException;
 import javax.swing.ImageIcon;
 
 public class AngioTool {
-   public static final String VERSION = "AngioTool-Batch 0.6a r3 (23.12.23)";
+   public static final String VERSION = "AngioTool-Batch 0.6a r4 (04.01.24)";
    public static AngioToolGUI angioToolGUI;
 
    AngioTool() {
@@ -51,6 +52,7 @@ public class AngioTool {
 
       Utils.ijVersion = IJ.getVersion();
       Utils.screenDim = Toolkit.getDefaultToolkit().getScreenSize();
+
       Class at = this.getClass();
       Utils.ATIcon = this.createImageIcon(at, "/images/ATIcon20 64x64.gif");
       Utils.ATOpenImage = this.createImageIcon(at, "/images/OpenImages642.png");
@@ -59,6 +61,9 @@ public class AngioTool {
       Utils.ATExit = this.createImageIcon(at, "/images/Close64.png");
       Utils.ATHelp = this.createImageIcon(at, "/images/help64.png");
       Utils.ATExcel = this.createImageIcon(at, "/images/Excel64.png");
+
+      Utils.ATOpenImageSmall = this.createResizedIcon(Utils.ATOpenImage, 24, 24);
+      Utils.ATExcelSmall = this.createResizedIcon(Utils.ATExcel, 24, 24);
    }
 
    protected ImageIcon createImageIcon(String path) {
@@ -79,5 +84,9 @@ public class AngioTool {
          System.err.println("Couldn't find file: " + path);
          return null;
       }
+   }
+
+   static ImageIcon createResizedIcon(ImageIcon original, int w, int h) {
+      return new ImageIcon(original.getImage().getScaledInstance(w, h, Image.SCALE_DEFAULT));
    }
 }

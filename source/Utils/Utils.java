@@ -20,6 +20,7 @@ import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Rectangle;
 import java.io.File;
 import java.lang.management.ManagementFactory;
@@ -33,6 +34,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 
 public class Utils {
@@ -70,6 +72,8 @@ public class Utils {
    public static ImageIcon ATExit;
    public static ImageIcon ATHelp;
    public static ImageIcon ATExcel;
+   public static ImageIcon ATOpenImageSmall;
+   public static ImageIcon ATExcelSmall;
    public static final String jpeg = "jpeg";
    public static final String jpg = "jpg";
    public static final String gif = "gif";
@@ -216,6 +220,49 @@ public class Utils {
          result[i] = (int)numbers.get(i);
 
       return result;
+   }
+
+   public static String formatIntArray(int[] array) {
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < array.length; i++) {
+         if (i != 0)
+            sb.append(", ");
+         sb.append(array[i]);
+      }
+      return sb.toString();
+   }
+
+   public static String formatDouble(double value) {
+      String str = "" + value;
+      if (str.endsWith(".0"))
+         str = str.substring(0, str.length() - 2);
+      return str;
+   }
+
+   public static boolean hasAnyFileExtension(File f) {
+      return f.getName().contains(".");
+   }
+
+   public static String[] splitPaths(String blob, char charSplit, char charEscape) {
+      ArrayList<String> paths = new ArrayList<>();
+      int len = blob.length();
+      int start = 0;
+      char prev = '\0';
+      for (int i = 0; i < len; i++) {
+         char c = blob.charAt(i);
+         if (c == charSplit && prev != charEscape) {
+            paths.add(blob.substring(start, i));
+            start = i+1;
+         }
+      }
+      if (start != len)
+         paths.add(blob.substring(start, len));
+      return paths.toArray(new String[0]);
+   }
+
+   public static void setNewFontSizeOn(JComponent ui, int newSize) {
+      Font font = ui.getFont();
+      ui.setFont(new Font(font.getName(), font.getStyle(), newSize));
    }
 
    public static void showDialogBox(String title, String message) {
@@ -449,7 +496,8 @@ public class Utils {
       return index;
    }
 
-   public static void fillHoles(ImagePlus iplus, int minSize, int maxSize, double minCircularity, double maxCircularity, int color) {
+   // minSize and maxSize were ints
+   public static void fillHoles(ImagePlus iplus, double minSize, double maxSize, double minCircularity, double maxCircularity, int color) {
       ImageProcessor result = iplus.getProcessor();
       if (!result.isBinary() && !isReleaseVersion) {
          System.err.println("fillHoles requires a binary image");
@@ -536,13 +584,14 @@ public class Utils {
       ip.fill(r);
    }
 
+   // _minSize and _maxSize were ints
    public static PolygonRoi[] findAndAnalyzeObjects(
-      ImagePlus _iplus, int _minSize, int _maxSize, double _minCircularity, double _maxCircularity, ImageProcessor _ip
+      ImagePlus _iplus, double _minSize, double _maxSize, double _minCircularity, double _maxCircularity, ImageProcessor _ip
    ) {
       int options = 160;
       int measurements = 1;
       ResultsTable rt = new ResultsTable();
-      ParticleAnalyzer pa = new ParticleAnalyzer(options, measurements, rt, (double)_minSize, (double)_maxSize, _minCircularity, _maxCircularity);
+      ParticleAnalyzer pa = new ParticleAnalyzer(options, measurements, rt, _minSize, _maxSize, _minCircularity, _maxCircularity);
       pa.analyze(new ImagePlus("findAndAnalyzeObjects", _ip), _ip);
       int count = rt.getCounter();
       if (count <= 0) {
@@ -565,7 +614,8 @@ public class Utils {
       }
    }
 
-   public static PolygonRoi[] findAndAnalyzeObjects(ImagePlus _iplus, int _minSize, int _maxSize, ImageProcessor _ip) {
+   // _minSize and _maxSize were ints
+   public static PolygonRoi[] findAndAnalyzeObjects(ImagePlus _iplus, double _minSize, double _maxSize, ImageProcessor _ip) {
       return findAndAnalyzeObjects(_iplus, _minSize, _maxSize, 0.0, 1.0, _ip);
    }
 

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.File;
 import java.util.Date;
 import java.util.ArrayList;
-import javax.swing.JProgressBar;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.OvalRoi;
@@ -21,31 +20,12 @@ import AnalyzeSkeleton.Graph;
 import AnalyzeSkeleton.Point;
 import AnalyzeSkeleton.SkeletonResult;
 import features.TubenessProcessor;
-import GUI.BatchProgressUi;
+import GUI.BatchAnalysisUi;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
 import vesselThickness.EDT_S1D;
 
 public class Analyzer {
-    public static class Parameters {
-        public int branchingPointsSize;
-        public int fillHolesValue;
-        public double linearScalingFactor;
-        public Color outlineColor;
-        public float outlineSize;
-        public int[] sigmas;
-        public int skeletonSize;
-        public int removeSmallParticlesThreshold;
-        public double resizingFactor;
-        public int thresholdHigh;
-        public int thresholdLow;
-        public boolean shouldComputeLacunarity;
-        public boolean shouldComputeThickness;
-        public boolean shouldFillHoles;
-        public boolean shouldFillSmallParticles;
-        public boolean shouldResizeImage;
-        public boolean shouldSaveResultImage;
-    }
     public static class Result {
         static class Stats {
             public String imageFileName;
@@ -53,8 +33,8 @@ public class Analyzer {
             public int thresholdLow;
             public int thresholdHigh;
             public int[] sigmas;
-            public int removeSmallParticlesThreshold;
-            public int fillHolesValue;
+            public double removeSmallParticlesThreshold;
+            public double fillHolesValue;
             public double linearScalingFactor;
             public double allantoisMMArea;
             public double vesselMMArea;
@@ -148,10 +128,10 @@ public class Analyzer {
         }
     }
 
-    public static void doAnalysis(String[] paths, Parameters params, BatchProgressUi uiToken)
+    public static void doBatchAnalysis(AnalyzerParameters params, BatchAnalysisUi uiToken)
     {
         ArrayList<File> inputs = new ArrayList<>();
-        for (String path : paths) {
+        for (String path : params.inputPaths) {
             enumerateImageFilesRecursively(inputs, new File(path), uiToken);
             if (uiToken.isClosed.get())
                 return;
@@ -162,13 +142,17 @@ public class Analyzer {
             return;
         }
 
-        SpreadsheetWriter sheet = null;
+        File excelPath = new File(params.excelFilePath);
+        SpreadsheetWriter sheet;
         try {
-            sheet = createNewSheet(new File(System.getProperty("user.dir")), "AngioTool-batch");
+            sheet = createNewSheet(excelPath.getParentFile(), excelPath.getName());
         }
         catch (IOException ex) {
-            // do a thing
+            Utils.showExceptionInDialogBox(ex);
+            return;
         }
+
+        double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
 
         uiToken.startProgressBars(inputs.size(), 120);
 
@@ -182,9 +166,9 @@ public class Analyzer {
             Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
-                result = analyze(inFile, params, uiToken);
+                result = analyze(inFile, params, linearScalingFactor, uiToken);
                 analyzeSucceeded = true;
-                saveResult(sheet, result, inFile, params, uiToken);
+                saveResult(sheet, result, inFile, params, linearScalingFactor, uiToken);
             }
             catch (Throwable ex) {
                 ex.printStackTrace();
@@ -194,7 +178,7 @@ public class Analyzer {
             if (exception == null) {
                 uiToken.updateImageProgress(110, "Saving result image...");
      
-                if (params.shouldSaveResultImage)
+                if (params.shouldSaveResultImages)
                     IJ.saveAs(result.imageResult.flatten(), "jpg", inFile.getAbsolutePath() + " result.jpg");
             }
             else if (!analyzeSucceeded) {
@@ -214,7 +198,7 @@ public class Analyzer {
         uiToken.onFinished(sheet.fileName);
     }
 
-    static void enumerateImageFilesRecursively(ArrayList<File> images, File currentFolder, BatchProgressUi uiToken)
+    static void enumerateImageFilesRecursively(ArrayList<File> images, File currentFolder, BatchAnalysisUi uiToken)
     {
         File[] list = currentFolder.listFiles();
         for (File f : list) {
@@ -240,7 +224,7 @@ public class Analyzer {
         }
     }
 
-    static Result analyze(File inFile, Parameters params, BatchProgressUi uiToken)
+    static Result analyze(File inFile, AnalyzerParameters params, double linearScalingFactor, BatchAnalysisUi uiToken)
     {
         uiToken.updateImageProgress(0, "Loading image...");
 
@@ -325,14 +309,14 @@ public class Analyzer {
         for (int i = 0; i < iterations; ++i)
             result.imageThresholded.getProcessor().dilate();
 
-        if (params.shouldFillSmallParticles)
-            Utils.fillHoles(result.imageThresholded, 0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
+        if (params.shouldRemoveSmallParticles)
+            Utils.fillHoles(result.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
 
         if (params.shouldFillHoles) {
             result.imageThresholded.killRoi();
             result.tempProcessor2 = result.imageThresholded.getProcessor();
             result.tempProcessor2.invert();
-            Utils.fillHoles(result.imageThresholded, 0, params.fillHolesValue, 0.0, 1.0, 0);
+            Utils.fillHoles(result.imageThresholded, 0.0, params.fillHolesValue, 0.0, 1.0, 0);
             result.tempProcessor2.invert();
         }
 
@@ -380,7 +364,7 @@ public class Analyzer {
             result.imageThickness = ed.getImageResult();
 
             double thickness = Utils.computeMedianThickness(result.graphs, result.imageThickness);
-            result.stats.averageVesselDiameter = thickness * params.linearScalingFactor;
+            result.stats.averageVesselDiameter = thickness * linearScalingFactor;
         }
 
         uiToken.updateImageProgress(80, "Generating skeleton points...");
@@ -428,11 +412,17 @@ public class Analyzer {
         return result;
     }
 
-    static void saveResult(SpreadsheetWriter sheet, Result result, File inFile, Parameters params, BatchProgressUi uiToken)
-    {
+    static void saveResult(
+        SpreadsheetWriter sheet,
+        Result result,
+        File inFile,
+        AnalyzerParameters params,
+        double linearScalingFactor,
+        BatchAnalysisUi uiToken
+    ) {
         uiToken.updateImageProgress(100, "Saving image stats to Excel");
 
-        double areaScalingFactor = params.linearScalingFactor * params.linearScalingFactor;
+        double areaScalingFactor = linearScalingFactor * linearScalingFactor;
 
         result.stats.imageFileName = inFile.getName();
         result.stats.imageAbsolutePath = inFile.getAbsolutePath();
@@ -441,7 +431,7 @@ public class Analyzer {
         result.stats.sigmas = params.sigmas;
         result.stats.removeSmallParticlesThreshold = params.removeSmallParticlesThreshold;
         result.stats.fillHolesValue = (int)params.fillHolesValue;
-        result.stats.linearScalingFactor = params.linearScalingFactor;
+        result.stats.linearScalingFactor = linearScalingFactor;
         //result.stats.allantoisPixelsArea = result.convexHullArea;
         result.stats.allantoisMMArea = result.convexHullArea * areaScalingFactor;
         result.stats.totalNJunctions = result.al2.size();
@@ -465,8 +455,8 @@ public class Analyzer {
             totalLength += (double)branchNumbers[i] * branchLengths[i];
         }
 
-        result.stats.totalLength = totalLength * params.linearScalingFactor;
-        result.stats.averageBranchLength = totalLength / (double)branchNumbers.length * params.linearScalingFactor;
+        result.stats.totalLength = totalLength * linearScalingFactor;
+        result.stats.averageBranchLength = totalLength / (double)branchNumbers.length * linearScalingFactor;
         result.stats.totalNEndPoints = result.skelResult.getListOfEndPoints().size();
 
         String name = result.stats.imageFileName;
