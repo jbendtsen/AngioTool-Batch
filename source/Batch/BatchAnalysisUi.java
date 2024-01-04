@@ -1,9 +1,7 @@
-package GUI;
+package Batch;
 
-import AngioTool.Analyzer;
-import AngioTool.AnalyzerParameters;
 import AngioTool.ATPreferences;
-import AngioTool.SpreadsheetWriter;
+import GUI.RoundedPanel;
 import Utils.Utils;
 import java.awt.Color;
 import java.awt.BorderLayout;
