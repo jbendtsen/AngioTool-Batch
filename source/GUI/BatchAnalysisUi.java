@@ -104,6 +104,7 @@ public class BatchAnalysisUi
         btnSaveResultsFolder.setEnabled(params.shouldSaveResultImages);
         btnSaveResultsFolder.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectResultFolder());
 
+        textSaveResultsFolder.setText("<input image folders>");
         textSaveResultsFolder.setEnabled(params.shouldSaveResultImages);
 
         labelAnalysis.setText("Analysis");
@@ -159,6 +160,7 @@ public class BatchAnalysisUi
 
         cancelBtn.setText("Cancel");
         cancelBtn.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.close());
+        cancelBtn.setEnabled(false);
     }
 
     public void showDialog()
@@ -468,6 +470,8 @@ public class BatchAnalysisUi
             return;
         }
 
+        nErrors = 0;
+
         try {
             params = buildNewParamsFromUi();
         }
@@ -487,8 +491,20 @@ public class BatchAnalysisUi
             return;
         }
 
+        cancelBtn.setEnabled(true);
+
         analysisThread = new Thread(() -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this));
         analysisThread.start();
+    }
+
+    static void updateDialogSize(JDialog dlg) {
+        Dimension preferred = dlg.getPreferredSize();
+        Dimension curMin = dlg.getMinimumSize();
+
+        if (preferred.width > curMin.width || preferred.height > curMin.height) {
+            dlg.setMinimumSize(new Dimension(curMin.width, preferred.height));
+            dlg.setSize(preferred);
+        }
     }
 
     public void notifyNoImages()
@@ -498,9 +514,10 @@ public class BatchAnalysisUi
                 return;
 
             overallLabel.setText("No images were found!");
-            cancelBtn.setText("OK");
+            imageLabel.setText("");
+            cancelBtn.setEnabled(false);
 
-            jdialog.setMinimumSize(jdialog.getPreferredSize());
+            updateDialogSize(jdialog);
         });
     }
 
@@ -517,7 +534,18 @@ public class BatchAnalysisUi
             imageProgress.setValue(0);
             imageProgress.setMaximum(maxProgressPerImage);
 
-            jdialog.setMinimumSize(jdialog.getPreferredSize());
+            updateDialogSize(jdialog);
+        });
+    }
+
+    public void notifyImageWasInvalid()
+    {
+        SwingUtilities.invokeLater(() -> {
+            if (isClosed.get())
+                return;
+
+            int nImages = overallProgress.getMaximum();
+            overallProgress.setMaximum(nImages > 1 ? (nImages-1) : 1);
         });
     }
 
@@ -540,7 +568,7 @@ public class BatchAnalysisUi
             status += " Processing " + partialFileName + "...";
             overallLabel.setText(status);
 
-            jdialog.setMinimumSize(jdialog.getPreferredSize());
+            updateDialogSize(jdialog);
         });
     }
 
@@ -553,7 +581,7 @@ public class BatchAnalysisUi
             imageLabel.setText(statusMsg);
             imageProgress.setValue(newProgress);
 
-            jdialog.setMinimumSize(jdialog.getPreferredSize());
+            updateDialogSize(jdialog);
         });
     }
 
@@ -590,9 +618,9 @@ public class BatchAnalysisUi
             overallLabel.setText(status);
             imageLabel.setText("Saved Excel results to " + sheetFileName);
             imageProgress.setValue(imageProgress.getMaximum());
-            cancelBtn.setText("OK");
+            cancelBtn.setEnabled(false);
 
-            jdialog.setMinimumSize(jdialog.getPreferredSize());
+            updateDialogSize(jdialog);
         });
     }
 

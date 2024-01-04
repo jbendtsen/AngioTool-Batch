@@ -155,6 +155,7 @@ public class Analyzer {
         double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
 
         uiToken.startProgressBars(inputs.size(), 120);
+        boolean startedAnyImages = false;
 
         for (File inFile : inputs) {
             if (uiToken.isClosed.get())
@@ -163,10 +164,14 @@ public class Analyzer {
             ImagePlus image = null;
             try { image = IJ.openImage(inFile.getAbsolutePath()); }
             catch (Throwable ignored) {}
-            if (image == null)
+
+            if (image == null || image.getWidth() == 0 || image.getHeight() == 0) {
+                uiToken.notifyImageWasInvalid();
                 continue;
+            }
 
             uiToken.onStartImage(inFile.getAbsolutePath());
+            startedAnyImages = true;
 
             Result result = null;
             Throwable exception = null;
@@ -197,11 +202,16 @@ public class Analyzer {
             if (exception != null)
                 Utils.showExceptionInDialogBox(exception);
 
-            result.cleanup();
+            if (result != null)
+                result.cleanup();
+
             uiToken.onImageDone(exception);
         }
 
-        uiToken.onFinished(sheet.fileName);
+        if (!startedAnyImages)
+            uiToken.notifyNoImages();
+        else
+            uiToken.onFinished(sheet.fileName);
     }
 
     static void enumerateImageFilesRecursively(ArrayList<File> images, File currentFolder, BatchAnalysisUi uiToken)
@@ -223,10 +233,7 @@ public class Analyzer {
                 if (baseName.endsWith("result") || baseName.endsWith("tubeness") || baseName.endsWith("filtered") || baseName.endsWith("overlay"))
                     continue;
 
-                //String ext = name.substring(extIdx);
-                //if (ext.equals(".tif") || ext.equals(".tiff") || ext.equals(".jpg") || ext.equals(".jpeg") || ext.equals(".png")) {
                 images.add(f);
-                //}
             }
         }
     }
