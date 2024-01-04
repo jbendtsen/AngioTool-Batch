@@ -12,7 +12,9 @@ sep = ";" if os.name == "nt" else ":"
 libs = os.listdir("source/lib")
 libs_arg = "." + sep + sep.join(["lib/" + f for f in libs])
 
-shutil.rmtree("build")
+if os.path.exists("build"):
+    shutil.rmtree("build")
+
 os.mkdir("build")
 
 java_files = []

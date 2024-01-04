@@ -160,13 +160,19 @@ public class Analyzer {
             if (uiToken.isClosed.get())
                 return;
 
+            ImagePlus image = null;
+            try { image = IJ.openImage(inFile.getAbsolutePath()); }
+            catch (Throwable ignored) {}
+            if (image == null)
+                continue;
+
             uiToken.onStartImage(inFile.getAbsolutePath());
 
             Result result = null;
             Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
-                result = analyze(inFile, params, linearScalingFactor, uiToken);
+                result = analyze(inFile, image, params, linearScalingFactor, uiToken);
                 analyzeSucceeded = true;
                 saveResult(sheet, result, inFile, params, linearScalingFactor, uiToken);
             }
@@ -217,23 +223,23 @@ public class Analyzer {
                 if (baseName.endsWith("result") || baseName.endsWith("tubeness") || baseName.endsWith("filtered") || baseName.endsWith("overlay"))
                     continue;
 
-                String ext = name.substring(extIdx);
-                if (ext.equals(".tif") || ext.equals(".tiff") || ext.equals(".jpg") || ext.equals(".jpeg") || ext.equals(".png"))
-                    images.add(f);
+                //String ext = name.substring(extIdx);
+                //if (ext.equals(".tif") || ext.equals(".tiff") || ext.equals(".jpg") || ext.equals(".jpeg") || ext.equals(".png")) {
+                images.add(f);
+                //}
             }
         }
     }
 
-    static Result analyze(File inFile, AnalyzerParameters params, double linearScalingFactor, BatchAnalysisUi uiToken)
+    static Result analyze(File inFile, ImagePlus inputImage, AnalyzerParameters params, double linearScalingFactor, BatchAnalysisUi uiToken)
     {
         uiToken.updateImageProgress(0, "Loading image...");
 
         Result result = new Result();
-        result.imageThresholded = new ImagePlus();
-        result.imageResult = new ImagePlus();
         result.allantoisOverlay = new Overlay();
+        result.imageThresholded = new ImagePlus();
+        result.imageResult = inputImage;
 
-        result.imageResult = IJ.openImage(inFile.getAbsolutePath());
         if (result.imageResult.getType() == 4)
             result.imageResult = RGBStackSplitter.split(result.imageResult, "green");
 

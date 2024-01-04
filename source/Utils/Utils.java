@@ -277,9 +277,27 @@ public class Utils {
    public static void showExceptionInDialogBox(Throwable t) {
       if (t == null)
          return;
+
       String name = t.getClass().getName();
       String message = t.getMessage();
-      showDialogBox(name, message != null ? message : "No message provided");
+
+      StackTraceElement[] st = t.getStackTrace();
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < st.length; i++) {
+         String className = st[i].getClassName();
+         if (!className.startsWith("java.") && !className.startsWith("javax.")) {
+            sb.append("\n");
+            sb.append(st[i].toString());
+         }
+      }
+
+      String exSource = sb.toString();
+      if (message == null || message.length() == 0)
+         message = exSource;
+      else
+         message += exSource;
+
+      showDialogBox(name, message);
    }
 
    public static boolean checkJavaVersion(int Major, int minor, int point) {

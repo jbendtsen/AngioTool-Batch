@@ -172,10 +172,10 @@ public class BatchAnalysisUi
 
             arrangeUi(layout);
 
-            //jdialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
             jdialog.add(dialogPanel);
+            jdialog.pack();
 
-            jdialog.setSize(500, 680);
+            jdialog.setMinimumSize(jdialog.getPreferredSize());
             jdialog.setLocationRelativeTo(parentFrame);
             jdialog.setVisible(true);
         });
@@ -205,10 +205,8 @@ public class BatchAnalysisUi
                 .addComponent(textSaveResultsFolder)
             )
             .addComponent(labelAnalysis)
-            //.addGroup(layout.createSequentialGroup()
-                .addComponent(cbComputeLacunarity)
-                .addComponent(cbComputeThickness)
-            //)
+            .addComponent(cbComputeLacunarity)
+            .addComponent(cbComputeThickness)
             .addGroup(
                 arrangeParallelEntries(
                     elemLinearScaleFactor, elemRemoveParticles, layout, arrangeParallelEntries(
@@ -273,10 +271,8 @@ public class BatchAnalysisUi
             .addGap(12)
             .addComponent(labelAnalysis)
             .addGap(8)
-            //.addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(cbComputeLacunarity)
-                .addComponent(cbComputeThickness)
-            //)
+            .addComponent(cbComputeLacunarity)
+            .addComponent(cbComputeThickness)
             .addGroup(
                 elemLinearScaleFactor.addToGroup(
                     elemResizeInputs.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
@@ -503,6 +499,8 @@ public class BatchAnalysisUi
 
             overallLabel.setText("No images were found!");
             cancelBtn.setText("OK");
+
+            jdialog.setMinimumSize(jdialog.getPreferredSize());
         });
     }
 
@@ -518,6 +516,8 @@ public class BatchAnalysisUi
 
             imageProgress.setValue(0);
             imageProgress.setMaximum(maxProgressPerImage);
+
+            jdialog.setMinimumSize(jdialog.getPreferredSize());
         });
     }
 
@@ -539,6 +539,8 @@ public class BatchAnalysisUi
 
             status += " Processing " + partialFileName + "...";
             overallLabel.setText(status);
+
+            jdialog.setMinimumSize(jdialog.getPreferredSize());
         });
     }
 
@@ -550,6 +552,8 @@ public class BatchAnalysisUi
 
             imageLabel.setText(statusMsg);
             imageProgress.setValue(newProgress);
+
+            jdialog.setMinimumSize(jdialog.getPreferredSize());
         });
     }
 
@@ -587,6 +591,8 @@ public class BatchAnalysisUi
             imageLabel.setText("Saved Excel results to " + sheetFileName);
             imageProgress.setValue(imageProgress.getMaximum());
             cancelBtn.setText("OK");
+
+            jdialog.setMinimumSize(jdialog.getPreferredSize());
         });
     }
 
