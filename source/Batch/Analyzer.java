@@ -14,6 +14,7 @@ import ij.gui.Roi;
 import ij.gui.ShapeRoi;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
+import AngioTool.AngioToolMain;
 import AngioTool.RGBStackSplitter;
 import AngioTool.PolygonPlus;
 import AnalyzeSkeleton.AnalyzeSkeleton;
@@ -372,7 +373,7 @@ public class Analyzer {
         uiToken.updateImageProgress(70, "Computing thickness...");
 
         if (params.shouldComputeThickness) {
-            EDT_S1D ed = new EDT_S1D();
+            EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
             ed.setup(null, result.imageThresholded);
             ed.run(result.imageThresholded.getProcessor());
             result.imageThickness = ed.getImageResult();

@@ -1969,7 +1969,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
         this.computeThickness = !Utils.isReleaseVersion;
         if (this.computeThickness) {
             updateStatus(progress, "vessel thickness");
-            EDT_S1D ed = new EDT_S1D();
+            EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
             ed.setup(null, this.imageThresholded);
             ed.run(this.imageThresholded.getProcessor());
             this.imageThickness = ed.getImageResult();

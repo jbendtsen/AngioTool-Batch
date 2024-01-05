@@ -1,5 +1,6 @@
 package vesselThickness;
 
+import Batch.ForkStep3;
 import Utils.Utils;
 import ij.IJ;
 import ij.ImagePlus;
@@ -10,6 +11,9 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class EDT_S1D implements PlugInFilter {
    private ImagePlus imp;
@@ -20,6 +24,12 @@ public class EDT_S1D implements PlugInFilter {
    public int thresh;
    public boolean inverse;
    ImagePlus impOut;
+
+   final ThreadPoolExecutor threadPool;
+
+   public EDT_S1D(ThreadPoolExecutor threadPool) {
+      this.threadPool = threadPool;
+   }
 
    public int setup(String arg, ImagePlus imp) {
       this.imp = imp;
@@ -57,27 +67,22 @@ public class EDT_S1D implements PlugInFilter {
 
       EDT_S1D.Step1Thread[] s1t = new EDT_S1D.Step1Thread[nThreads];
 
-      for(int thread = 0; thread < nThreads; ++thread) {
+      for(int thread = 0; thread < nThreads; ++thread)
          s1t[thread] = new EDT_S1D.Step1Thread(thread, nThreads, this.w, this.h, this.d, this.thresh, s, this.data);
-         s1t[thread].start();
-      }
 
-      try {
-         for(int thread = 0; thread < nThreads; ++thread) {
-            s1t[thread].join();
-         }
-      } catch (InterruptedException var26) {
-         IJ.error("A thread was interrupted in step 1 .");
-      }
+      runAndJoinAll(threadPool, s1t, 1);
 
       long s2 = System.currentTimeMillis();
       if (!Utils.isReleaseVersion) {
          System.out.println("EDT transformation 2/3");
       }
 
-      ForkStep2 fs2 = new ForkStep2();
-      ArrayList<float[]> f = fs2.thin(s[0], this.w, this.h);
-      s[0] = f.get(1);
+      //ForkStep2 fs2 = new ForkStep2();
+      //ArrayList<float[]> f = fs2.thin(s[0], this.w, this.h);
+      //s[0] = f.get(1);
+
+      ForkStep3.thin(threadPool, nThreads, s[0], this.w, this.h);
+
       long s3 = System.currentTimeMillis();
       if (!Utils.isReleaseVersion) {
          System.out.println("EDT transformation 3/3");
@@ -85,20 +90,10 @@ public class EDT_S1D implements PlugInFilter {
 
       EDT_S1D.Step3Thread[] s3t = new EDT_S1D.Step3Thread[nThreads];
 
-      for(int thread = 0; thread < nThreads; ++thread) {
+      for(int thread = 0; thread < nThreads; ++thread)
          s3t[thread] = new EDT_S1D.Step3Thread(thread, nThreads, this.w, this.h, this.d, s, this.data);
-         s3t[thread].start();
-      }
 
-      try {
-         for(int thread = 0; thread < nThreads; ++thread) {
-            s3t[thread].join();
-         }
-      } catch (InterruptedException var25) {
-         if (!Utils.isReleaseVersion) {
-            System.err.println("A thread was interrupted in step 3 .");
-         }
-      }
+      runAndJoinAll(threadPool, s3t, 3);
 
       float distMax = 0.0F;
       int wh = this.w * this.h;
@@ -121,6 +116,24 @@ public class EDT_S1D implements PlugInFilter {
       this.impOut = new ImagePlus(title + "EDT", sStack);
       this.impOut.getProcessor().setMinAndMax(0.0, (double)distMax);
       long end = System.currentTimeMillis();
+   }
+
+   static void runAndJoinAll(ThreadPoolExecutor pool, Runnable[] tasks, int stepNumber) {
+      Future[] futures = new Future[tasks.length];
+      for (int i = 0; i < tasks.length; i++)
+         futures[i] = pool.submit(tasks[i]);
+
+      for (int i = 0; i < tasks.length; i++) {
+         try {
+            futures[i].get();
+         }
+         catch (InterruptedException ex) {
+            System.err.println("A thread was interrupted in step " + stepNumber);
+         }
+         catch (ExecutionException ex) {
+            System.err.println("A thread in step " + stepNumber + " threw " + ex.getCause().getClass().getSimpleName());
+         }
+      }
    }
 
    public ImagePlus getImageResult() {
@@ -156,7 +169,7 @@ public class EDT_S1D implements PlugInFilter {
       }
    }
 
-   class Step1Thread extends Thread {
+   class Step1Thread implements Runnable {
       int thread;
       int nThreads;
       int w;
@@ -231,7 +244,7 @@ public class EDT_S1D implements PlugInFilter {
       }
    }
 
-   class Step3Thread extends Thread {
+   class Step3Thread implements Runnable {
       int thread;
       int nThreads;
       int w;
