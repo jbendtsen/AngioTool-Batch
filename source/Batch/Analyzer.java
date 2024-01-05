@@ -362,7 +362,10 @@ public class Analyzer {
 
         uiToken.updateImageProgress(60, "Computing skeleton...");
 
-        result.ipThresholded = Utils.skeletonize(result.imageThresholded.getProcessor(), "itk");
+        int nSkeletonWorkers = 3;
+
+        //result.ipThresholded = Utils.skeletonize(result.imageThresholded.getProcessor(), "itk");
+        result.ipThresholded = Utils.skeletonize2(AngioToolMain.threadPool, nSkeletonWorkers, result.imageThresholded.getProcessor());
         result.ipSkeleton = result.ipThresholded.duplicate();
         result.iplusSkeleton = new ImagePlus("iplusSkeleton", result.ipSkeleton);
         result.skeleton = new AnalyzeSkeleton();
