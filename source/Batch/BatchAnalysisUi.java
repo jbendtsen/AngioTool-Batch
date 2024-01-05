@@ -1,5 +1,6 @@
 package Batch;
 
+import AngioTool.AngioToolMain;
 import AngioTool.ATPreferences;
 import GUI.RoundedPanel;
 import Utils.Utils;
@@ -13,13 +14,12 @@ import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BatchAnalysisUi
 {
     static int UNITS_GAP = 4;
-
-    AnalyzerParameters params;
 
     final JFrame parentFrame;
     final JDialog jdialog;
@@ -65,13 +65,12 @@ public class BatchAnalysisUi
 
     int nErrors = 0;
 
-    public Thread analysisThread = null;
+    public Future<Void> analysisTaskFuture = null;
     public final AtomicBoolean isClosed = new AtomicBoolean(false);
 
     public BatchAnalysisUi(JFrame uiFrame, AnalyzerParameters params)
     {
         this.parentFrame = uiFrame;
-        this.params = params;
 
         this.jdialog = new JDialog(parentFrame, "Batch Analysis", true);
 
@@ -460,7 +459,7 @@ public class BatchAnalysisUi
 
     public void startAnalysis()
     {
-        if (analysisThread != null && analysisThread.isAlive()) {
+        if (analysisTaskFuture != null && !analysisTaskFuture.isDone()) {
             Utils.showDialogBox(
                 "Analysis Still in Progress",
                 "A batch analysis is still running. Either cancel it or wait for it to complete."
@@ -470,6 +469,7 @@ public class BatchAnalysisUi
 
         nErrors = 0;
 
+        AnalyzerParameters params;
         try {
             params = buildNewParamsFromUi();
         }
@@ -491,8 +491,7 @@ public class BatchAnalysisUi
 
         cancelBtn.setEnabled(true);
 
-        analysisThread = new Thread(() -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this));
-        analysisThread.start();
+        analysisTaskFuture = (Future<Void>)AngioToolMain.threadPool.submit(() -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this));
     }
 
     static void updateDialogSize(JDialog dlg) {
