@@ -6,14 +6,29 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.JOptionPane;
 
 public class AngioToolMain {
+   /*
    private static final int yearExpiration = 3014;
    private static final int monthExpiration = 12;
    private static final int dayExpiration = 31;
    private static Date limitDate = null;
    private static final Date today = new Date();
+   */
+
+   public static final int MAX_WORKERS = 24;
+
+   public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
+      2, /* corePoolSize */
+      MAX_WORKERS + 4, /* maximumPoolSize */
+      30, /* keepAliveTime */
+      TimeUnit.SECONDS, /* unit */
+      new LinkedBlockingQueue<>() /* workQueue */
+   );
 
    public static void main(String[] args) {
       /*
@@ -41,5 +56,9 @@ public class AngioToolMain {
             new AngioTool();
          }
       });
+   }
+
+   public static void cleanup() {
+      threadPool.shutdownNow();
    }
 }

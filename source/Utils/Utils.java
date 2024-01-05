@@ -6,6 +6,7 @@ import AnalyzeSkeleton.Point;
 import AngioTool.AngioTool;
 import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
+import Batch.ISliceCompute;
 import Skeleton.Skeletonize3D;
 import features.Tubeness;
 import ij.IJ;
@@ -33,6 +34,9 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
@@ -300,6 +304,70 @@ public class Utils {
       showDialogBox(name, message);
    }
 
+   public static void makeBinaryTreeOfSlices(ArrayList<Integer> offsetLengthPairs, int start, int length, int largestAtom) {
+      if (length <= largestAtom) {
+         offsetLengthPairs.add(start);
+         offsetLengthPairs.add(length);
+      }
+      else {
+         int split = length / 2;
+         int remainder = length % 2;
+         int secondHalf = split + remainder;
+
+         makeBinaryTreeOfSlices(offsetLengthPairs, start, split, largestAtom);
+         makeBinaryTreeOfSlices(offsetLengthPairs, start + split, secondHalf, largestAtom);
+      }
+   }
+
+   public static boolean computeSlicesInParallel(ThreadPoolExecutor threadPool, int maxWorkers, ArrayList<Integer> offsetLengthPairs, ISliceCompute params) {
+      final int nSlices = offsetLengthPairs.size() / 2;
+      Future[] futures = new Future[nSlices <= maxWorkers ? nSlices : maxWorkers];
+
+      if (nSlices <= maxWorkers) {
+         for (int i = 0; i < nSlices; i++) {
+            final int offset = offsetLengthPairs.get(2*i);
+            final int length = offsetLengthPairs.get(2*i+1);
+            futures[i] = threadPool.submit(() -> params.computeSlice(offset, length));
+         }
+      }
+      else {
+         for (int i = 0; i < maxWorkers; i++) {
+            final int idx = i;
+            futures[i] = threadPool.submit(() -> {
+               for (int j = idx; j < nSlices; j += maxWorkers) {
+                  int offset = offsetLengthPairs.get(2*j);
+                  int length = offsetLengthPairs.get(2*j+1);
+                  params.computeSlice(offset, length);
+               }
+            });
+         }
+      }
+
+      boolean shouldInterrupt = false;
+      boolean anyFailures = false;
+
+      for (int i = 0; i < futures.length; i++) {
+         Future<Object> f = (Future<Object>)futures[i];
+         if (shouldInterrupt) {
+            f.cancel(true);
+         }
+         else {
+            try {
+               f.get();
+            }
+            catch (ExecutionException ex) {
+               anyFailures = true;
+            }
+            catch (InterruptedException ex) {
+               shouldInterrupt = true;
+               f.cancel(true);
+            }
+         }
+      }
+
+      return !anyFailures && !shouldInterrupt;
+   }
+
    public static boolean checkJavaVersion(int Major, int minor, int point) {
       /*
       String version = System.getProperty("java.version");
@@ -445,6 +513,44 @@ public class Utils {
       for(int y = 0; y < iplus.getHeight(); ++y) {
          for(int x = 0; x < iplus.getWidth(); ++x) {
             float v = ip.getPixelValue(x, y);
+            int index = (int)(scale * (double)(v - histMin));
+            if (index >= nBins) {
+               index = nBins - 1;
+            }
+
+            histogram[index]++;
+         }
+      }
+
+      if (!isReleaseVersion) {
+         System.out.println("min= " + histMin + "\tmax= " + histMax);
+      }
+
+      return histogram;
+   }
+
+   public static int[] getFloatHistogram2(float[] data, int width, int height) {
+      int nBins = 256;
+      int[] histogram = new int[nBins];
+      float histMin = Float.MAX_VALUE;
+      float histMax = Float.MIN_VALUE;
+
+      for(int y = 0; y < height; ++y) {
+         for(int x = 0; x < width; ++x) {
+            float v = data[x + width*y];
+            if (v > histMax) {
+               histMax = v;
+            } else if (v < histMin) {
+               histMin = v;
+            }
+         }
+      }
+
+      double scale = (double)((float)nBins / (histMax - histMin));
+
+      for(int y = 0; y < height; ++y) {
+         for(int x = 0; x < width; ++x) {
+            float v = data[x + width*y];
             int index = (int)(scale * (double)(v - histMin));
             if (index >= nBins) {
                index = nBins - 1;

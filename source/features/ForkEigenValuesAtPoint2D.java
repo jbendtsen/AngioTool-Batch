@@ -70,7 +70,7 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
                int index = y * this.width + x;
                float value = 0.0F;
                if (real) {
-                  value = this.measureFromEvalues2D(this.evalues, 1);
+                  value = measureFromEvalues2D(this.evalues, 1);
                }
 
                this.sliceFinal[index] = value;
@@ -97,13 +97,15 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
    }
 
    public float[] computeEigenvalues(ImagePlus original, double sigma, int _threshold) {
-      System.out.println("_threshold= " + _threshold + "\ttreshold = " + this.threshold);
+      //System.out.println("_threshold= " + _threshold + "\ttreshold = " + this.threshold);
       data2D = this.ImageToFloatArray(original.getProcessor());
       int[] histogram2 = Utils.getFloatHistogram2(original);
       this.threshold = Utils.findHistogramMax(histogram2) + 2;
+      /*
       if (!Utils.isReleaseVersion) {
          System.out.println("treshold = " + this.threshold);
       }
+      */
 
       if (_threshold <= 0) {
          this.threshold = 3;
@@ -111,7 +113,7 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
          this.threshold = _threshold;
       }
 
-      System.out.println("_threshold= " + _threshold + "\ttreshold = " + this.threshold);
+      //System.out.println("_threshold= " + _threshold + "\ttreshold = " + this.threshold);
       this.sliceFinal = new float[data2D.data.length];
       ForkEigenValuesAtPoint2D fe = new ForkEigenValuesAtPoint2D(original, data2D, 0, original.getWidth(), sigma, this.threshold, this.sliceFinal);
       ForkJoinPool pool = new ForkJoinPool();
@@ -143,7 +145,7 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
       }
 
       float[][] hessianMatrix = this.computeHessianMatrix2DFloat(data2D, x, y, this.sigma, sepX, sepY);
-      float[] eigenValues = this.computeEigenValues(hessianMatrix);
+      float[] eigenValues = this.findEigenValuesForMatrix(hessianMatrix);
       if (eigenValues == null) {
          return false;
       } else {
@@ -169,7 +171,7 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
       }
    }
 
-   public float measureFromEvalues2D(float[] evalues, int vesselness) {
+   public static float measureFromEvalues2D(float[] evalues, int vesselness) {
       float measure = 0.0F;
       return evalues[1] >= 0.0F ? 0.0F : Math.abs(evalues[1]);
    }
@@ -199,7 +201,7 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
       long hessianMatrixStart = System.currentTimeMillis();
       float[][] hessianMatrix = this.computeHessianMatrix2DFloat(data2D, x, y, this.sigma, sepX, sepY);
       long hessianMatrixEnd = System.currentTimeMillis();
-      float[] eigenValues = this.computeEigenValues(hessianMatrix);
+      float[] eigenValues = this.findEigenValuesForMatrix(hessianMatrix);
       long eigenValuesEnd = System.currentTimeMillis();
       if (eigenValues == null) {
          return null;
@@ -251,7 +253,7 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
       return hessianMatrix;
    }
 
-   public float[] computeEigenValues(float[][] matrix) {
+   public float[] findEigenValuesForMatrix(float[][] matrix) {
       if (matrix.length == 3 && matrix[0].length == 3) {
          Eigensystem3x3Float e = new Eigensystem3x3Float(matrix);
          boolean result = e.findEvalues();
@@ -268,53 +270,42 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
 
    public ForkEigenValuesAtPoint2D.FloatArray2D ImageToFloatArray(ImageProcessor ip) {
       Object pixelArray = ip.getPixels();
-      int count = 0;
-      ForkEigenValuesAtPoint2D.FloatArray2D image;
+      int size = ip.getWidth() * ip.getHeight();
+      ForkEigenValuesAtPoint2D.FloatArray2D image = null;
+
       if (ip instanceof ByteProcessor) {
          image = new ForkEigenValuesAtPoint2D.FloatArray2D(ip.getWidth(), ip.getHeight());
          byte[] pixels = (byte[])pixelArray;
 
-         for(int y = 0; y < ip.getHeight(); ++y) {
-            for(int x = 0; x < ip.getWidth(); ++x) {
-               image.data[count] = (float)(pixels[count++] & 255);
-            }
+         for(int i = 0; i < size; i++) {
+            image.data[i] = (float)(pixels[i] & 0xff);
          }
       } else if (ip instanceof ShortProcessor) {
          image = new ForkEigenValuesAtPoint2D.FloatArray2D(ip.getWidth(), ip.getHeight());
          short[] pixels = (short[])pixelArray;
 
-         for(int y = 0; y < ip.getHeight(); ++y) {
-            for(int x = 0; x < ip.getWidth(); ++x) {
-               image.data[count] = (float)(pixels[count++] & '\uffff');
-            }
+         for(int i = 0; i < size; i++) {
+            image.data[i] = (float)(pixels[i] & 0xffff);
          }
       } else if (ip instanceof FloatProcessor) {
          image = new ForkEigenValuesAtPoint2D.FloatArray2D(ip.getWidth(), ip.getHeight());
-         float[] pixels = (float[])pixelArray;
-
-         for(int y = 0; y < ip.getHeight(); ++y) {
-            for(int x = 0; x < ip.getWidth(); ++x) {
-               image.data[count] = pixels[count++];
-            }
-         }
+         System.arraycopy((float[])pixelArray, 0, image.data, 0, size);
       } else {
          if (!Utils.isReleaseVersion) {
             System.err.println("RGB images not supported");
          }
-
-         image = null;
       }
 
       return image;
    }
 
-   public abstract class FloatArray {
+   public static abstract class FloatArray {
       public float[] data = null;
 
       public abstract ForkEigenValuesAtPoint2D.FloatArray clone();
    }
 
-   public class FloatArray2D extends ForkEigenValuesAtPoint2D.FloatArray {
+   public static class FloatArray2D extends ForkEigenValuesAtPoint2D.FloatArray {
       public float[] data = null;
       public int width = 0;
       public int height = 0;
@@ -332,7 +323,7 @@ public class ForkEigenValuesAtPoint2D extends RecursiveAction {
       }
 
       public ForkEigenValuesAtPoint2D.FloatArray2D clone() {
-         ForkEigenValuesAtPoint2D.FloatArray2D clone = ForkEigenValuesAtPoint2D.this.new FloatArray2D(this.width, this.height);
+         ForkEigenValuesAtPoint2D.FloatArray2D clone = new ForkEigenValuesAtPoint2D.FloatArray2D(this.width, this.height);
          System.arraycopy(this.data, 0, clone.data, 0, this.data.length);
          return clone;
       }

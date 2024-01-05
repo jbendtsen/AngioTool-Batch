@@ -6,6 +6,7 @@ import AnalyzeSkeleton.Graph;
 import AnalyzeSkeleton.Point;
 import AnalyzeSkeleton.SkeletonResult;
 import AngioTool.AngioTool;
+import AngioTool.AngioToolMain;
 import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
 import AngioTool.PolygonPlus;
@@ -1217,15 +1218,19 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private void ExitButtonActionPerformed(ActionEvent evt) {
-      if (JOptionPane.showConfirmDialog(null, "Do you really want to exit AngioTool?", "AngioTool", 0, 3, null) == 0) {
-         if (this.imageResult != null) {
-            this.imageResult.close();
-         }
+      /*
+      if (JOptionPane.showConfirmDialog(null, "Do you really want to exit AngioTool?", "AngioTool", 0, 3, null) != 0)
+         return;
+      */
 
-         this.setVisible(false);
-         this.exit();
-         System.exit(0);
+      if (this.imageResult != null) {
+         this.imageResult.close();
       }
+
+      this.setVisible(false);
+      this.exit();
+      AngioToolMain.cleanup();
+      System.exit(0);
    }
 
    private void showConvexHullCheckBoxActionPerformed(ActionEvent evt) {
