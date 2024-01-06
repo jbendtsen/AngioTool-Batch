@@ -7,6 +7,7 @@ import AngioTool.AngioTool;
 import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
 import Batch.ISliceCompute;
+import Batch.PointVectorInt;
 import Batch.Skeletonize2;
 import Skeleton.Skeletonize3D;
 import features.Tubeness;
@@ -120,7 +121,8 @@ public class Utils {
       if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
          throw new RuntimeException("Utils.skeletonize2: Image was not single-channel 8-bit");
 
-      return Skeletonize2.skeletonize(threadPool, maxWorkers, (ByteProcessor)ip);
+      Skeletonize2.skeletonize(threadPool, maxWorkers, (ByteProcessor)ip);
+      return ip;
    }
 
    private static ArrayList<Float> computeTickness(Graph[] graph, ImagePlus distanceMap) {
@@ -312,10 +314,9 @@ public class Utils {
       showDialogBox(name, message);
    }
 
-   public static void makeBinaryTreeOfSlices(ArrayList<Integer> offsetLengthPairs, int start, int length, int largestAtom) {
+   public static void makeBinaryTreeOfSlices(PointVectorInt offsetLengthPairs, int start, int length, int largestAtom) {
       if (length <= largestAtom) {
-         offsetLengthPairs.add(start);
-         offsetLengthPairs.add(length);
+         offsetLengthPairs.add(start, length);
       }
       else {
          int split = length / 2;
@@ -327,14 +328,14 @@ public class Utils {
       }
    }
 
-   public static boolean computeSlicesInParallel(ThreadPoolExecutor threadPool, int maxWorkers, ArrayList<Integer> offsetLengthPairs, ISliceCompute params) {
-      final int nSlices = offsetLengthPairs.size() / 2;
+   public static boolean computeSlicesInParallel(ThreadPoolExecutor threadPool, int maxWorkers, PointVectorInt offsetLengthPairs, ISliceCompute params) {
+      final int nSlices = offsetLengthPairs.size;
       Future[] futures = new Future[nSlices <= maxWorkers ? nSlices : maxWorkers];
 
       if (nSlices <= maxWorkers) {
          for (int i = 0; i < nSlices; i++) {
-            final int offset = offsetLengthPairs.get(2*i);
-            final int length = offsetLengthPairs.get(2*i+1);
+            final int offset = offsetLengthPairs.buf[2*i];
+            final int length = offsetLengthPairs.buf[2*i+1];
             futures[i] = threadPool.submit(() -> params.computeSlice(offset, length));
          }
       }
@@ -343,8 +344,8 @@ public class Utils {
             final int idx = i;
             futures[i] = threadPool.submit(() -> {
                for (int j = idx; j < nSlices; j += maxWorkers) {
-                  int offset = offsetLengthPairs.get(2*j);
-                  int length = offsetLengthPairs.get(2*j+1);
+                  int offset = offsetLengthPairs.buf[2*j];
+                  int length = offsetLengthPairs.buf[2*j+1];
                   params.computeSlice(offset, length);
                }
             });

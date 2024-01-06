@@ -4,7 +4,6 @@ import Utils.Utils;
 import ij.ImagePlus;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
-import java.util.ArrayList;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ForkEigenValuesAtPoint2D2 {
@@ -20,7 +19,7 @@ public class ForkEigenValuesAtPoint2D2 {
         float[] data2D = (float[])ip.getPixels();
         float[] sliceFinal = new float[data2D.length];
 
-        ArrayList<Integer> offsetLengthPairs = new ArrayList<>();
+        PointVectorInt offsetLengthPairs = new PointVectorInt();
         Utils.makeBinaryTreeOfSlices(offsetLengthPairs, 0, width, IN_PLACE_THRESHOLD - 1);
 
         Utils.computeSlicesInParallel(

@@ -1,7 +1,6 @@
 package Batch;
 
 import Utils.Utils;
-import java.util.ArrayList;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ForkStep3 implements ISliceCompute {
@@ -73,7 +72,7 @@ public class ForkStep3 implements ISliceCompute {
     }
 
     public static void thin(ThreadPoolExecutor threadPool, int maxWorkers, float[] src, int width, int height) {
-        ArrayList<Integer> offsetLengthPairs = new ArrayList<>();
+        PointVectorInt offsetLengthPairs = new PointVectorInt();
         Utils.makeBinaryTreeOfSlices(offsetLengthPairs, 0, width, IN_PLACE_THRESHOLD - 1);
 
         Utils.computeSlicesInParallel(
