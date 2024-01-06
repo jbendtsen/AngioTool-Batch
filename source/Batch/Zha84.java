@@ -1,5 +1,8 @@
 package Batch;
 
+import ij.process.ByteProcessor;
+import ij.process.ImageProcessor;
+
 public class Zha84 {
     static final byte[] lut = stringToLut(
         "00010013003110130000000020203033" +
@@ -20,37 +23,61 @@ public class Zha84 {
         return out;
     }
 
+    public static ImageProcessor skeletonizeZha84(ImageProcessor ip) {
+        if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
+            throw new RuntimeException("SkeletonizeZha84: Image was not single-channel 8-bit");
+
+        byte[] image = (byte[])ip.getPixels();
+        int width = ip.getWidth();
+        int height = ip.getHeight();
+
+        skeletonizeZha84(image, width, height);
+        return ip;
+    }
+
     public static void skeletonizeZha84(byte[] image, int width, int height)
     {
-        byte[] pages = new byte[width * height * 2];
+        for (int i = 0; i < width; i++)
+            image[i] = 0;
+
         for (int i = 1; i < height - 1; i++) {
+            image[i*width] = 0;
             for (int j = 1; j < width - 1; j++) {
                 int idx = j + width*i;
-                pages[idx] = (byte)(image[idx] >>> 31 | -image[idx] >>> 31);
+                image[idx] = (byte)(image[idx] >>> 31 | -image[idx] >>> 31);
             }
+            image[(i+1)*width-1] = 0;
         }
+
+        int lastRow = (height-1) * width;
+        for (int i = 0; i < width; i++)
+            image[i+lastRow] = 0;
+
+        byte[] alt = new byte[width * height];
+        byte[] a = null, b = null;
 
         int nRemovals;
         do {
             nRemovals = 0;
+            a = image;
+            b = alt;
 
-            int p1 = 0;
-            int p2 = width * height;
             for (int pass = 1; pass <= 2; pass++) {
                 for (int i = 1; i < height-1; i++) {
                     for (int j = 1; j < width-1; j++) {
-                        int a = p1 + j + width*i;
+                        int idx = j + width*i;
                         int shouldKeep = 1;
-                        if (pages[a] != 0) {
+
+                        if (a[idx] != 0) {
                             int value = lut[
-                                pages[a-width-1] |
-                                pages[a-width] << 1 |
-                                pages[a-width+1] << 2 |
-                                pages[a+1] << 3 |
-                                pages[a+width+1] << 4 |
-                                pages[a+width] << 5 |
-                                pages[a+width-1] << 6 |
-                                pages[a-1] << 7
+                                a[idx-width-1] |
+                                a[idx-width] << 1 |
+                                a[idx-width+1] << 2 |
+                                a[idx+1] << 3 |
+                                a[idx+width+1] << 4 |
+                                a[idx+width] << 5 |
+                                a[idx+width-1] << 6 |
+                                a[idx-1] << 7
                             ];
 
                             //boolean shouldKeep = value != 3 && value != pass;
@@ -59,18 +86,16 @@ public class Zha84 {
                                 ((value-pass) >>> 31 | -(value-pass) >>> 31);
                         }
 
-                        int b = p2 + j + width*i;
-                        pages[b] = (byte)(shouldKeep * pages[a]);
+                        b[idx] = (byte)(shouldKeep * a[idx]);
                         nRemovals += shouldKeep ^ 1;
                     }
                 }
-                int temp = p1;
-                p1 = p2;
-                p2 = temp;
+
+                byte[] temp = a;
+                a = b;
+                b = temp;
             }
             //System.out.println("nRemovals: " + nRemovals);
         } while (nRemovals != 0);
-
-        System.arraycopy(pages, 0, image, 0, width * height);
     }
 }

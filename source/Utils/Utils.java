@@ -8,7 +8,6 @@ import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
 import Batch.ISliceCompute;
 import Batch.PointVectorInt;
-import Batch.Skeletonize2;
 import Skeleton.Skeletonize3D;
 import features.Tubeness;
 import ij.IJ;
@@ -115,14 +114,6 @@ public class Utils {
       }
 
       return null;
-   }
-
-   public static ImageProcessor skeletonize2(ThreadPoolExecutor threadPool, int maxWorkers, ImageProcessor ip) {
-      if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
-         throw new RuntimeException("Utils.skeletonize2: Image was not single-channel 8-bit");
-
-      Skeletonize2.skeletonize(threadPool, maxWorkers, (ByteProcessor)ip);
-      return ip;
    }
 
    private static ArrayList<Float> computeTickness(Graph[] graph, ImagePlus distanceMap) {
