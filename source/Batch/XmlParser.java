@@ -14,7 +14,16 @@ public class XmlParser {
         ArrayList<Node> children = null;
     }
 
+    public static Node parseFromBuffer(byte[] buf) {
+        return buf != null ? parseFromBuffer(buf, 0, buf.length) : null;
+    }
+
     public static Node parseFromBuffer(byte[] buf, int off, int len) {
+        if (buf == null)
+            return null;
+        if (off < 0 || len <= 0 || off+len > buf.length)
+            return null;
+
         Node cur = new Node();
         int tagLenNonWs = -1;
         int attrStart = 0;

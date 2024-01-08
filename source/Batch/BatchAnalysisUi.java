@@ -496,10 +496,10 @@ public class BatchAnalysisUi
 
     static void updateDialogSize(JDialog dlg) {
         Dimension preferred = dlg.getPreferredSize();
-        Dimension curMin = dlg.getMinimumSize();
+        Dimension curSize = dlg.getSize();
 
-        if (preferred.width > curMin.width || preferred.height > curMin.height) {
-            dlg.setMinimumSize(new Dimension(curMin.width, preferred.height));
+        if (preferred.width > curSize.width || preferred.height > curSize.height) {
+            //dlg.setMinimumSize(new Dimension(curMin.width, preferred.height));
             dlg.setSize(preferred);
         }
     }
