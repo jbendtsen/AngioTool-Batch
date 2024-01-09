@@ -39,7 +39,7 @@ public class SpreadsheetWriter {
 
     public SpreadsheetWriter(File parentFolder, String name) {
         this.parentFolder = parentFolder;
-        this.fileName = name + "-" + System.currentTimeMillis() + ".xlsx";
+        this.fileName = name;
         this.dateFormatter = DateFormat.getDateInstance(2, new Locale("en", "US"));
         this.timeFormatter = DateFormat.getTimeInstance(2, new Locale("en", "US"));
         this.stringsMap = new HashMap<>();
@@ -49,8 +49,22 @@ public class SpreadsheetWriter {
         this.currentSheetIdx = 0;
     }
 
-    public static void maybeBackup(File xlsxFile) {
-        
+    public void addSheets(ArrayList<XlsxReader.SheetCells> existingSheets) throws IOException {
+        if (existingSheets == null || existingSheets.isEmpty())
+            return;
+
+        boolean wasSaving = this.shouldSaveAfterEveryRow;
+        this.shouldSaveAfterEveryRow = false;
+
+        for (XlsxReader.SheetCells s : existingSheets) {
+            if (s.rows <= 0 || s.cols <= 0)
+                continue;
+
+            for (int i = 0; i < s.rows; i++)
+                writeRow(s.cells, i * s.cols, s.cols);
+        }
+
+        this.shouldSaveAfterEveryRow = wasSaving;
     }
 
     public static String makeColumnNumber(int n) {
@@ -80,6 +94,11 @@ public class SpreadsheetWriter {
     }
 
     public void writeRow(Object... values) throws IOException {
+        Object[] valuesList = values;
+        writeRow(valuesList, 0, valuesList.length);
+    }
+
+    public void writeRow(Object[] values, int off, int len) throws IOException {
         int sheetIdx = currentSheetIdx;
         while (sheetIdx >= sheets.size())
             sheets.add(new Sheet());
@@ -94,8 +113,9 @@ public class SpreadsheetWriter {
         sb.append("\">");
 
         int colNumber = 0;
-        for (Object value : values) {
+        for (int i = 0; i < len; i++) {
             colNumber++;
+            Object value = values[off+i];
             if (value == null)
                 continue;
 

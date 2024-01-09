@@ -4,15 +4,117 @@ import java.util.ArrayList;
 
 public class XmlParser {
     public static class Node {
-        int flags = 0; // |= child.flags
-        int lastIdx = 0;
-        int nameStart = 0;
-        int nameLen = 0;
-        int innerStart = 0;
-        int innerLen = 0;
-        PointVectorInt attrSpans = null;
-        ArrayList<Node> children = null;
+        public int flags = 0; // |= child.flags
+        public int lastIdx = 0;
+        public int nameStart = 0;
+        public int nameLen = 0;
+        public int innerStart = 0;
+        public int innerLen = 0;
+        public PointVectorInt attrSpans = null;
+        public ArrayList<Node> children = null;
+
+        public Node getChild(int idx) {
+            if (children == null)
+                return null;
+            if (idx < 0 || idx >= children.size())
+                return null;
+            return children.get(idx);
+        }
+
+        public String getName(byte[] originalBuf) {
+            return makeString(originalBuf, nameStart, nameLen);
+        }
+
+        public String getInnerValue(byte[] originalBuf) {
+            return makeString(originalBuf, innerStart, innerLen);
+        }
+
+        public boolean getAttribute(String[] nameValuePair, int idx, byte[] originalBuf) {
+            if (nameValuePair == null || nameValuePair.length < 2)
+                return false;
+            if (attrSpans == null)
+                return false;
+            if (idx < 0 || idx >= attrSpans.size * 2)
+                return false;
+
+            int attrNameStart  = attrSpans.buf[idx*4];
+            int attrNameLen    = attrSpans.buf[idx*4+1];
+            int attrValueStart = attrSpans.buf[idx*4+2];
+            int attrValueLen   = attrSpans.buf[idx*4+3];
+
+            if (attrNameStart <= 0 || attrNameLen <= 0)
+                return false;
+
+            getNameValuePair(nameValuePair, originalBuf, attrNameStart, attrNameLen, attrValueStart, attrValueLen);
+            return true;
+        }
     }
+
+    public static class FlatNode {
+        public int nameStart = 0;
+        public int nameLen = 0;
+        public int innerStart = 0;
+        public int innerLen = 0;
+        public int[] attrSpans = null;
+        public int[] children = null;
+
+        public FlatNode() {}
+
+        public FlatNode(Node node) {
+            this.nameStart = node.nameStart;
+            this.nameLen = node.nameLen;
+            this.innerStart = node.innerStart;
+            this.innerLen = node.innerLen;
+
+            int nAttrs = node.attrSpans != null ? node.attrSpans.size / 2 : 0;
+            if (nAttrs > 0) {
+                this.attrSpans = new int[nAttrs * 4];
+                System.arraycopy(node.attrSpans.buf, 0, this.attrSpans, 0, nAttrs * 4);
+            }
+
+            int nChildren = node.children != null ? node.children.size() : 0;
+            if (nChildren > 0)
+                this.children = new int[nChildren];
+        }
+
+        public FlatNode getChild(FlatNode[] nodes, int idx) {
+            if (children == null)
+                return null;
+            if (idx < 0 || idx >= children.length)
+                return null;
+
+            int listIdx = children[idx];
+            return listIdx >= 0 && listIdx < nodes.length ? nodes[idx] : null;
+        }
+
+        public String getName(byte[] originalBuf) {
+            return makeString(originalBuf, nameStart, nameLen);
+        }
+
+        public String getInnerValue(byte[] originalBuf) {
+            return makeString(originalBuf, innerStart, innerLen);
+        }
+
+        public boolean getAttribute(String[] nameValuePair, int idx, byte[] originalBuf) {
+            if (nameValuePair == null || nameValuePair.length < 2)
+                return false;
+            if (attrSpans == null)
+                return false;
+            if (idx < 0 || idx >= attrSpans.length * 2)
+                return false;
+
+            int attrNameStart  = attrSpans[idx*4];
+            int attrNameLen    = attrSpans[idx*4+1];
+            int attrValueStart = attrSpans[idx*4+2];
+            int attrValueLen   = attrSpans[idx*4+3];
+
+            if (attrNameStart <= 0 || attrNameLen <= 0)
+                return false;
+
+            getNameValuePair(nameValuePair, originalBuf, attrNameStart, attrNameLen, attrValueStart, attrValueLen);
+            return true;
+        }
+    };
 
     public static Node parseFromBuffer(byte[] buf) {
         return buf != null ? parseFromBuffer(buf, 0, buf.length) : null;
@@ -213,6 +315,30 @@ public class XmlParser {
         return cur;
     }
 
+    public static FlatNode[] getFlattenedNodes(Node node) {
+        if (node == null)
+            return null;
+
+        ArrayList<FlatNode> flatNodes = new ArrayList<>();
+        getFlattenedNodes(flatNodes, node);
+        if (flatNodes.isEmpty())
+            return null;
+
+        return flatNodes.toArray(new FlatNode[0]);
+    }
+
+    public static void getFlattenedNodes(ArrayList<FlatNode> flatNodeList, Node node) {
+        FlatNode flat = new FlatNode(node);
+        flatNodeList.add(flat);
+        if (node.children != null) {
+            int idx = 0;
+            for (Node n : node.children) {
+                flat.children[idx++] = flatNodeList.size();
+                getFlattenedNodes(flatNodeList, n);
+            }
+        }
+    }
+
     public static void printXml(Node node, StringBuilder sb, byte[] originalBuf, int levels) {
         for (int i = 0; i < levels; i++)
             sb.append("\t");
@@ -222,12 +348,12 @@ public class XmlParser {
         sb.append(name);
 
         if (node.attrSpans != null) {
-            for (int i = 0; i < node.attrSpans.size; i += 4) {
+            for (int i = 0; i < node.attrSpans.size / 2; i++) {
                 sb.append(" ");
-                sb.append(new String(originalBuf, node.attrSpans.buf[i], node.attrSpans.buf[i+1]));
+                sb.append(new String(originalBuf, node.attrSpans.buf[4*i], node.attrSpans.buf[4*i+1]));
 
-                int valueStart = node.attrSpans.buf[i+2];
-                int valueLen = node.attrSpans.buf[i+3];
+                int valueStart = node.attrSpans.buf[4*i+2];
+                int valueLen = node.attrSpans.buf[4*i+3];
                 if (valueStart != 0 && valueLen != 0) {
                     sb.append("=");
                     sb.append(new String(originalBuf, valueStart, valueLen));
@@ -261,5 +387,29 @@ public class XmlParser {
         }
 
         sb.append("\n");
+    }
+
+    public static String makeString(byte[] buf, int start, int len) {
+        return start > 0 && len > 0 ? new String(buf, start, len) : "";
+    }
+
+    public static void getNameValuePair(
+        String[] nameValuePair,
+        byte[] buf,
+        int attrNameStart,
+        int attrNameLen,
+        int attrValueStart,
+        int attrValueLen
+    ) {
+        if (attrValueStart > 0 && attrValueLen >= 2 &&
+            (buf[attrValueStart] == '\'' || buf[attrValueStart] == '"') &&
+            buf[attrValueStart] == buf[attrValueStart+attrValueLen-1]
+        ) {
+            attrValueStart++;
+            attrValueLen--;
+        }
+
+        nameValuePair[0] = new String(buf, attrNameStart, attrNameLen);
+        nameValuePair[1] = attrValueStart > 0 && attrValueLen > 0 ? new String(buf, attrValueStart, attrValueLen) : "";
     }
 }

@@ -13,6 +13,9 @@ import java.awt.event.MouseAdapter;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,6 +66,7 @@ public class BatchAnalysisUi
     final JButton analyzeBtn = new JButton();
     final JButton cancelBtn = new JButton();
 
+    ArrayList<XlsxReader.SheetCells> originalSheets = new ArrayList<>();
     int nErrors = 0;
 
     public Future<Void> analysisTaskFuture = null;
@@ -403,8 +407,28 @@ public class BatchAnalysisUi
         if (!Utils.hasAnyFileExtension(xlsxFile))
             xlsxFile = new File(xlsxFile.getAbsolutePath() + ".xlsx");
 
-        if (xlsxFile.exists())
-            SpreadsheetWriter.maybeBackup(xlsxFile);
+        String xlsxPath = xlsxFile.getAbsolutePath();
+
+        ArrayList<XlsxReader.SheetCells> sheets = null;
+        if (xlsxFile.exists()) {
+            try { sheets = XlsxReader.loadXlsxFromFile(xlsxPath); }
+            catch (IOException ignored) {}
+        }
+
+        if (sheets == null)
+            sheets = new ArrayList<XlsxReader.SheetCells>();
+
+        if (!sheets.isEmpty() && (sheets.get(0).flags & (1 << 31)) == 0) {
+            try {
+                Files.copy(
+                    xlsxFile.toPath(),
+                    new File(Utils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.COPY_ATTRIBUTES
+                );
+            }
+            catch (IOException ignored) {}
+        }
 
         textExcel.setText(xlsxFile.getAbsolutePath());
     }
@@ -491,7 +515,9 @@ public class BatchAnalysisUi
 
         cancelBtn.setEnabled(true);
 
-        analysisTaskFuture = (Future<Void>)AngioToolMain.threadPool.submit(() -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this));
+        analysisTaskFuture = (Future<Void>)AngioToolMain.threadPool.submit(
+            () -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this, originalSheets)
+        );
     }
 
     static void updateDialogSize(JDialog dlg) {

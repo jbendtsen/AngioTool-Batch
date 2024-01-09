@@ -280,6 +280,21 @@ public class Utils {
       return paths.toArray(new String[0]);
    }
 
+   public static String decideBackupFileName(String absPath, String ext) {
+      int lastDot = absPath.lastIndexOf('.');
+      String path = (lastDot > 0 && (lastDot > absPath.lastIndexOf('/') || lastDot > absPath.lastIndexOf('\\'))) ?
+         absPath.substring(0, lastDot) :
+         absPath;
+
+      ext = ext.charAt(0) == '.' ? ext.substring(1) : ext;
+      String newPath = path + ".bak." + ext;
+      int counter = 1;
+      while (new File(newPath).exists())
+         newPath = path + ".bak" + (++counter) + "." + ext;
+
+      return newPath;
+   }
+
    public static void setNewFontSizeOn(JComponent ui, int newSize) {
       Font font = ui.getFont();
       ui.setFont(new Font(font.getName(), font.getStyle(), newSize));

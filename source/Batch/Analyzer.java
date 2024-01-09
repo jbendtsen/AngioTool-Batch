@@ -130,8 +130,11 @@ public class Analyzer {
         }
     }
 
-    public static void doBatchAnalysis(AnalyzerParameters params, BatchAnalysisUi uiToken)
-    {
+    public static void doBatchAnalysis(
+        AnalyzerParameters params,
+        BatchAnalysisUi uiToken,
+        ArrayList<XlsxReader.SheetCells> originalSheets
+    ) {
         ArrayList<File> inputs = new ArrayList<>();
         for (String path : params.inputPaths) {
             enumerateImageFilesRecursively(inputs, new File(path), uiToken);
@@ -147,7 +150,7 @@ public class Analyzer {
         File excelPath = new File(params.excelFilePath);
         SpreadsheetWriter sheet;
         try {
-            sheet = createNewSheet(excelPath.getParentFile(), excelPath.getName());
+            sheet = createNewSheet(originalSheets, excelPath.getParentFile(), excelPath.getName());
         }
         catch (IOException ex) {
             Utils.showExceptionInDialogBox(ex);
@@ -486,11 +489,15 @@ public class Analyzer {
         catch (IOException ignored) {}
     }
 
-    static SpreadsheetWriter createNewSheet(File folder, String sheetName) throws IOException
-    {
-        SpreadsheetWriter sheet = new SpreadsheetWriter(folder, sheetName);
+    static SpreadsheetWriter createNewSheet(
+        ArrayList<XlsxReader.SheetCells> originalSheets,
+        File folder,
+        String sheetName
+    ) throws IOException {
+        SpreadsheetWriter writer = new SpreadsheetWriter(folder, sheetName);
+        writer.addSheets(originalSheets);
 
-        sheet.writeRow(
+        writer.writeRow(
             "Image Name",
             "Date",
             "Time",
@@ -518,7 +525,7 @@ public class Analyzer {
             "Mean E Lacunarity"
         );
 
-        return sheet;
+        return writer;
     }
 
     static void writeResultToSheet(SpreadsheetWriter sheet, Result.Stats stats) throws IOException
