@@ -237,12 +237,7 @@ public class SpreadsheetWriter {
         if (start < bytes.length)
             sb.add(bytes, start, bytes.length - start);
 
-        String escaped = sb.toString();
-        if (escaped.length() != input.length()) {
-            System.out.println("escapeXmlString: \"" + input + "\" -> \"" + escaped + "\"");
-        }
-
-        return escaped;
+        return sb.toString();
     }
 
     static String generateExcelUuid(String seed) {
