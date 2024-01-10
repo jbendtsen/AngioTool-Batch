@@ -148,9 +148,9 @@ public class Analyzer {
         }
 
         File excelPath = new File(params.excelFilePath);
-        SpreadsheetWriter sheet;
+        SpreadsheetWriter writer;
         try {
-            sheet = createNewSheet(originalSheets, excelPath.getParentFile(), excelPath.getName());
+            writer = createWriterWithNewSheet(originalSheets, excelPath.getParentFile(), excelPath.getName());
         }
         catch (IOException ex) {
             Utils.showExceptionInDialogBox(ex);
@@ -184,7 +184,7 @@ public class Analyzer {
             try {
                 result = analyze(inFile, image, params, linearScalingFactor, uiToken);
                 analyzeSucceeded = true;
-                saveResult(sheet, result, inFile, params, linearScalingFactor, uiToken);
+                saveResult(writer, result, inFile, params, linearScalingFactor, uiToken);
             }
             catch (Throwable ex) {
                 ex.printStackTrace();
@@ -199,7 +199,7 @@ public class Analyzer {
             }
             else if (!analyzeSucceeded) {
                 try {
-                    writeError(sheet, exception, inFile);
+                    writeError(writer, exception, inFile);
                 }
                 catch (Exception ignored) {}
             }
@@ -216,7 +216,7 @@ public class Analyzer {
         if (!startedAnyImages)
             uiToken.notifyNoImages();
         else
-            uiToken.onFinished(sheet.fileName);
+            uiToken.onFinished(writer.fileName);
     }
 
     static void enumerateImageFilesRecursively(ArrayList<File> images, File currentFolder, BatchAnalysisUi uiToken)
@@ -479,17 +479,13 @@ public class Analyzer {
         result.stats.averageBranchLength = totalLength / (double)branchNumbers.length * linearScalingFactor;
         result.stats.totalNEndPoints = result.skelResult.getListOfEndPoints().size();
 
-        String name = result.stats.imageFileName;
-        int lastDot = name.lastIndexOf('.');
-        String excelName = lastDot > 0 ? name.substring(0, lastDot) : name;
-
         try {
             writeResultToSheet(sheet, result.stats);
         }
         catch (IOException ignored) {}
     }
 
-    static SpreadsheetWriter createNewSheet(
+    static SpreadsheetWriter createWriterWithNewSheet(
         ArrayList<XlsxReader.SheetCells> originalSheets,
         File folder,
         String sheetName
@@ -528,11 +524,11 @@ public class Analyzer {
         return writer;
     }
 
-    static void writeResultToSheet(SpreadsheetWriter sheet, Result.Stats stats) throws IOException
+    static void writeResultToSheet(SpreadsheetWriter sw, Result.Stats stats) throws IOException
     {
         Date today = new Date();
-        String dateOut = sheet.dateFormatter.format(today);
-        String timeOut = sheet.timeFormatter.format(today);
+        String dateOut = sw.dateFormatter.format(today);
+        String timeOut = sw.timeFormatter.format(today);
 
         StringBuilder sigmasSb = new StringBuilder();
         boolean empty = true;
@@ -542,7 +538,7 @@ public class Analyzer {
             empty = false;
         }
 
-        sheet.writeRow(
+        sw.writeRow(
             stats.imageFileName,
             dateOut,
             timeOut,

@@ -413,22 +413,24 @@ public class BatchAnalysisUi
         if (xlsxFile.exists()) {
             try { sheets = XlsxReader.loadXlsxFromFile(xlsxPath); }
             catch (IOException ignored) {}
+
+            if (sheets == null || sheets.isEmpty() || (sheets.get(0).flags & (1 << 31)) == 0) {
+                try {
+                    Files.copy(
+                        xlsxFile.toPath(),
+                        new File(Utils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES
+                    );
+                }
+                catch (IOException ignored) {}
+            }
         }
 
         if (sheets == null)
             sheets = new ArrayList<XlsxReader.SheetCells>();
 
-        if (!sheets.isEmpty() && (sheets.get(0).flags & (1 << 31)) == 0) {
-            try {
-                Files.copy(
-                    xlsxFile.toPath(),
-                    new File(Utils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
-                    StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.COPY_ATTRIBUTES
-                );
-            }
-            catch (IOException ignored) {}
-        }
+        originalSheets = sheets;
 
         textExcel.setText(xlsxFile.getAbsolutePath());
     }

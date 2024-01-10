@@ -18,7 +18,7 @@ import java.util.zip.ZipEntry;
 public class SpreadsheetWriter {
     public static class Sheet {
         public String name = "";
-        public ArrayList<String> formattedRows = new ArrayList<>();
+        public RefVector<String> formattedRows = new RefVector<>(String.class);
         public int colsInWidestRow = 0;
     }
 
@@ -29,10 +29,10 @@ public class SpreadsheetWriter {
     public final String fileName;
 
     HashMap<String, Integer> stringsMap;
-    ArrayList<String> stringsList;
+    RefVector<String> stringsList;
     int totalStringCount;
 
-    ArrayList<Sheet> sheets;
+    RefVector<Sheet> sheets;
 
     public int currentSheetIdx = 0;
     public boolean shouldSaveAfterEveryRow = true;
@@ -43,9 +43,9 @@ public class SpreadsheetWriter {
         this.dateFormatter = DateFormat.getDateInstance(2, new Locale("en", "US"));
         this.timeFormatter = DateFormat.getTimeInstance(2, new Locale("en", "US"));
         this.stringsMap = new HashMap<>();
-        this.stringsList = new ArrayList<>();
+        this.stringsList = new RefVector<>(String.class);
         this.totalStringCount = 0;
-        this.sheets = new ArrayList<>();
+        this.sheets = new RefVector<>(Sheet.class);
         this.currentSheetIdx = 0;
     }
 
@@ -61,7 +61,9 @@ public class SpreadsheetWriter {
                 continue;
 
             for (int i = 0; i < s.rows; i++)
-                writeRow(s.cells, i * s.cols, s.cols);
+                writeRowFromObjectArray(s.cells, i * s.cols, s.cols);
+
+            currentSheetIdx++;
         }
 
         this.shouldSaveAfterEveryRow = wasSaving;
@@ -86,7 +88,7 @@ public class SpreadsheetWriter {
     private int lookupOrAddCellString(String str) {
         Integer idx = stringsMap.get(str);
         if (idx == null) {
-            int len = stringsList.size();
+            int len = stringsList.size;
             stringsList.add(str);
             return len;
         }
@@ -95,22 +97,22 @@ public class SpreadsheetWriter {
 
     public void writeRow(Object... values) throws IOException {
         Object[] valuesList = values;
-        writeRow(valuesList, 0, valuesList.length);
+        writeRowFromObjectArray(valuesList, 0, valuesList.length);
     }
 
-    public void writeRow(Object[] values, int off, int len) throws IOException {
+    public void writeRowFromObjectArray(Object[] values, int off, int len) throws IOException {
         int sheetIdx = currentSheetIdx;
-        while (sheetIdx >= sheets.size())
+        while (sheetIdx >= sheets.size)
             sheets.add(new Sheet());
 
-        Sheet s = sheets.get(sheetIdx);
+        Sheet s = sheets.buf[sheetIdx];
 
-        int rowNumber = s.formattedRows.size() + 1;
+        int rowNumber = s.formattedRows.size + 1;
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("<row r=\"");
-        sb.append(rowNumber);
-        sb.append("\">");
+        ByteVector sb = new ByteVector();
+        sb.add("<row r=\"");
+        sb.add("" + rowNumber);
+        sb.add("\">");
 
         int colNumber = 0;
         for (int i = 0; i < len; i++) {
@@ -119,26 +121,26 @@ public class SpreadsheetWriter {
             if (value == null)
                 continue;
 
-            sb.append("<c r=\"");
-            sb.append(makeColumnNumber(colNumber));
-            sb.append(rowNumber);
-            sb.append("\"");
+            sb.add("<c r=\"");
+            sb.add(makeColumnNumber(colNumber));
+            sb.add("" + rowNumber);
+            sb.add("\"");
             // set style index here with s=""
             if (value instanceof Number) {
-                sb.append("><v>");
-                sb.append(value.toString());
-                sb.append("</v></c>");
+                sb.add("><v>");
+                sb.add(value.toString());
+                sb.add("</v></c>");
             }
             else {
                 int idx = lookupOrAddCellString(value.toString());
                 totalStringCount++;
-                sb.append(" t=\"s\"><v>");
-                sb.append(idx);
-                sb.append("</v></c>");
+                sb.add(" t=\"s\"><v>");
+                sb.add("" + idx);
+                sb.add("</v></c>");
             }
         }
 
-        sb.append("</row>");
+        sb.add("</row>");
 
         if (colNumber > s.colsInWidestRow)
             s.colsInWidestRow = colNumber;
@@ -150,14 +152,14 @@ public class SpreadsheetWriter {
     }
 
     public void save() throws IOException {
-        ByteVectorOutputStream vector = new ByteVectorOutputStream();
+        ByteVector vector = new ByteVector();
         ZipOutputStream zip = new ZipOutputStream(vector);
 
         String dateStr = LocalDateTime.now().atZone(ZoneId.of("GMT")).format(DateTimeFormatter.ISO_INSTANT);
 
-        int sheetCount = sheets.size();
+        int sheetCount = sheets.size;
         for (int i = 0; i < sheetCount; i++) {
-            Sheet s = sheets.get(i);
+            Sheet s = sheets.buf[i];
             if (s.name == null || s.name.isEmpty())
                 s.name = "Sheet" + (i+1);
         }
@@ -185,25 +187,25 @@ public class SpreadsheetWriter {
         writeStringBuilderToZip(zip, "xl/sharedStrings.xml", generateSharedStringsXml(stringsList, totalStringCount));
 
         for (int i = 0; i < sheetCount; i++)
-            writeStringBuilderToZip(zip, "xl/worksheets/sheet" + (i+1) + ".xml", generateSheetXml(sheets.get(i), dateStr));
+            writeStringBuilderToZip(zip, "xl/worksheets/sheet" + (i+1) + ".xml", generateSheetXml(sheets.buf[i], dateStr));
 
         zip.close();
 
         File outPath = new File(parentFolder, fileName);
         FileOutputStream fileStream = new FileOutputStream(outPath);
-        fileStream.write(vector.data, 0, vector.size);
+        fileStream.write(vector.buf, 0, vector.size);
         fileStream.close();
     }
 
     static String escapeXmlString(String input) {
-        StringBuilder sb = new StringBuilder();
+        ByteVector sb = new ByteVector();
 
-        int len = input.length();
+        byte[] bytes = input.getBytes();
         int start = 0;
         String esc = null;
 
-        for (int i = 0; i < len; i++) {
-            char c = input.charAt(i);
+        for (int i = 0; i < bytes.length; i++) {
+            byte c = bytes[i];
             switch (c) {
                 case '&':
                     esc = "&amp;";
@@ -225,17 +227,22 @@ public class SpreadsheetWriter {
             }
 
             if (esc != null) {
-                if (i > start)
-                    sb.append(input, start, i);
-                sb.append(esc);
+                if (start < i)
+                    sb.add(bytes, start, i - start);
+                sb.add(esc);
                 start = i + 1;
             }
         }
 
-        if (len > start)
-            sb.append(input, start, len);
+        if (start < bytes.length)
+            sb.add(bytes, start, bytes.length - start);
 
-        return sb.toString();
+        String escaped = sb.toString();
+        if (escaped.length() != input.length()) {
+            System.out.println("escapeXmlString: \"" + input + "\" -> \"" + escaped + "\"");
+        }
+
+        return escaped;
     }
 
     static String generateExcelUuid(String seed) {
@@ -247,7 +254,7 @@ public class SpreadsheetWriter {
         int pos = 0;
         for (int i = 0; i < 32; i++) {
             long h = i < 16 ? hash1 : hash2;
-            int d = i == 12 ? 4 : (int)((h >>> ((i&15L)*4L)) & 0x15L);
+            int d = i == 12 ? 4 : (int)((h >>> ((i&15L)*4L)) & 15L);
             uuid[pos++] = (byte)(d + (d < 10 ? 0x30 : 0x57));
             if (i == 7 || i == 11 || i == 15 || i == 19)
                 uuid[pos++] = '-';
@@ -307,14 +314,15 @@ public class SpreadsheetWriter {
         return sb;
     }
 
-    static StringBuilder generateAppXml(ArrayList<Sheet> sheets) {
+    static StringBuilder generateAppXml(RefVector<Sheet> sheets) {
         StringBuilder sb = new StringBuilder();
-        int sheetCount = sheets.size();
+        int sheetCount = sheets.size;
 
         sb.append(
             "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" +
             "<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\"" +
             " xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\">" +
+            "<!-- AngioTool__Batch -->" +
             "<Application>Microsoft Excel</Application>" +
             "<DocSecurity>0</DocSecurity>" +
             "<ScaleCrop>false</ScaleCrop>" +
@@ -332,7 +340,7 @@ public class SpreadsheetWriter {
 
         for (int i = 0; i < sheetCount; i++) {
             sb.append("<vt:lpstr>");
-            sb.append(escapeXmlString(sheets.get(i).name));
+            sb.append(escapeXmlString(sheets.buf[i].name));
             sb.append("</vt:lpstr>");
         }
 
@@ -470,7 +478,7 @@ public class SpreadsheetWriter {
         return sb;
     }
 
-    static StringBuilder generateWorkbookXml(ArrayList<Sheet> sheets, String dateStr) {
+    static StringBuilder generateWorkbookXml(RefVector<Sheet> sheets, String dateStr) {
         StringBuilder sb = new StringBuilder();
 
         sb.append(
@@ -499,10 +507,10 @@ public class SpreadsheetWriter {
         sb.append(generateExcelUuid(dateStr + "_workbook_xml_2"));
         sb.append("}\"/></bookViews><sheets>");
 
-        int sheetCount = sheets.size();
+        int sheetCount = sheets.size;
         for (int i = 0; i < sheetCount; i++) {
             sb.append("<sheet name=\"");
-            sb.append(escapeXmlString(sheets.get(i).name));
+            sb.append(escapeXmlString(sheets.buf[i].name));
             sb.append("\" sheetId=\"");
             sb.append(i + 1);
             sb.append("\" r:id=\"rId");
@@ -535,7 +543,7 @@ public class SpreadsheetWriter {
         return sb;
     }
 
-    static StringBuilder generateSharedStringsXml(ArrayList<String> uniqueStrings, int nTotalStrings) {
+    static StringBuilder generateSharedStringsXml(RefVector<String> uniqueStrings, int nTotalStrings) {
         StringBuilder sb = new StringBuilder();
 
         sb.append(
@@ -544,7 +552,7 @@ public class SpreadsheetWriter {
         );
         sb.append(nTotalStrings);
         sb.append("\" uniqueCount=\"");
-        sb.append(uniqueStrings.size());
+        sb.append(uniqueStrings.size);
         sb.append("\">");
 
         for (String str : uniqueStrings) {
@@ -580,7 +588,7 @@ public class SpreadsheetWriter {
             "<dimension ref=\"A1:"
         );
         sb.append(makeColumnNumber(sheet.colsInWidestRow));
-        sb.append(sheet.formattedRows.size() + 1);
+        sb.append(sheet.formattedRows.size + 1);
         sb.append(
             "\"/>" +
             "<sheetViews>" +
@@ -656,61 +664,5 @@ public class SpreadsheetWriter {
         h ^= h >>> r;
 
         return h;
-    }
-
-    static class ByteVectorOutputStream extends OutputStream {
-        public byte[] data;
-        public int size;
-
-        public ByteVectorOutputStream() {
-            this.data = new byte[64];
-            this.size = 0;
-        }
-
-        @Override
-        public void write(int b) {
-            int oldSize = size;
-            resize(oldSize + 1);
-            data[oldSize] = (byte)(b & 0xff);
-        }
-
-        @Override
-        public void write(byte[] buf) {
-            write(buf, 0, buf.length);
-        }
-
-        @Override
-        public void write(byte[] buf, int off, int len) {
-            if (len <= 0 || off < 0 || off+len > buf.length)
-                return;
-
-            int oldSize = size;
-            resize(oldSize + len);
-            System.arraycopy(buf, off, data, oldSize, len);
-        }
-
-        @Override
-        public void flush() {}
-
-        @Override
-        public void close() {}
-
-        public void resize(int newSize) {
-            if (newSize <= size)
-                return;
-
-            int newCap = data.length;
-            while (newCap < newSize)
-                newCap = (int)((float)newCap * 1.7) + 1;
-
-            if (newCap > data.length) {
-                byte[] newBuf = new byte[newCap];
-                if (size > 0)
-                    System.arraycopy(data, 0, newBuf, 0, size);
-                data = newBuf;
-            }
-
-            size = newSize;
-        }
     }
 }

@@ -10,17 +10,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
-/*
-- number of sheets
-    - inferred from structure (sheet1.xml exists, sheet2.xml exists, etc.)
-- sheet content:
-    - rows
-    - columns
-    - per cell:
-        - type
-        - value
-*/
-
 public class XlsxReader {
     public static class SheetCells {
         public Object[] cells;
@@ -47,7 +36,8 @@ public class XlsxReader {
             if (name == null)
                 continue;
 
-            xmlFiles.put(name, readSomeBytes(zipFile.getInputStream(entry), entry.getSize()));
+            long size = entry.getSize();
+            xmlFiles.put(name, readSomeBytes(zipFile.getInputStream(entry), size));
         }
 
         try { zipFile.close(); }
@@ -56,7 +46,7 @@ public class XlsxReader {
     }
 
     // returns false if the xlsx should be backed up
-    public static ArrayList<SheetCells> loadXlsxFromBuffer(byte[] buf, int off, int len) {
+    public static ArrayList<SheetCells> loadXlsxFromBuffer(byte[] buf, int off, int len) throws IOException {
         ZipInputStream zipStream = new ZipInputStream(new ByteArrayInputStream(buf, off, len));
 
         HashMap<String, byte[]> xmlFiles = new HashMap<>();
@@ -83,18 +73,23 @@ public class XlsxReader {
         XmlParser.Node appXml = XmlParser.parseFromBuffer(xmlFiles.get("app.xml"));
 
         byte[] sharedStringsBuffer = xmlFiles.get("sharedStrings.xml");
-        if (sharedStringsBuffer == null)
+        if (sharedStringsBuffer == null) {
+            System.out.println("sharedStringsBuffer was null");
             return null;
+        }
 
         XmlParser.Node sharedStringsXml = XmlParser.parseFromBuffer(sharedStringsBuffer);
-        XmlParser.Node stringsTableXml = sharedStringsXml.getChild(0);
-        if (stringsTableXml == null || stringsTableXml.children == null)
+        if (sharedStringsXml == null || sharedStringsXml.children == null) {
+            System.out.println("sharedStringsXml: " + sharedStringsXml);
+            if (sharedStringsXml != null)
+                System.out.println("sharedStringsXml.children was null" + sharedStringsXml);
             return null;
+        }
 
-        ArrayList<byte[]> sheetsBuffer = new ArrayList<>();
-        ArrayList<XmlParser.Node> sheetsXml = new ArrayList<>();
+        RefVector<byte[]> sheetsBuffer = new RefVector<>(byte[].class);
+        RefVector<XmlParser.Node> sheetsXml = new RefVector<>(XmlParser.Node.class);
         while (true) {
-            int n = sheetsXml.size() + 1;
+            int n = sheetsXml.size + 1;
             byte[] sheet = xmlFiles.get("sheet" + n + ".xml");
             if (sheet == null)
                 break;
@@ -103,11 +98,11 @@ public class XlsxReader {
             sheetsXml.add(XmlParser.parseFromBuffer(sheet));
         }
 
-        if (sheetsXml.isEmpty())
+        if (sheetsXml.size == 0)
             return null;
 
-        ArrayList<String> stringsList = new ArrayList<>();
-        for (XmlParser.Node entry : stringsTableXml.children) {
+        RefVector<String> stringsList = new RefVector<>(String.class);
+        for (XmlParser.Node entry : sharedStringsXml.children) {
             XmlParser.Node stringNode = entry.getChild(0);
             if (stringNode != null)
                 stringsList.add(stringNode.getInnerValue(sharedStringsBuffer));
@@ -115,29 +110,31 @@ public class XlsxReader {
 
         String[] attr = new String[2];
         PointVectorInt positions = new PointVectorInt();
-        ArrayList<Object> cellValues = new ArrayList<>();
+        RefVector<Object> cellValues = new RefVector<>(Object.class);
 
         ArrayList<SheetCells> outSheets = new ArrayList<>();
 
-        for (int i = 0; i < sheetsXml.size(); i++) {
+        for (int i = 0; i < sheetsXml.size; i++) {
             positions.size = 0;
             cellValues.clear();
 
-            XmlParser.FlatNode[] flattened = XmlParser.getFlattenedNodes(sheetsXml.get(i));
-            if (flattened == null)
+            XmlParser.FlatNode[] flattened = XmlParser.getFlattenedNodes(sheetsXml.buf[i]);
+            if (flattened == null) {
+                System.out.println("" + i + ": flattened was null");
                 continue;
+            }
 
-            byte[] sheetBuf = sheetsBuffer.get(i);
+            byte[] sheetBuf = sheetsBuffer.buf[i];
             int totalRows = 0;
             int totalCols = 0;
 
-            for (int j = 0; j < flattened.length; j++) {
+            for (int j = 0; j < flattened.length - 1; j++) {
                 if (flattened[j].attrSpans == null || !"c".equals(flattened[j].getName(sheetBuf)))
                     continue;
 
                 String pos = null;
                 String type = null;
-                for (int k = 0; k < flattened[j].attrSpans.length; k++) {
+                for (int k = 0; k < flattened[j].attrSpans.length / 4; k++) {
                     if (flattened[j].getAttribute(attr, k, sheetBuf)) {
                         if ("r".equals(attr[0]))
                             pos = attr[1];
@@ -146,22 +143,23 @@ public class XlsxReader {
                     }
                 }
 
-                if (!addRowColToVector(positions, pos))
+                if (!addRowColToVector(positions, pos)) {
+                    System.out.println("Invalid cell reference: " + pos);
                     continue;
+                }
 
                 totalRows = Math.max(totalRows, positions.buf[positions.size*2-2] + 1);
                 totalCols = Math.max(totalCols, positions.buf[positions.size*2-1] + 1);
 
                 XmlParser.FlatNode valueNode = flattened[j].getChild(flattened, 0);
-                valueNode = valueNode != null ? valueNode : flattened[j];
-                String innerValue = valueNode.getInnerValue(sheetBuf);
 
+                String innerValue = valueNode.getInnerValue(sheetBuf);
                 Object value = null;
                 
                 if ("s".equals(type)) {
                     try {
                         int idx = Integer.parseInt(innerValue);
-                        value = stringsList.get(idx);
+                        value = stringsList.buf[idx];
                     }
                     catch (Exception ignored) {}
                 }
@@ -180,14 +178,15 @@ public class XlsxReader {
                 cellValues.add(value);
             }
 
-            if (totalRows == 0 || totalCols == 0)
+            if (totalRows == 0 || totalCols == 0) {
                 continue;
+            }
 
             Object[] cells = new Object[totalRows * totalCols];
             for (int j = 0; j < positions.size; j++) {
                 int row = positions.buf[2*j];
                 int col = positions.buf[2*j+1];
-                cells[col + totalCols*row] = cellValues.get(j);
+                cells[col + totalCols*row] = cellValues.buf[j];
             }
 
             SheetCells sc = new SheetCells(cells, totalRows, totalCols);
@@ -200,10 +199,12 @@ public class XlsxReader {
 
     static String getBaseNameIfEntryIsUseful(ZipEntry entry) {
         String entryName = entry.getName();
-        int nameStart = entryName.lastIndexOf('/');
-        String name = nameStart > 0 ? entryName.substring(nameStart) : entryName;
+        int nameStart = entryName.lastIndexOf('/') + 1;
+        String name = nameStart > 0 && nameStart < entryName.length() ?
+            entryName.substring(nameStart) :
+            entryName;
 
-        if (!name.equals("app.xml") || !name.equals("sharedStrings.xml")) {
+        if (!name.equals("app.xml") && !name.equals("sharedStrings.xml")) {
             if (!name.startsWith("sheet") || !name.endsWith(".xml"))
                 return null;
 
@@ -218,11 +219,19 @@ public class XlsxReader {
         return name;
     }
 
-    static byte[] readSomeBytes(InputStream stream, long lSize) {
+    static byte[] readSomeBytes(InputStream stream, long lSize) throws IOException {
         int size = (int)lSize;
         byte[] buf = new byte[size];
+        int off = 0;
         try {
-            stream.read(buf);
+            while (true) {
+                int res = stream.read(buf, off, size - off);
+                if (res <= 0) // should be < 0
+                    break;
+                off += res;
+            }
+            if (off < size)
+                throw new IOException("ZIP entry could not be fully read (" + off + "/" + size + " bytes were read)");
         }
         catch (IOException ex) {
             return null;
@@ -234,38 +243,37 @@ public class XlsxReader {
         if (cellRef == null || cellRef == "")
             return false;
 
-        int row = -1;
-        int col = -1;
+        int row = 0;
+        int col = 0;
 
         char[] chars = cellRef.toCharArray();
         for (int i = 0; i < chars.length; i++) {
             boolean isRow;
             int delta = 0;
             if (chars[i] >= 'A' && chars[i] <= 'Z') {
-                isRow = true;
-                delta = 'A';
+                isRow = false;
+                delta = 'A' - 1;
             }
             else if (chars[i] >= 'a' && chars[i] <= 'z') {
-                isRow = true;
-                delta = 'a';
+                isRow = false;
+                delta = 'a' - 1;
             }
             else if (chars[i] >= '0' && chars[i] <= '9') {
-                isRow = false;
+                isRow = true;
                 delta = '0';
             }
             else {
                 return false;
             }
 
-            if (isRow) {
-                row = row >= 0 ? row * 26 : 0;
-                row += chars[i] - delta;
-            }
-            else {
-                col = col >= 0 ? col * 10 : 0;
-                col += chars[i] - delta;
-            }
+            if (isRow)
+                row = row * 10 + chars[i] - delta;
+            else
+                col = col * 26 + chars[i] - delta;
         }
+
+        row--;
+        col--;
 
         if (row < 0 || col < 0)
             return false;
