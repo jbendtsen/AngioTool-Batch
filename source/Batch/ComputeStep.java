@@ -3,7 +3,7 @@ package Batch;
 import Utils.Utils;
 import java.util.concurrent.ThreadPoolExecutor;
 
-public class ForkStep3 implements ISliceCompute {
+public class ComputeStep implements ISliceCompute {
     static final int IN_PLACE_THRESHOLD = 250;
 
     private final int depth = 1;
@@ -11,7 +11,7 @@ public class ForkStep3 implements ISliceCompute {
     private final int height;
     private final float[] src_;
 
-    public ForkStep3(float[] src_, int width, int height) {
+    public ComputeStep(float[] src_, int width, int height) {
         this.src_ = src_;
         this.width = width;
         this.height = height;
@@ -79,7 +79,7 @@ public class ForkStep3 implements ISliceCompute {
             threadPool,
             maxWorkers,
             offsetLengthPairs,
-            new ForkStep3(src, width, height)
+            new ComputeStep(src, width, height)
         );
     }
 }

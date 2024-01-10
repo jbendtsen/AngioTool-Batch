@@ -22,7 +22,7 @@ asset_files = []
 for root, dirs, files in os.walk("source"):
     for f in files:
         name = os.path.join(root, f)[7:]
-        if f.endswith(".java"):
+        if f.endswith(".java") and not name.startswith("deprecated"):
             java_files.append(name)
         if name.startswith("images/") or name.startswith("icons") or name.startswith("META-INF") or name.startswith("doc"):
             asset_files.append(name)

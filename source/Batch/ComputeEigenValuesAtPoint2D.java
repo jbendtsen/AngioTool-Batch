@@ -6,7 +6,7 @@ import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import java.util.concurrent.ThreadPoolExecutor;
 
-public class ForkEigenValuesAtPoint2D2 {
+public class ComputeEigenValuesAtPoint2D {
 
     public static final int IN_PLACE_THRESHOLD = 5;
 

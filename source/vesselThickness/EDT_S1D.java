@@ -1,6 +1,6 @@
 package vesselThickness;
 
-import Batch.ForkStep3;
+import Batch.ComputeStep;
 import Utils.Utils;
 import ij.IJ;
 import ij.ImagePlus;
@@ -81,7 +81,7 @@ public class EDT_S1D implements PlugInFilter {
       //ArrayList<float[]> f = fs2.thin(s[0], this.w, this.h);
       //s[0] = f.get(1);
 
-      ForkStep3.thin(threadPool, nThreads, s[0], this.w, this.h);
+      ComputeStep.thin(threadPool, nThreads, s[0], this.w, this.h);
 
       long s3 = System.currentTimeMillis();
       if (!Utils.isReleaseVersion) {

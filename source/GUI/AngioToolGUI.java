@@ -17,8 +17,8 @@ import AngioTool.SaveToExcel;
 import Batch.Analyzer;
 import Batch.AnalyzerParameters;
 import Batch.BatchAnalysisUi;
+import Batch.ComputeShapeRoiSplines;
 import Lacunarity.Lacunarity;
-import Utils.ForkShapeRoiSplines;
 import Utils.Utils;
 //import com.jidesoft.swing.RangeSlider;
 import features.Tubeness;
@@ -1618,8 +1618,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    private void smoothROIs(int fraction) {
       ShapeRoi sr = (ShapeRoi)Utils.thresholdToSelection(this.imageThresholded);
-      ForkShapeRoiSplines fs = new ForkShapeRoiSplines();
-      ShapeRoi tempSr = fs.computeSplines(sr, 5);
+      ComputeShapeRoiSplines cs = new ComputeShapeRoiSplines();
+      ShapeRoi tempSr = cs.computeSplines(sr, 5);
       this.imageThresholded.getProcessor().setColor(Color.black);
       this.imageThresholded.getProcessor().fill();
       Utils.selectionToThreshold(tempSr, this.imageThresholded);

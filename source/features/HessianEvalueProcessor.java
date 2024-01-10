@@ -1,7 +1,7 @@
 package features;
 
 import AngioTool.AngioToolMain;
-import Batch.ForkEigenValuesAtPoint2D2;
+import Batch.ComputeEigenValuesAtPoint2D;
 import Utils.Utils;
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -64,16 +64,16 @@ public abstract class HessianEvalueProcessor implements GaussianGenerationCallba
             ComputeCurvatures.FloatArray2D fa2d = c.computeGaussianFastMirror(fa2dInput, (float)this.sigma[s], callback, calibration);
             ImagePlus fa2dIP = ComputeCurvatures.FloatArrayToImagePlus(fa2d, "fa2dIP", 0.0F, 255.0F);
             if (!Utils.isReleaseVersion) {
-               System.out.println("We are running the new ForkEigenValuesAtPoint2D");
+               System.out.println("We are running the new ForkEigenValuesAtPoint2D2");
                System.out.println("threshold_0= " + this.threshold);
             }
 
             /*
                 OLD AND SLOW
-                ForkEigenValuesAtPoint2D fe = new ForkEigenValuesAtPoint2D();
-                float[] slice2 = fe.computeEigenvalues(fa2dIP, this.sigma[s], this.threshold);
+                //ForkEigenValuesAtPoint2D fe = new ForkEigenValuesAtPoint2D();
+                //float[] slice2 = fe.computeEigenvalues(fa2dIP, this.sigma[s], this.threshold);
             */
-            float[] slice2 = ForkEigenValuesAtPoint2D2.computeEigenvalues(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, fa2dIP, this.sigma[s], this.threshold);
+            float[] slice2 = ComputeEigenValuesAtPoint2D.computeEigenvalues(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, fa2dIP, this.sigma[s], this.threshold);
 
             for(int i = 0; i < slice.length; ++i) {
                if (slice2[i] > slice[i]) {
