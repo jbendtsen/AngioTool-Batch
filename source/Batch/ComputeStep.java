@@ -1,6 +1,5 @@
 package Batch;
 
-import Utils.Utils;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ComputeStep implements ISliceCompute {
@@ -18,7 +17,7 @@ public class ComputeStep implements ISliceCompute {
     }
 
     @Override
-    public void computeSlice(int start, int length) {
+    public Object computeSlice(int start, int length) {
         int w = this.width;
         int h = this.height;
         int d = this.depth;
@@ -69,16 +68,15 @@ public class ComputeStep implements ISliceCompute {
                 }
             }
         }
+
+        return null;
     }
 
     public static void thin(ThreadPoolExecutor threadPool, int maxWorkers, float[] src, int width, int height) {
-        PointVectorInt offsetLengthPairs = new PointVectorInt();
-        Utils.makeBinaryTreeOfSlices(offsetLengthPairs, 0, width, IN_PLACE_THRESHOLD - 1);
-
-        Utils.computeSlicesInParallel(
+        ParallelUtils.computeSlicesInParallel(
             threadPool,
             maxWorkers,
-            offsetLengthPairs,
+            ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1),
             new ComputeStep(src, width, height)
         );
     }

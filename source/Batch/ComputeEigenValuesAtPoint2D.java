@@ -1,6 +1,5 @@
 package Batch;
 
-import Utils.Utils;
 import ij.ImagePlus;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
@@ -10,7 +9,13 @@ public class ComputeEigenValuesAtPoint2D {
 
     public static final int IN_PLACE_THRESHOLD = 5;
 
-    public static float[] computeEigenvalues(ThreadPoolExecutor threadPool, int maxWorkers, ImagePlus original, double sigma, int threshold) {
+    public static float[] computeEigenvalues(
+        ThreadPoolExecutor threadPool,
+        int maxWorkers,
+        ImagePlus original,
+        double sigma,
+        int threshold
+    ) {
         int width = original.getWidth();
         int height = original.getHeight();
 
@@ -19,13 +24,10 @@ public class ComputeEigenValuesAtPoint2D {
         float[] data2D = (float[])ip.getPixels();
         float[] sliceFinal = new float[data2D.length];
 
-        PointVectorInt offsetLengthPairs = new PointVectorInt();
-        Utils.makeBinaryTreeOfSlices(offsetLengthPairs, 0, width, IN_PLACE_THRESHOLD - 1);
-
-        Utils.computeSlicesInParallel(
+        ParallelUtils.computeSlicesInParallel(
             threadPool,
             maxWorkers,
-            offsetLengthPairs,
+            ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1),
             new Params(data2D, width, height, sigma, threshold > 0 ? threshold : 3, sliceFinal)
         );
 
@@ -84,7 +86,7 @@ public class ComputeEigenValuesAtPoint2D {
         }
 
         @Override
-        public void computeSlice(int start, int length) {
+        public Object computeSlice(int start, int length) {
             //long count = 0L;
             //long total = (long)(this.height * this.width);
             //ImageProcessor fp = this.original.getProcessor();

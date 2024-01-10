@@ -1618,8 +1618,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    private void smoothROIs(int fraction) {
       ShapeRoi sr = (ShapeRoi)Utils.thresholdToSelection(this.imageThresholded);
-      ComputeShapeRoiSplines cs = new ComputeShapeRoiSplines();
-      ShapeRoi tempSr = cs.computeSplines(sr, 5);
+      ShapeRoi tempSr = ComputeShapeRoiSplines.computeSplines(AngioToolMain.threadPool, 8, sr, 5);
       this.imageThresholded.getProcessor().setColor(Color.black);
       this.imageThresholded.getProcessor().fill();
       Utils.selectionToThreshold(tempSr, this.imageThresholded);

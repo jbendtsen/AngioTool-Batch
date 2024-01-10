@@ -1,5 +1,12 @@
 package Batch;
 
 public interface ISliceCompute {
-    void computeSlice(int start, int length);
+    public class Result {
+        Object result = null;
+        Throwable ex = null;
+        int idx = -1;
+    }
+
+    Object computeSlice(int start, int length);
+    default void finishSlice(Result res) {}
 }
