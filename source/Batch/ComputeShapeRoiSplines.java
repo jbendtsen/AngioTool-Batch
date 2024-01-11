@@ -24,7 +24,7 @@ public class ComputeShapeRoiSplines implements ISliceCompute {
     }
 
     @Override
-    public Object computeSlice(int start, int length) {
+    public Object computeSlice(int sliceIdx, int start, int length) {
         ShapeRoi first = new ShapeRoi(new Roi(this.src.getBounds()));
         ShapeRoi result = new ShapeRoi(first);
 

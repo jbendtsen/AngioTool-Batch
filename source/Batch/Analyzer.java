@@ -27,9 +27,12 @@ import Lacunarity.Lacunarity;
 import Utils.Utils;
 import vesselThickness.EDT_S1D;
 
-public class Analyzer {
-    public static class Result {
-        static class Stats {
+public class Analyzer
+{
+    public static class Result
+    {
+        static class Stats
+        {
             public String imageFileName;
             public String imageAbsolutePath;
             public int thresholdLow;
@@ -365,9 +368,10 @@ public class Analyzer {
 
         uiToken.updateImageProgress(60, "Computing skeleton...");
 
-        // TODO: params.useFastSkeletonizer ? Zha84.skeletonizeZha84 : Lee94.skeletonizeLee94
+        result.ipThresholded = params.useFastSkeletonizer ?
+            Zha84.skeletonize(result.imageThresholded.getProcessor()) :
+            Lee94.skeletonize(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, result.imageThresholded);
 
-        result.ipThresholded = Zha84.skeletonizeZha84(result.imageThresholded.getProcessor());
         result.ipSkeleton = result.ipThresholded.duplicate();
         result.iplusSkeleton = new ImagePlus("iplusSkeleton", result.ipSkeleton);
         result.skeleton = new AnalyzeSkeleton();

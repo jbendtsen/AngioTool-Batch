@@ -42,7 +42,7 @@ public class ParallelUtils {
                 threadPool.submit(() -> {
                     ISliceCompute.Result res = new ISliceCompute.Result();
                     try {
-                        res.result = params.computeSlice(offset, length);
+                        res.result = params.computeSlice(idx, offset, length);
                     }
                     catch (Throwable ex) {
                         res.ex = ex;
@@ -63,7 +63,7 @@ public class ParallelUtils {
                         try {
                             int offset = offsetLengthPairs.buf[2*j];
                             int length = offsetLengthPairs.buf[2*j+1];
-                            res.result = params.computeSlice(offset, length);
+                            res.result = params.computeSlice(j, offset, length);
                         }
                         catch (Throwable ex) {
                             res.ex = ex;

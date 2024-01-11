@@ -3,7 +3,8 @@ package Batch;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
-public class Zha84 {
+public class Zha84
+{
     static final byte[] lut = stringToLut(
         "00010013003110130000000020203033" +
         "00000000300000000000000020003022" +
@@ -23,7 +24,8 @@ public class Zha84 {
         return out;
     }
 
-    public static ImageProcessor skeletonizeZha84(ImageProcessor ip) {
+    public static ImageProcessor skeletonize(ImageProcessor ip)
+    {
         if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
             throw new RuntimeException("SkeletonizeZha84: Image was not single-channel 8-bit");
 
@@ -31,11 +33,11 @@ public class Zha84 {
         int width = ip.getWidth();
         int height = ip.getHeight();
 
-        skeletonizeZha84(image, width, height);
+        skeletonize(image, width, height);
         return ip;
     }
 
-    public static void skeletonizeZha84(byte[] image, int width, int height)
+    public static void skeletonize(byte[] image, int width, int height)
     {
         for (int i = 0; i < width; i++)
             image[i] = 0;

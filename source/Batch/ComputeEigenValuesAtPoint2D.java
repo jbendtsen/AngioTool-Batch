@@ -86,7 +86,7 @@ public class ComputeEigenValuesAtPoint2D {
         }
 
         @Override
-        public Object computeSlice(int start, int length) {
+        public Object computeSlice(int sliceIdx, int start, int length) {
             //long count = 0L;
             //long total = (long)(this.height * this.width);
             //ImageProcessor fp = this.original.getProcessor();
@@ -106,6 +106,8 @@ public class ComputeEigenValuesAtPoint2D {
                     }
                 }
             }
+
+            return null;
         }
     }
 }

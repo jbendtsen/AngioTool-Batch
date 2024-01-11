@@ -34,6 +34,14 @@ public class IntVector {
         buf[pos] = v;
     }
 
+    public void add(int[] data, int off, int len) {
+        if (off >= 0 && len > 0 && off+len <= data.length) {
+            int pos = this.size;
+            resize(pos + len);
+            System.arraycopy(data, off, this.buf, pos, len);
+        }
+    }
+
     public int popOr(int defaultValue) {
         return size > 0 ? buf[--size] : defaultValue;
     }

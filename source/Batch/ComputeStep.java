@@ -17,7 +17,7 @@ public class ComputeStep implements ISliceCompute {
     }
 
     @Override
-    public Object computeSlice(int start, int length) {
+    public Object computeSlice(int sliceIdx, int start, int length) {
         int w = this.width;
         int h = this.height;
         int d = this.depth;

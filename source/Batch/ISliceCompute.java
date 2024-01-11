@@ -7,6 +7,6 @@ public interface ISliceCompute {
         int idx = -1;
     }
 
-    Object computeSlice(int start, int length);
+    Object computeSlice(int sliceIdx, int start, int length);
     default void finishSlice(Result res) {}
 }
