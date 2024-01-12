@@ -11,7 +11,6 @@ import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
 import AngioTool.PolygonPlus;
 import AngioTool.RGBStackSplitter;
-import AngioTool.ReachableTest;
 import AngioTool.Results;
 import AngioTool.SaveToExcel;
 import Batch.Analyzer;
@@ -48,8 +47,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -316,7 +313,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.addKeyListener(this);
       this.addMouseListener(this);
       this.setFocusable(true);
-      Utils.isInternetActive = new ReachableTest().test();
+      //Utils.isInternetActive = new ReachableTest().test();
       this.startDate = new Date();
    }
 

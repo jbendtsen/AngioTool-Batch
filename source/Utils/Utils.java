@@ -26,7 +26,6 @@ import java.awt.Rectangle;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
-import java.net.InetAddress;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,13 +50,6 @@ public class Utils {
    public static String ijVersion;
    public static String javamailVersion;
    public static String poiVersion;
-   public static final String ijVersion_Min = "1.47s";
-   public static final String javaVersion_Min = "1.7";
-   //public static final String[] MY_EMAIL_ADDRESS = new String[]{"zudairee@mail.nih.gov"};
-   public static boolean isInternetActive;
-   public static InetAddress myIP;
-   public static String myIPAddr;
-   public static String myIPHostName;
    public static final String LOOKANDFEEL = "System";
    public static final String THEME = "Test";
    public static Dimension screenDim;
@@ -136,11 +128,7 @@ public class Utils {
 
    public static String getSystemInfo() {
       Runtime runtime = Runtime.getRuntime();
-      String str = AngioTool.VERSION + "\nIP Address:\t"
-         + myIPAddr
-         + "\nIP HostName: \t"
-         + myIPHostName
-         + "\nOperative system:\t"
+      String str = AngioTool.VERSION + "\nOperative system:\t"
          + System.getProperty("os.name")
          + "\nNumber of Processor:\t"
          + runtime.availableProcessors()

@@ -4,7 +4,6 @@ import GUI.AngioToolGUI;
 import Utils.Utils;
 import ij.IJ;
 import ij.util.Tools;
-import java.applet.Applet;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Point;
@@ -107,7 +106,7 @@ public class ATPreferences {
         }
     }
 
-    public static String load(Object at, Applet applet) {
+    public static String load(Object at) {
         InputStream f = at.getClass().getResourceAsStream("/AT_Prefs.txt");
         if (Utils.ATDir == null) {
             Utils.ATDir = System.getProperty("user.dir");

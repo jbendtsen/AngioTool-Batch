@@ -6,9 +6,7 @@ import ij.IJ;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.Toolkit;
-import java.net.InetAddress;
 import java.net.URL;
-import java.net.UnknownHostException;
 import javax.swing.ImageIcon;
 
 public class AngioTool {
@@ -17,7 +15,7 @@ public class AngioTool {
 
    AngioTool() {
       this.getSystemInfo();
-      String err1 = ATPreferences.load(this, null);
+      String err1 = ATPreferences.load(this);
       if (err1 != null) {
          System.err.println("err1=" + err1);
       }
@@ -40,6 +38,8 @@ public class AngioTool {
       Utils.ATDir = Utils.string2path(Utils.ATDir);
       URL url = AngioToolGUI.class.getProtectionDomain().getCodeSource().getLocation();
       Utils.prefsDir = url.toString();
+
+      /*
       Utils.isInternetActive = new ReachableTest().test();
 
       try {
@@ -49,6 +49,7 @@ public class AngioTool {
          Utils.myIPHostName = addr.getHostName();
       } catch (UnknownHostException var3) {
       }
+      */
 
       Utils.ijVersion = IJ.getVersion();
       Utils.screenDim = Toolkit.getDefaultToolkit().getScreenSize();
