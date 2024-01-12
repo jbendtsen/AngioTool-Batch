@@ -4,22 +4,25 @@ import java.awt.Color;
 import java.util.ArrayList;
 
 public class AnalyzerParameters {
+    public String defaultPath;
     public String[] inputPaths;
     public String excelFilePath;
     public boolean shouldSaveResultImages;
     public String resultImagesPath;
+    public String resultImageFormat;
     public boolean shouldResizeImage;
     public double resizingFactor;
     public boolean shouldRemoveSmallParticles;
     public double removeSmallParticlesThreshold;
     public boolean shouldFillHoles;
     public double fillHolesValue;
-    public int[] sigmas;
+    public double[] sigmas;
     public int thresholdHigh;
     public int thresholdLow;
     public boolean shouldUseFastSkeletonizer;
     public boolean shouldApplyLinearScale;
     public double linearScalingFactor;
+    public boolean shouldShowOverlayOrGallery;
     public boolean shouldDrawOutline;
     public Color outlineColor;
     public double outlineSize;
@@ -29,29 +32,35 @@ public class AnalyzerParameters {
     public boolean shouldDrawBranchPoints;
     public Color branchingPointsColor;
     public double branchingPointsSize;
-    public boolean shouldDrawBoundary;
-    public Color boundaryColor;
-    public double boundarySize;
+    public boolean shouldDrawConvexHull;
+    public Color convexHullColor;
+    public double convexHullSize;
+    public boolean shouldScalePixelValues; // doScaling, ie. pixels that had values between min-max become between 0-255
     public boolean shouldComputeLacunarity;
     public boolean shouldComputeThickness;
 
+    private AnalyzerParameters() {}
+
     public AnalyzerParameters(
+        String defaultPath,
         String[] inputPaths,
         String excelFilePath,
         boolean shouldSaveResultImages,
         String resultImagesPath,
+        String resultImageFormat,
         boolean shouldResizeImage,
         double resizingFactor,
         boolean shouldRemoveSmallParticles,
         double removeSmallParticlesThreshold,
         boolean shouldFillHoles,
         double fillHolesValue,
-        int[] sigmas,
+        double[] sigmas,
         int thresholdHigh,
         int thresholdLow,
         boolean shouldUseFastSkeletonizer,
         boolean shouldApplyLinearScale,
         double linearScalingFactor,
+        boolean shouldShowOverlayOrGallery,
         boolean shouldDrawOutline,
         Color outlineColor,
         double outlineSize,
@@ -61,16 +70,19 @@ public class AnalyzerParameters {
         boolean shouldDrawBranchPoints,
         Color branchingPointsColor,
         double branchingPointsSize,
-        boolean shouldDrawBoundary,
-        Color boundaryColor,
-        double boundarySize,
+        boolean shouldDrawConvexHull,
+        Color convexHullColor,
+        double convexHullSize,
+        boolean shouldScalePixelValues,
         boolean shouldComputeLacunarity,
         boolean shouldComputeThickness
     ) {
+        this.defaultPath = defaultPath;
         this.inputPaths = inputPaths;
         this.excelFilePath = excelFilePath;
         this.shouldSaveResultImages = shouldSaveResultImages;
         this.resultImagesPath = resultImagesPath;
+        this.resultImageFormat = resultImageFormat;
         this.shouldResizeImage = shouldResizeImage;
         this.resizingFactor = resizingFactor;
         this.shouldRemoveSmallParticles = shouldRemoveSmallParticles;
@@ -83,6 +95,7 @@ public class AnalyzerParameters {
         this.shouldUseFastSkeletonizer = shouldUseFastSkeletonizer;
         this.shouldApplyLinearScale = shouldApplyLinearScale;
         this.linearScalingFactor = linearScalingFactor;
+        this.shouldShowOverlayOrGallery = shouldShowOverlayOrGallery;
         this.shouldDrawOutline = shouldDrawOutline;
         this.outlineColor = outlineColor;
         this.outlineSize = outlineSize;
@@ -92,11 +105,41 @@ public class AnalyzerParameters {
         this.shouldDrawBranchPoints = shouldDrawBranchPoints;
         this.branchingPointsColor = branchingPointsColor;
         this.branchingPointsSize = branchingPointsSize;
-        this.shouldDrawBoundary = shouldDrawBoundary;
-        this.boundaryColor = boundaryColor;
-        this.boundarySize = boundarySize;
+        this.shouldDrawConvexHull = shouldDrawConvexHull;
+        this.convexHullColor = convexHullColor;
+        this.convexHullSize = convexHullSize;
+        this.shouldScalePixelValues = shouldScalePixelValues;
         this.shouldComputeLacunarity = shouldComputeLacunarity;
         this.shouldComputeThickness = shouldComputeThickness;
+    }
+
+    public static AnalyzerParameters defaults() {
+        AnalyzerParameters p = new AnalyzerParameters();
+        p.defaultPath = "C:/";
+        p.outlineColor = "FFFF00";
+        p.skeletonColor = "FF0000";
+        p.branchingPointsColor = "0099FF";
+        p.convexHullColor = "CCFFFF";
+        p.outlineSize = 1;
+        p.skeletonSize = 5;
+        p.branchingPointsSize = 8;
+        p.convexHullSize = 1;
+        p.resultImageFormat = "jpg";
+        p.showOverlay = true;
+        p.showOutline = true;
+        p.showSkeleton = true;
+        p.showBranchingPoints = true;
+        p.showConvexHull = true;
+        p.doScaling = false;
+        p.fillHoles = false;
+        p.smallParticles = false;
+        p.resizingFactor = 1.0;
+        p.computeLacunarity = true;
+        p.computeThickness = true;
+        p.LinearScalingFactor = 0.0;
+        p.currentSigmas = new double[5.0];
+        p.thresholdLow = 10;
+        p.thresholdHigh = 50;
     }
 
     public ArrayList<String> validate() {
@@ -106,6 +149,8 @@ public class AnalyzerParameters {
         if (excelFilePath == null || excelFilePath.length() == 0)
             errors.add("Path to spreadsheet is missing");
         //resultImagesPath
+        if (resultImageFormat == null || resultImageFormat.length() == 0)
+            errors.add("Result image format is missing");
         if (shouldResizeImage && resizingFactor <= 0.0)
             errors.add("Image resize factor must be >0 (not " + resizingFactor + ")");
         if (shouldRemoveSmallParticles && removeSmallParticlesThreshold <= 0.0)

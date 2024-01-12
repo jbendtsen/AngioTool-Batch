@@ -21,45 +21,7 @@ import java.util.Date;
 import java.lang.reflect.Field;
 
 public class ATPreferences {
-    public static class Settings {
-        public Point atLoc = new Point(100, 0);
-        public Point atHelpLoc = new Point(200, 0);
-        public String currentDir = "C:/";
-        public String OutlineColor = "FFFF00";
-        public String SkeletonColor = "FF0000";
-        public String BranchingPointsColor = "0099FF";
-        public String ConvexHullColor = "CCFFFF";
-        public int OutlineStrokeWidth = 1;
-        public int SkeletonStrokeWidth = 5;
-        public int BranchingPointsStrokeWidth = 8;
-        public int ConvexHullStrokeWidth = 1;
-        public String imageResultFormat = "jpg";
-        public boolean showOverlay = true;
-        public boolean showOutline = true;
-        public boolean showSkeleton = true;
-        public boolean showBranchingPoints = true;
-        public boolean showConvexHull = true;
-        public boolean doScaling = false;
-        public boolean fillHoles = false;
-        public boolean smallParticles = false;
-        public double resizingFactor = 1.0;
-        public boolean computeLacunarity = true;
-        public boolean computeThickness = true;
-        public double LinearScalingFactor = 0.0;
-        public double AreaScalingFactor = 0.0;
-        public double currentSigmas = 5.0;
-        public int thresholdLow = 10;
-        public int thresholdHigh = 50;
-    }
-
-    private static final Settings defaults = new Settings();
-    public static Settings settings = new Settings();
-
-    public static String separator = System.getProperty("file.separator");
-
-    public static void InitVariables() {
-
-    }
+    //public static String separator = System.getProperty("file.separator");
 
     public static void setPreferences() {
         StringBuilder sb = new StringBuilder();
