@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.JOptionPane;
+import Utils.Utils;
 
 public class AngioToolMain {
    /*
@@ -49,6 +50,16 @@ public class AngioToolMain {
          System.exit(0);
       }
       */
+      
+      try {
+         Class.forName("Batch.Lee94");
+      }
+      catch (Throwable t) {
+         t.printStackTrace();
+         Utils.showExceptionInDialogBox(t.getCause());
+         cleanup();
+         return;
+      }
 
       EventQueue.invokeLater(new Runnable() {
          @Override

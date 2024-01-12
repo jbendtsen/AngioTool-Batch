@@ -1,23 +1,99 @@
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.FileNotFoundException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Future;
 
-public class EnumerateSimplePoints {
+public class GenerateLee94SimplePoints {
+    static final int BLOCK_SIZE = 4096;
+    static final int[] OCTANT_LUT = new int[] {
+        1, 1, 2, 1, 1, 2, 3, 3, 4, 1, 1, 2, 1, 2, 3, 3, 4, 5, 5, 6, 5, 5, 6, 7, 7, 8
+    };
 
     public static void main(String[] args) {
         final int n = 1 << 26;
-        byte[] map = new byte[n / 8];
+        final int threadCount = Math.max(4, Runtime.getRuntime().availableProcessors() - 1);
+        final long[] slices = makeSlices(n, threadCount);
+        final byte[] map = new byte[n / 8];
 
-        for (int i = 0; i < n; i++) {
-            boolean isSimple = isSimplePoint(i);
-            map[i >>> 3] |= (byte)(isSimple ? (1 << (7 - (i & 7))) : 0);
+        System.out.println("Generating lee94-simple-points.bin with " + threadCount + " threads...");
+        long startTime = System.nanoTime();
+
+        ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
+            threadCount, /* corePoolSize */
+            threadCount, /* maximumPoolSize */
+            10, /* keepAliveTime */
+            TimeUnit.SECONDS, /* unit */
+            new LinkedBlockingQueue<>() /* workQueue */
+        );
+        Future[] futures = new Future[threadCount];
+
+        for (int i = 0; i < threadCount; i++) {
+            final int idx = i;
+            futures[i] = threadPool.submit(() -> {
+                int start = (int)(slices[idx] >> 32L);
+                int length = (int)(slices[idx] & ((1L << 32L) - 1L));
+
+                for (int j = start; j < start+length; j++) {
+                    boolean isSimple = isSimplePoint(j);
+                    map[j >>> 3] |= (byte)(isSimple ? (1 << (7 - (j & 7))) : 0);
+                }
+            });
         }
-        try (FileOutputStream stream = new FileOutputStream("all-simple-points.bin")) {
-            stream.write(map);
+
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                futures[i].get();
+            }
+            threadPool.shutdownNow();
+        }
+        catch (ExecutionException | InterruptedException ex) {
+            ex.printStackTrace();
+            return;
+        }
+
+        long writeTime = System.nanoTime();
+        System.out.println("Writing to disk...");
+
+        try {
+            Files.write(
+                FileSystems.getDefault().getPath("", "lee94-simple-points.bin"),
+                map,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE
+            );
         }
         catch (IOException ex) {
             ex.printStackTrace();
         }
+
+        long endTime = System.nanoTime();
+        System.out.println(
+            "Generate time: " + (int)((double)(writeTime - startTime) / 1E6) + "ms\n" +
+            "   Total time: " + (int)((double)(endTime - startTime) / 1E6) + "ms"
+        );
+    }
+
+    static long[] makeSlices(int n, int threadCount) {
+        long[] slices = new long[threadCount];
+        int sliceSize = n / threadCount;
+        sliceSize += (BLOCK_SIZE - (sliceSize % BLOCK_SIZE)) % BLOCK_SIZE;
+
+        int start = 0;
+        for (int i = 0; i < threadCount; i++) {
+            int length = Math.min(sliceSize, n - start);
+            slices[i] = (long)start << 32L | (long)length;
+            start += length;
+        }
+
+        return slices;
     }
 
    public static boolean isSimplePoint(int neighborBits) {
@@ -25,49 +101,7 @@ public class EnumerateSimplePoints {
 
       for(int i = 0; i < 26; ++i) {
          if (((neighborBits >>> i) & 1) == 1) {
-            switch(i) {
-               case 0:
-               case 1:
-               case 3:
-               case 4:
-               case 9:
-               case 10:
-               case 12:
-                  neighborBits = octreeLabeling(1, label, neighborBits);
-                  break;
-               case 2:
-               case 5:
-               case 11:
-               case 13:
-                  neighborBits = octreeLabeling(2, label, neighborBits);
-                  break;
-               case 6:
-               case 7:
-               case 14:
-               case 15:
-                  neighborBits = octreeLabeling(3, label, neighborBits);
-                  break;
-               case 8:
-               case 16:
-                  neighborBits = octreeLabeling(4, label, neighborBits);
-                  break;
-               case 17:
-               case 18:
-               case 20:
-               case 21:
-                  neighborBits = octreeLabeling(5, label, neighborBits);
-                  break;
-               case 19:
-               case 22:
-                  neighborBits = octreeLabeling(6, label, neighborBits);
-                  break;
-               case 23:
-               case 24:
-                  neighborBits = octreeLabeling(7, label, neighborBits);
-                  break;
-               case 25:
-                  neighborBits = octreeLabeling(8, label, neighborBits);
-            }
+            neighborBits = octreeLabeling(OCTANT_LUT[i], label, neighborBits);
 
             if (++label - 2 >= 2) {
                return false;

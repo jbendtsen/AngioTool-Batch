@@ -18,6 +18,7 @@ import Batch.Analyzer;
 import Batch.AnalyzerParameters;
 import Batch.BatchAnalysisUi;
 import Batch.ComputeShapeRoiSplines;
+import Batch.Lee94;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
 //import com.jidesoft.swing.RangeSlider;
@@ -1892,6 +1893,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          marksArray,
          this.thresholdRangeSliderHigh.getValue(),
          this.thresholdRangeSliderLow.getValue(),
+         false,
          true,
          scale,
          this.showOutlineCheckBox.isSelected(),
@@ -1985,14 +1987,12 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
         updateStatus(progress, "Analyzing skeleton... ");
         updateStatus(progress, "Skeletonize");
 
-        ImageProcessor ip = this.imageThresholded.getProcessor();
-        ip = Utils.skeletonize(ip, "itk");
-        this.ipThresholded = ip;
+        this.ipThresholded = this.imageThresholded.getProcessor();
+        ImagePlus iplusSkeleton = this.imageThresholded.duplicate();
+        iplusSkeleton.setTitle("iplusSkeleton");
+        Lee94.skeletonize(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, iplusSkeleton);
         progress += 33;
         updateStatus(progress, "Computing convex hull... ");
-        new AnalyzeSkeleton();
-        ImageProcessor ipSkeleton = this.ipThresholded.duplicate();
-        ImagePlus iplusSkeleton = new ImagePlus("iplusSkeleton", ipSkeleton);
         AnalyzeSkeleton var16 = new AnalyzeSkeleton();
         var16.setup("", iplusSkeleton);
         this.skelResult = var16.run(0, false, false, iplusSkeleton, false, false);

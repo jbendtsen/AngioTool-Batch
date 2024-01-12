@@ -17,6 +17,7 @@ public class AnalyzerParameters {
     public int[] sigmas;
     public int thresholdHigh;
     public int thresholdLow;
+    public boolean shouldUseFastSkeletonizer;
     public boolean shouldApplyLinearScale;
     public double linearScalingFactor;
     public boolean shouldDrawOutline;
@@ -48,6 +49,7 @@ public class AnalyzerParameters {
         int[] sigmas,
         int thresholdHigh,
         int thresholdLow,
+        boolean shouldUseFastSkeletonizer,
         boolean shouldApplyLinearScale,
         double linearScalingFactor,
         boolean shouldDrawOutline,
@@ -78,6 +80,7 @@ public class AnalyzerParameters {
         this.sigmas = sigmas;
         this.thresholdHigh = thresholdHigh;
         this.thresholdLow = thresholdLow;
+        this.shouldUseFastSkeletonizer = shouldUseFastSkeletonizer;
         this.shouldApplyLinearScale = shouldApplyLinearScale;
         this.linearScalingFactor = linearScalingFactor;
         this.shouldDrawOutline = shouldDrawOutline;

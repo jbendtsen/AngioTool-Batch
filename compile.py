@@ -6,7 +6,35 @@ import shutil
 import zipfile
 import subprocess
 
+JAVA = "java"
 JAVAC = "javac"
+
+if shutil.which(JAVAC) is None:
+    print("Could not find '" + JAVAC + "'.")
+    print("Make sure you have installed a Java Development Kit (not just the runtime)")
+    print("and that '" + JAVAC + "' is on your PATH variable.")
+    sys.exit(1)
+
+simple_points_lut = None
+for i in range(2):
+    try:
+        with open("lee94-simple-points.bin", "rb") as f:
+            buf = f.read()
+            if len(buf) == (1 << 23):
+                simple_points_lut = buf
+    except:
+        pass
+
+    if simple_points_lut or i == 1:
+        break
+
+    status = subprocess.run([JAVA, "GenerateLee94SimplePoints.java"])
+    if status.returncode != 0:
+        sys.exit(status.returncode)
+
+if not simple_points_lut:
+    print("Could not read lookup tables (ie. lee94-simple-points.bin)")
+    sys.exit(1)
 
 sep = ";" if os.name == "nt" else ":"
 libs = os.listdir("source/lib")
@@ -55,5 +83,6 @@ with zipfile.ZipFile("AngioTool-Batch.jar", compression=zipfile.ZIP_DEFLATED, co
         zip.write("source/" + f, arcname=f)
     for f in build_files:
         zip.write(f, arcname=f[6:])
+    zip.writestr("lee94-simple-points.bin", simple_points_lut)
 
 # java -Dsun.java2d.uiScale=2 -jar AngioTool-Batch.jar

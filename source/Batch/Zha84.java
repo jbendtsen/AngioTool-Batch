@@ -1,5 +1,6 @@
 package Batch;
 
+import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
@@ -24,17 +25,17 @@ public class Zha84
         return out;
     }
 
-    public static ImageProcessor skeletonize(ImageProcessor ip)
+    public static void skeletonize(ImagePlus image)
     {
+        ImageProcessor ip = image.getProcessor();
         if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
             throw new RuntimeException("SkeletonizeZha84: Image was not single-channel 8-bit");
 
-        byte[] image = (byte[])ip.getPixels();
+        byte[] pixels = (byte[])ip.getPixels();
         int width = ip.getWidth();
         int height = ip.getHeight();
 
-        skeletonize(image, width, height);
-        return ip;
+        skeletonize(pixels, width, height);
     }
 
     public static void skeletonize(byte[] image, int width, int height)

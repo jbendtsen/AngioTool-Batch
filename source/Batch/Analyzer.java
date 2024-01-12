@@ -368,12 +368,14 @@ public class Analyzer
 
         uiToken.updateImageProgress(60, "Computing skeleton...");
 
-        result.ipThresholded = params.useFastSkeletonizer ?
-            Zha84.skeletonize(result.imageThresholded.getProcessor()) :
-            Lee94.skeletonize(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, result.imageThresholded);
+        result.iplusSkeleton = result.imageThresholded.duplicate();
+        result.iplusSkeleton.setTitle("iplusSkeleton");
 
-        result.ipSkeleton = result.ipThresholded.duplicate();
-        result.iplusSkeleton = new ImagePlus("iplusSkeleton", result.ipSkeleton);
+        if (params.shouldUseFastSkeletonizer)
+            Zha84.skeletonize(result.iplusSkeleton);
+        else
+            Lee94.skeletonize(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, result.iplusSkeleton);
+
         result.skeleton = new AnalyzeSkeleton();
         result.skeleton.setup("", result.iplusSkeleton);
         result.skelResult = result.skeleton.run(0, false, false, result.iplusSkeleton, false, false);

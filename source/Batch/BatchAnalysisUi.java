@@ -464,6 +464,7 @@ public class BatchAnalysisUi
             Utils.getSomeInts(textSigmas.getText()),
             Integer.parseInt(textMaxIntensity.getText()),
             Integer.parseInt(textMinIntensity.getText()),
+            false,
             elemLinearScaleFactor.cb.isSelected(),
             elemLinearScaleFactor.value,
             elemOutline.cb.isSelected(),

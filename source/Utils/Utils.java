@@ -95,6 +95,7 @@ public class Utils {
          : (double)(vesselThickness.get(middle - 1) + vesselThickness.get(middle)) / 2.0;
    }
 
+   /*
    public static ImageProcessor skeletonize(ImageProcessor ip, String algorithm) {
       if (ip.isBinary()) {
          ImagePlus iplusThresholded = new ImagePlus("iplusThresholded Kike", ip);
@@ -111,6 +112,7 @@ public class Utils {
 
       return null;
    }
+   */
 
    private static ArrayList<Float> computeTickness(Graph[] graph, ImagePlus distanceMap) {
       ArrayList<Float> vesselThickness = new ArrayList<>();
