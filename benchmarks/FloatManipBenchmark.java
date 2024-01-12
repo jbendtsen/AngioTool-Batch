@@ -1,6 +1,6 @@
 // The "get-multiply" and "get-boolean" methods appear to have equivalent performance,
 // but the "get-shift" method outperforms them both by 2.5x most of the time (with it occasionally only being 20-30% faster)
-// The "set-lookup" method is only 5-10% faster than "set-ternary".
+// The "set-lookup" method is 5x faster than "set-ternary".
 
 class FloatManipBenchmark {
     static final int BLOCK_SIZE = 64; // for optimal cache utilization
@@ -19,7 +19,7 @@ class FloatManipBenchmark {
 
         int width = 640, height = 480, breadth = 3;
         int iterations = 1000;
-        int method = 1;
+        int method = 4;
         boolean usingSet = method >= N_GET_METHODS;
 
         byte[] planes = new byte[width * height];
@@ -127,7 +127,7 @@ class FloatManipBenchmark {
 
     static void setPlanesTernary(float[][] output, byte[] planes) {
         for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
+            int block = Math.min(BLOCK_SIZE, planes.length - i);
             for (int j = 0; j < output.length; j++) {
                 for (int k = 0; k < block; k++)
                     output[j][i+k] = ((planes[i+k] >>> j) & 1) == 1 ? 255.0f : 0.0f;
@@ -139,7 +139,7 @@ class FloatManipBenchmark {
         lut[0] = 0.0f;
         lut[1] = 255.0f;
         for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
+            int block = Math.min(BLOCK_SIZE, planes.length - i);
             for (int j = 0; j < output.length; j++) {
                 for (int k = 0; k < block; k++)
                     output[j][i+k] = lut[(planes[i+k] >>> j) & 1];

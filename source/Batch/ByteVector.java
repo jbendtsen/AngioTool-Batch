@@ -52,6 +52,10 @@ public class ByteVector extends OutputStream {
         add(bytes, 0, bytes.length);
     }
 
+    public void add(byte[] data) {
+        add(data, 0, data.length);
+    }
+
     public void add(byte[] data, int off, int len) {
         if (len > 0 && off >= 0 && off+len <= data.length) {
             int pos = this.size;

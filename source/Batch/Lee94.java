@@ -185,6 +185,8 @@ public class Lee94 {
                 throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
         }
 
+        //writePgm(layersByte[0], width, height, "before.pgm");
+
         PointVectorInt offsetLengthPairs = ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1);
         Params params = new Params(offsetLengthPairs.size, planes, width, height, breadth);
 
@@ -208,10 +210,31 @@ public class Lee94 {
                 setPlanesRgb(layersInt, planes);
                 break;
             case 32:
-                setPlanes32(layersFloat, planes);
+                setPlanes32(layersFloat, planes, new float[2]);
                 break;
             default:
                 throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
+        }
+
+        //writePgm(layersByte[0], width, height, "after.pgm");
+    }
+
+    static void writePgm(byte[] pixels, int width, int height, String title) {
+        byte[] header = ("P5\n" + width + " " + height + "\n255\n").getBytes();
+        ByteVector out = new ByteVector(header.length + pixels.length);
+        out.add(header);
+        out.add(pixels);
+        try {
+            java.nio.file.Files.write(
+                java.nio.file.FileSystems.getDefault().getPath("", title),
+                out.buf,
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.WRITE
+            );
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
@@ -373,7 +396,7 @@ public class Lee94 {
 
     static void setPlanes8(byte[][] output, byte[] planes) {
         for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
+            int block = Math.min(BLOCK_SIZE, planes.length - i);
             for (int j = 0; j < output.length; j++) {
                 for (int k = 0; k < block; k++)
                     output[j][i+k] = (byte)-((planes[i+k] >>> j) & 1);
@@ -383,7 +406,7 @@ public class Lee94 {
 
     static void setPlanes16(short[][] output, byte[] planes) {
         for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
+            int block = Math.min(BLOCK_SIZE, planes.length - i);
             for (int j = 0; j < output.length; j++) {
                 for (int k = 0; k < block; k++)
                     output[j][i+k] = (short)-((planes[i+k] >>> j) & 1);
@@ -400,14 +423,16 @@ public class Lee94 {
         }
     }
 
-    // using the lookup table "float[] {0.0f, 255.0f}" would be 5-10% faster if passed in, but using a ternary will do
+    // using the lookup table "float[] {0.0f, 255.0f}" is 5x faster than using a ternary (ie. bit == 1 ? 255.0f : 0.0f)
     // see FloatManipBenchmark.java
-    static void setPlanes32(float[][] output, byte[] planes) {
+    static void setPlanes32(float[][] output, byte[] planes, float[] lut) {
+        lut[0] = 0.0f;
+        lut[1] = 255.0f;
         for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
+            int block = Math.min(BLOCK_SIZE, planes.length - i);
             for (int j = 0; j < output.length; j++) {
                 for (int k = 0; k < block; k++)
-                    output[j][i+k] = ((planes[i+k] >>> j) & 1) == 1 ? 255.0f : 0.0f;
+                    output[j][i+k] = lut[(planes[i+k] >>> j) & 1];
             }
         }
     }
