@@ -249,16 +249,15 @@ public class Utils {
             isNeg = true;
          }
          else {
-            if (isNeg) {
-               nums[mode] *= -1;
-               isNeg = false;
-            }
             if (wasNum) {
-               if (mode >= 2 || (mode == 1 && c != 'e' && c != 'E') || (mode == 0 && mode != '.')) {
+               nums[mode] = nums[mode] * 2 + (isNeg ? 1 : 0);
+               isNeg = false;
+               if (mode >= 2 || (mode == 1 && c != 'e' && c != 'E') || (mode == 0 && c != '.')) {
                   numbers.add(nums);
                   nums[0] = 0;
                   nums[1] = 0;
                   nums[2] = 0;
+                  mode = 0;
                }
                else {
                   mode++;
@@ -267,12 +266,17 @@ public class Utils {
             wasNum = false;
          }
       }
-      if (wasNum)
+      if (wasNum) {
+         nums[mode] = nums[mode] * 2 + (isNeg ? 1 : 0);
          numbers.add(nums);
+      }
 
       double[] values = new double[numbers.size / 3];
       for (int i = 0; i < numbers.size-2; i += 3) {
-         int frac = numbers.buf[i+1];
+         boolean isNegValue = ((numbers.buf[i] | numbers.buf[i+1]) & 1) != 0;
+         boolean isNegExp = (numbers.buf[i+2] & 1) != 0;
+
+         int frac = numbers.buf[i+1] >> 1;
          int f = frac;
          int fDigits = 0;
          boolean seenNonZero = false;
@@ -286,9 +290,13 @@ public class Utils {
             f /= 10;
          }
 
-         double v = (double)numbers.buf[i];
+         double v = (double)(numbers.buf[i] >> 1);
          v += (double)frac * Math.pow(10.0, -fDigits);
-         v *= Math.pow(10.0, numbers.buf[i+2]);
+         v *= isNegValue ? -1.0 : 1.0;
+
+         double exp = (double)(numbers.buf[i+2] >> 1);
+         v *= Math.pow(10.0, isNegExp ? -exp : exp);
+
          values[i/3] = v;
       }
 
