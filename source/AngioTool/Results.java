@@ -1,5 +1,6 @@
 package AngioTool;
 
+import Utils.Utils;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -11,7 +12,7 @@ public class Results {
    public int thresholdHigh;
    public int removeSmallParticles;
    public int fillHoles;
-   public ArrayList<Integer> sigmas;
+   public double[] sigmas;
    public int totalNJunctions;
    public double allantoisPixelsArea;
    public double LinearScalingFactor;
@@ -36,13 +37,13 @@ public class Results {
    public double meanFl;
 
    public Results() {
-      this.sigmas = new ArrayList<>();
+      this.sigmas = new double[0];
    }
 
    public void clear() {
       this.thresholdLow = Integer.MAX_VALUE;
       this.thresholdHigh = Integer.MIN_VALUE;
-      this.sigmas.clear();
+      this.sigmas = new double[0];
       this.totalNJunctions = Integer.MIN_VALUE;
       this.allantoisPixelsArea = -2.1474836E9F;
       this.LinearScalingFactor = Double.NaN;
@@ -56,13 +57,7 @@ public class Results {
    }
 
    public String getSigmas() {
-      String s = "";
-
-      for(int i = 0; i < this.sigmas.size() - 1; ++i) {
-         s = s + this.sigmas.get(i) + ",";
-      }
-
-      return s + this.sigmas.get(this.sigmas.size() - 1);
+      return Utils.formatDoubleArray(sigmas);
    }
 
    public String getImageFilePath() {

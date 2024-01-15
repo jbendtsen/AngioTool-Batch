@@ -34,6 +34,10 @@ public class IntVector {
         buf[pos] = v;
     }
 
+    public void add(int[] data) {
+        add(data, 0, data.length);
+    }
+
     public void add(int[] data, int off, int len) {
         if (off >= 0 && len > 0 && off+len <= data.length) {
             int pos = this.size;

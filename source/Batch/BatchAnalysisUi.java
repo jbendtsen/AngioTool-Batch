@@ -1,5 +1,6 @@
 package Batch;
 
+import AngioTool.AngioTool;
 import AngioTool.AngioToolMain;
 import AngioTool.ATPreferences;
 import GUI.RoundedPanel;
@@ -10,6 +11,8 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowAdapter;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import java.io.File;
@@ -55,7 +58,7 @@ public class BatchAnalysisUi
     final ColorSizeEntry elemOutline;
     final ColorSizeEntry elemBranches;
     final ColorSizeEntry elemSkeleton;
-    final ColorSizeEntry elemBoundary;
+    final ColorSizeEntry elemConvexHull;
 
     final JSeparator sepProgress = new JSeparator();
     final JLabel labelProgress = new JLabel();
@@ -66,6 +69,7 @@ public class BatchAnalysisUi
     final JButton analyzeBtn = new JButton();
     final JButton cancelBtn = new JButton();
 
+    String defaultPath;
     ArrayList<XlsxReader.SheetCells> originalSheets = new ArrayList<>();
     int nErrors = 0;
 
@@ -77,6 +81,8 @@ public class BatchAnalysisUi
         this.parentFrame = uiFrame;
 
         this.jdialog = new JDialog(parentFrame, "Batch Analysis", true);
+
+        defaultPath = params.defaultPath;
 
         labelData.setText("Data");
         Utils.setNewFontSizeOn(labelData, 20);
@@ -127,7 +133,7 @@ public class BatchAnalysisUi
 
         labelSigmas.setText("Vessel Diameters list");
 
-        textSigmas.setText(Utils.formatIntArray(params.sigmas));
+        textSigmas.setText(Utils.formatDoubleArray(params.sigmas));
         textSigmas.setToolTipText("List of sigmas (numbers)");
 
         labelIntensity.setText("Vessel Intensity range");
@@ -141,7 +147,7 @@ public class BatchAnalysisUi
         elemOutline = new ColorSizeEntry("Outline:", params.shouldDrawOutline, params.outlineSize, params.outlineColor);
         elemBranches = new ColorSizeEntry("Branches:", params.shouldDrawBranchPoints, params.branchingPointsSize, params.branchingPointsColor);
         elemSkeleton = new ColorSizeEntry("Skeleton:", params.shouldDrawSkeleton, params.skeletonSize, params.skeletonColor);
-        elemBoundary = new ColorSizeEntry("Boundary:", params.shouldDrawBoundary, params.boundarySize, params.boundaryColor);
+        elemConvexHull = new ColorSizeEntry("Convex Hull:", params.shouldDrawConvexHull, params.convexHullSize, params.convexHullColor);
 
         //sepProgress
 
@@ -177,6 +183,13 @@ public class BatchAnalysisUi
 
             jdialog.add(dialogPanel);
             jdialog.pack();
+
+            jdialog.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent evt) {
+                    ATPreferences.savePreferences(buildNewParamsFromUi(), AngioTool.BATCH_TXT);
+                }
+            });
 
             jdialog.setMinimumSize(jdialog.getPreferredSize());
             jdialog.setLocationRelativeTo(parentFrame);
@@ -233,7 +246,7 @@ public class BatchAnalysisUi
             .addComponent(labelOverlay)
             .addGroup(
                 arrangeParallelEntries(
-                    elemBranches, elemBoundary, layout, arrangeParallelEntries(
+                    elemBranches, elemConvexHull, layout, arrangeParallelEntries(
                         elemOutline, elemSkeleton, layout, layout.createSequentialGroup()
                     ).addGap(20)
                 )
@@ -305,7 +318,7 @@ public class BatchAnalysisUi
                 )
             )
             .addGroup(
-                elemBoundary.addToGroup(
+                elemConvexHull.addToGroup(
                     elemSkeleton.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
@@ -364,7 +377,7 @@ public class BatchAnalysisUi
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         fc.setMultiSelectionEnabled(true);
-        fc.setCurrentDirectory(new File(ATPreferences.settings.currentDir));
+        fc.setCurrentDirectory(new File(defaultPath));
 
         if (fc.showOpenDialog(parentFrame) != 0)
             return;
@@ -387,7 +400,7 @@ public class BatchAnalysisUi
         JFileChooser fc = createFileChooser();
         fc.setDialogTitle("Append to Excel spreadsheet");
         fc.setDialogType(JFileChooser.SAVE_DIALOG);
-        fc.setCurrentDirectory(new File(ATPreferences.settings.currentDir));
+        fc.setCurrentDirectory(new File(defaultPath));
         fc.setFileFilter(new FileFilter() {
             @Override public boolean accept(File f) {
                 String name = f.getName();
@@ -401,7 +414,7 @@ public class BatchAnalysisUi
         if (fc.showOpenDialog(parentFrame) != 0)
             return;
 
-        ATPreferences.settings.currentDir = fc.getCurrentDirectory().getAbsolutePath();
+        defaultPath = fc.getCurrentDirectory().getAbsolutePath();
 
         File xlsxFile = fc.getSelectedFile();
         if (!Utils.hasAnyFileExtension(xlsxFile))
@@ -440,7 +453,7 @@ public class BatchAnalysisUi
         fc.setDialogTitle("Select Folders");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        fc.setCurrentDirectory(new File(ATPreferences.settings.currentDir));
+        fc.setCurrentDirectory(new File(defaultPath));
 
         if (fc.showOpenDialog(parentFrame) == 0) {
             File file = fc.getSelectedFile();
@@ -451,22 +464,25 @@ public class BatchAnalysisUi
 
     AnalyzerParameters buildNewParamsFromUi() {
         return new AnalyzerParameters(
+            defaultPath,
             Utils.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
             textExcel.getText(),
             cbSaveResults.isSelected(),
             textSaveResultsFolder.getText(),
+            "jpg", //resultImageFormat
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.value,
             elemRemoveParticles.cb.isSelected(),
             elemRemoveParticles.value,
             elemFillHoles.cb.isSelected(),
             elemFillHoles.value,
-            Utils.getSomeInts(textSigmas.getText()),
+            Utils.getSomeDoubles(textSigmas.getText()),
             Integer.parseInt(textMaxIntensity.getText()),
             Integer.parseInt(textMinIntensity.getText()),
-            false,
+            false, // shouldUseFastSkeletonizer
             elemLinearScaleFactor.cb.isSelected(),
             elemLinearScaleFactor.value,
+            false, // shouldShowOverlayOrGallery
             elemOutline.cb.isSelected(),
             elemOutline.color,
             elemOutline.value,
@@ -476,9 +492,10 @@ public class BatchAnalysisUi
             elemBranches.cb.isSelected(),
             elemBranches.color,
             elemBranches.value,
-            elemBoundary.cb.isSelected(),
-            elemBoundary.color,
-            elemBoundary.value,
+            elemConvexHull.cb.isSelected(),
+            elemConvexHull.color,
+            elemConvexHull.value,
+            false, // shouldScalePixelValues
             cbComputeLacunarity.isSelected(),
             cbComputeThickness.isSelected()
         );
@@ -505,13 +522,13 @@ public class BatchAnalysisUi
             return;
         }
 
-        ArrayList<String> errors = params.validate();
-        if (errors != null && !errors.isEmpty()) {
-            int nErrors = errors.size();
+        RefVector<String> errors = params.validate();
+        if (errors != null && errors.size > 0) {
+            int nErrors = errors.size;
             String header = nErrors > 1 ? ("There were " + nErrors + " errors:\n") : "";
             Utils.showDialogBox(
                 "Validation Error" + (nErrors > 1 ? "s" : ""),
-                header + String.join("\n", errors)
+                header + errors.makeJoinedString("\n")
             );
             return;
         }
@@ -721,10 +738,10 @@ public class BatchAnalysisUi
         //public JButton btn;
         //public GroupLayout panelLayout;
 
-        public Color color;
-        public final Color originalColor;
+        public Rgb color;
+        public final Rgb originalColor;
 
-        public ColorSizeEntry(String name, boolean enabled, double value, Color color)
+        public ColorSizeEntry(String name, boolean enabled, double value, Rgb color)
         {
             super(name, enabled, value, "px");
             this.color = color;
@@ -736,7 +753,7 @@ public class BatchAnalysisUi
 
             panel = new RoundedPanel();
             panel.setCornerRadius(7);
-            panel.setBackground(color);
+            panel.setBackground(color.toColor());
             panel.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
@@ -759,10 +776,10 @@ public class BatchAnalysisUi
         void selectColor()
         {
             if (cb.isSelected()) {
-                Color background = JColorChooser.showDialog(null, name, color);
+                Color background = JColorChooser.showDialog(null, name, color.toColor());
                 if (background != null) {
-                    color = background;
-                    panel.setBackground(color);
+                    color = new Rgb(background);
+                    panel.setBackground(background);
                 }
             }
         }

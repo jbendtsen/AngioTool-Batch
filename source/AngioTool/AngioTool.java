@@ -1,5 +1,6 @@
 package AngioTool;
 
+import Batch.AnalyzerParameters;
 import GUI.AngioToolGUI;
 import Utils.Utils;
 import ij.IJ;
@@ -11,18 +12,24 @@ import javax.swing.ImageIcon;
 
 public class AngioTool {
    public static final String VERSION = "AngioTool-Batch 0.6a r4 (04.01.24)";
+   public static final String PREFS_TXT = "AT_Prefs.txt";
+   public static final String BATCH_TXT = "AT_BatchPrefs.txt";
    public static AngioToolGUI angioToolGUI;
 
    AngioTool() {
       this.getSystemInfo();
-      String err1 = ATPreferences.load(this);
-      if (err1 != null) {
-         System.err.println("err1=" + err1);
+
+      AnalyzerParameters initialParams;
+      try {
+         initialParams = ATPreferences.load(this, PREFS_TXT);
+      }
+      catch (Exception ex) {
+         Utils.showExceptionInDialogBox(ex);
+         initialParams = AnalyzerParameters.defaults();
       }
 
-      ATPreferences.InitVariables();
-      angioToolGUI = new AngioToolGUI();
-      angioToolGUI.setLocation((Point)ATPreferences.settings.atLoc);
+      angioToolGUI = new AngioToolGUI(initialParams);
+      //angioToolGUI.setLocation(new Point(100, 50));
       angioToolGUI.setVisible(true);
    }
 

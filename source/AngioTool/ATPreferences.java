@@ -1,54 +1,43 @@
 package AngioTool;
 
-import GUI.AngioToolGUI;
+import Batch.AnalyzerParameters;
+import Batch.ByteVector;
+import Batch.Rgb;
 import Utils.Utils;
-import ij.IJ;
-import ij.util.Tools;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Point;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Date;
 import java.lang.reflect.Field;
 
 public class ATPreferences {
-    //public static String separator = System.getProperty("file.separator");
+    public static String separator = System.getProperty("file.separator");
 
-    public static void setPreferences() {
+    public static void savePreferences(AnalyzerParameters params, String fileName) {
         StringBuilder sb = new StringBuilder();
         sb.append("# " + AngioTool.VERSION + " Preferences\n");
         sb.append("# " + new Date() + "\n\n");
 
-        Field[] fields = settings.getClass().getDeclaredFields();
+        Field[] fields = params.getClass().getDeclaredFields();
         try {
             for (Field f : fields) {
-                String type = f.getType().getName();
-                if (type.equals("java.lang.String")) type = "string";
-                else if (type.equals("java.awt.Point")) type = "Point";
+                if (!AnalyzerParameters.shouldPersistField(f))
+                    continue;
 
+                String name = f.getName();
+                String type = f.getType().getSimpleName();
                 sb.append('.');
-                sb.append(f.getName());
+                sb.append(name);
                 sb.append('.');
                 sb.append(type);
                 sb.append('=');
-                if (type.equals("Point")) {
-                    Point p = (Point)f.get(settings);
-                    sb.append(p.x);
-                    sb.append(',');
-                    sb.append(p.y);
-                }
-                else {
-                    sb.append(f.get(settings));
-                }
+                sb.append(getStringOfArrayOrObject(f.get(params)));
                 sb.append('\n');
             }
         }
@@ -58,7 +47,7 @@ public class ATPreferences {
         }
 
         try {
-            File path = new File(Utils.prefsDir, "AT_Prefs.txt");
+            File path = new File(Utils.prefsDir, fileName);
             FileOutputStream out = new FileOutputStream(path);
             out.write(sb.toString().getBytes());
             out.close();
@@ -68,11 +57,10 @@ public class ATPreferences {
         }
     }
 
-    public static String load(Object at) {
-        InputStream f = at.getClass().getResourceAsStream("/AT_Prefs.txt");
-        if (Utils.ATDir == null) {
+    public static AnalyzerParameters load(Object at, String fileName) throws IOException {
+        InputStream f = at.getClass().getResourceAsStream("/" + fileName);
+        if (Utils.ATDir == null)
             Utils.ATDir = System.getProperty("user.dir");
-        }
 
         String userHome = System.getProperty("user.home");
         File atFolder = new File(userHome, "AngioTool-Batch");
@@ -92,110 +80,153 @@ public class ATPreferences {
 
         Utils.prefsDir = atFolder.getAbsolutePath();
 
-        if (f == null) {
-            try {
-                File prefsPath = new File(atFolder, "AT_Prefs.txt");
-                f = new FileInputStream(prefsPath);
-            } catch (FileNotFoundException var6) {
-                f = null;
-            }
+        File prefsPath = new File(atFolder, fileName);
+        f = new FileInputStream(prefsPath);
+
+        //if (f == null)
+            //return "AT_Prefs.txt not found in AngioTool.jar or in " + Utils.prefsDir;
+
+        StringBuilder sb = new StringBuilder();
+        byte[] buf = new byte[512];
+        while (true) {
+            int res = f.read(buf);
+            if (res <= 0)
+                break;
+            sb.append(new String(buf, 0, res));
         }
-
-        if (f == null) {
-            return "AT_Prefs.txt not found in AngioTool.jar or in " + Utils.prefsDir;
+        /*
+        catch (IOException ex) {
+            String msg = ex.getMessage();
+            return msg != null ? msg : "Failed to read from " + fileName;
         }
-        else {
-            StringBuilder sb = new StringBuilder();
-            byte[] buf = new byte[512];
+        */
 
-            try {
-                while (true) {
-                    int res = f.read(buf);
-                    if (res <= 0)
-                        break;
-                    sb.append(new String(buf, 0, res));
-                }
-            }
-            catch (IOException ex) {
-                String msg = ex.getMessage();
-                return msg != null ? msg : "Failed to read from AT_Prefs.txt";
-            }
-
-            populatePreferences(sb.toString());
-        }
-
-        return null;
+        return populatePreferences(sb.toString());
     }
 
-    public static void populatePreferences(String text) {
+    public static AnalyzerParameters populatePreferences(String text) {
         HashMap<String, Field> map = new HashMap<>();
-        Field[] fields = settings.getClass().getDeclaredFields();
+        AnalyzerParameters params = AnalyzerParameters.defaults();
+        Field[] fields = params.getClass().getDeclaredFields();
         for (Field f : fields)
             map.put(f.getName(), f);
 
         ArrayList<String> errors = new ArrayList<>();
 
         String[] lines = text.split("\n");
-        try {
-            for (String l : lines) {
-                if (l.length() < 2 || l.charAt(0) == '#')
+        for (String l : lines) {
+            if (l.length() < 2 || l.charAt(0) == '#')
+                continue;
+
+            int nameStartIdx = l.charAt(0) == '.' ? 1 : 0;
+            int typeStartIdx = l.indexOf('.', nameStartIdx) + 1;
+            int valueStartIdx = l.indexOf('=') + 1;
+
+            if (nameStartIdx < 0 || typeStartIdx <= 0 || valueStartIdx <= 0)
+                continue;
+
+            String name = l.substring(1, typeStartIdx - 1);
+            String type = l.substring(typeStartIdx, valueStartIdx - 1);
+            String valueStr = l.substring(valueStartIdx);
+
+            Field f = map.get(name);
+            if (f != null) {
+                Object value;
+
+                try {
+                    if (type.endsWith("[]"))
+                        value = parseArray(valueStr, type);
+                    else if (type.equals("Rgb"))
+                        value = new Rgb(valueStr);
+                    else if (type.equals("boolean") || type.equals("bool"))
+                        value = parseBool(valueStr);
+                    else if (type.equals("int"))
+                        value = Integer.parseInt(valueStr);
+                    else if (type.equals("double"))
+                        value = Double.parseDouble(valueStr);
+                    else
+                        value = valueStr;
+                }
+                catch (Exception ex) {
+                    String message = ex.getMessage();
+                    message = message != null ? message : ex.getClass().getSimpleName();
+                    errors.add(message);
                     continue;
+                }
 
-                int nameStartIdx = l.charAt(0) == '.' ? 1 : 0;
-                int typeStartIdx = l.indexOf('.', nameStartIdx) + 1;
-                int valueStartIdx = l.indexOf('=') + 1;
-
-                if (nameStartIdx < 0 || typeStartIdx <= 0 || valueStartIdx <= 0)
+                try {
+                    f.set(params, value);
+                }
+                catch (IllegalAccessException ex) {
+                    String message = ex.getMessage();
+                    message = message != null ? message : ex.getClass().getSimpleName();
+                    errors.add(message);
                     continue;
-
-                String name = l.substring(1, typeStartIdx - 1);
-                String type = l.substring(typeStartIdx, valueStartIdx - 1);
-                String valueStr = l.substring(valueStartIdx);
-
-                Field f = map.get(name);
-                if (f != null) {
-                    Object value;
-
-                    try {
-                        if (type.equals("Point"))
-                            value = parsePoint(valueStr);
-                        else if (type.equals("boolean") || type.equals("bool"))
-                            value = parseBool(valueStr);
-                        else if (type.equals("int"))
-                            value = Integer.parseInt(valueStr);
-                        else if (type.equals("float"))
-                            value = Float.parseFloat(valueStr);
-                        else if (type.equals("double"))
-                            value = Double.parseDouble(valueStr);
-                        else
-                            value = valueStr;
-                    }
-                    catch (Exception ex) {
-                        String message = ex.getMessage();
-                        message = message != null ? message : ex.getClass().getSimpleName();
-                        errors.add(message);
-                        continue;
-                    }
-
-                    f.set(settings, value);
                 }
             }
         }
-        catch (IllegalAccessException ex) {
-            String message = ex.getMessage();
-            message = message != null ? message : ex.getClass().getSimpleName();
-            errors.add(message);
-        }
 
         if (!errors.isEmpty())
-            Utils.showDialogBox("Configuration Parsing Error", String.join("\n", errors));
+            System.err.println("Configuration Parsing Error\n" + String.join("\n", errors));
+
+        return params;
     }
 
-    public static Point parsePoint(String value) {
-        int[] numbers = Utils.getSomeInts(value);
-        int x = numbers[0];
-        int y = numbers[1];
-        return new Point(x, y);
+    public static String getStringOfArrayOrObject(Object obj) {
+        ByteVector bv = new ByteVector();
+        writeArrayToString(bv, obj);
+        return bv.toString();
+    }
+
+    public static void writeArrayToString(ByteVector bv, Object obj) {
+        if (obj instanceof String) {
+            bv.add((String)obj);
+        }
+        else if (obj instanceof Object[]) {
+            Object[] objs = (Object[])obj;
+            bv.add('[');
+            for (int i = 0; i < objs.length; i++)
+                writeArrayToString(bv, objs[i]);
+            bv.add(']');
+        }
+        else if (obj instanceof boolean[]) {
+            boolean[] bools = (boolean[])obj;
+            bv.add('[');
+            for (int i = 0; i < bools.length; i++) {
+                if (i > 0)
+                    bv.add(", ");
+                bv.add(bools[i] ? 'T' : 'F');
+            }
+            bv.add(']');
+        }
+        else if (obj instanceof byte[])
+            bv.add(Arrays.toString((byte[])obj));
+        else if (obj instanceof char[])
+            bv.add(Arrays.toString((char[])obj));
+        else if (obj instanceof short[])
+            bv.add(Arrays.toString((short[])obj));
+        else if (obj instanceof int[])
+            bv.add(Arrays.toString((int[])obj));
+        else if (obj instanceof long[])
+            bv.add(Arrays.toString((long[])obj));
+        else if (obj instanceof float[])
+            bv.add(Arrays.toString((float[])obj));
+        else if (obj instanceof double[])
+            bv.add(Arrays.toString((double[])obj));
+        else
+            bv.add(obj != null ? obj.toString() : "null");
+    }
+
+    public static Object parseArray(String value, String type) throws Exception {
+        Object array;
+        if (type.equals("double[]")) {
+            array = Utils.getSomeDoubles(value);
+        }
+        else {
+            throw new Exception("ATPreferences.parseArray() only works with \"double[]\", not \"" + type + "\"");
+        }
+
+        return array;
     }
 
     public static Boolean parseBool(String value) {

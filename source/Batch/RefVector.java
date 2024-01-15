@@ -77,21 +77,31 @@ public class RefVector<T> implements Iterable<T> {
         return array;
     }
 
+    public String makeJoinedString(String delim) {
+        ByteVector sb = new ByteVector();
+        for (int i = 0; i < size; i++) {
+            if (i > 0)
+                sb.add(delim);
+            sb.add(buf[i] != null ? buf[i].toString() : "null");
+        }
+        return sb.toString();
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("RefVector<");
-        sb.append(type.getSimpleName());
-        sb.append(">: [");
-        sb.append(size);
-        sb.append("] {");
+        ByteVector sb = new ByteVector();
+        sb.add("RefVector<");
+        sb.add(type.getSimpleName());
+        sb.add(">: [");
+        sb.add("" + size);
+        sb.add("] {");
 
         for (int i = 0; i < size; i++) {
-            sb.append(i == 0 ? " " : ", ");
-            sb.append(buf[i] != null ? buf[i].toString() : "null");
+            sb.add(i == 0 ? " " : ", ");
+            sb.add(buf[i] != null ? buf[i].toString() : "null");
         }
 
-        sb.append(" }");
+        sb.add(" }");
         return sb.toString();
     }
 }

@@ -1,6 +1,5 @@
 package Batch;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.io.File;
 import java.util.Date;
@@ -37,7 +36,7 @@ public class Analyzer
             public String imageAbsolutePath;
             public int thresholdLow;
             public int thresholdHigh;
-            public int[] sigmas;
+            public double[] sigmas;
             public double removeSmallParticlesThreshold;
             public double fillHolesValue;
             public double linearScalingFactor;
@@ -139,7 +138,7 @@ public class Analyzer
         ArrayList<XlsxReader.SheetCells> originalSheets
     ) {
         ArrayList<File> inputs = new ArrayList<>();
-        for (String path : params.inputPaths) {
+        for (String path : params.inputImagePaths) {
             enumerateImageFilesRecursively(inputs, new File(path), uiToken);
             if (uiToken.isClosed.get())
                 return;
@@ -348,7 +347,7 @@ public class Analyzer
         result.outlineRoi.setStrokeWidth(params.outlineSize);
         result.allantoisOverlay.clear();
         result.allantoisOverlay.add(result.outlineRoi);
-        result.allantoisOverlay.setStrokeColor(params.outlineColor);
+        result.allantoisOverlay.setStrokeColor(params.outlineColor.toColor());
         result.imageResult.setOverlay(result.allantoisOverlay);
 
         uiToken.updateImageProgress(40, "Computing lacunarity...");
@@ -536,14 +535,6 @@ public class Analyzer
         String dateOut = sw.dateFormatter.format(today);
         String timeOut = sw.timeFormatter.format(today);
 
-        StringBuilder sigmasSb = new StringBuilder();
-        boolean empty = true;
-        for (Integer s : stats.sigmas) {
-            if (!empty) sigmasSb.append(",");
-            sigmasSb.append(s);
-            empty = false;
-        }
-
         sw.writeRow(
             stats.imageFileName,
             dateOut,
@@ -551,7 +542,7 @@ public class Analyzer
             stats.imageAbsolutePath,
             stats.thresholdLow,
             stats.thresholdHigh,
-            sigmasSb.toString(),
+            Utils.formatDoubleArray(stats.sigmas),
             stats.removeSmallParticlesThreshold,
             stats.fillHolesValue,
             stats.linearScalingFactor,

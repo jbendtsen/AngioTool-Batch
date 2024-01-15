@@ -8,6 +8,7 @@ import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
 import Batch.ISliceCompute;
 import Batch.PointVectorInt;
+import Batch.IntVector;
 import features.Tubeness;
 import ij.IJ;
 import ij.ImagePlus;
@@ -200,8 +201,9 @@ public class Utils {
    }
 
    public static int[] getSomeInts(String str) {
-      ArrayList<Integer> numbers = new ArrayList<>();
+      IntVector numbers = new IntVector();
       boolean wasNum = false;
+      boolean isNeg = false;
       int n = 0;
       int len = str.length();
 
@@ -211,29 +213,94 @@ public class Utils {
             n = n * 10 + (c - 0x30);
             wasNum = true;
          }
+         else if (!wasNum && c == '-') {
+            isNeg = true;
+         }
          else {
             if (wasNum)
-               numbers.add(n);
+               numbers.add(isNeg ? -n : n);
             n = 0;
+            wasNum = false;
+            isNeg = false;
+         }
+      }
+      if (wasNum)
+         numbers.add(isNeg ? -n : n);
+
+      return numbers.copy();
+   }
+
+   public static double[] getSomeDoubles(String str) {
+      IntVector numbers = new IntVector();
+      boolean wasNum = false;
+      boolean isNeg = false;
+      int mode = 0;
+      int[] nums = new int[3];
+      int len = str.length();
+
+      for (int i = 0; i < len; i++) {
+         int c = str.codePointAt(i);
+         if (c >= 0x30 && c <= 0x39) {
+            if (nums[mode] <= 214748363)
+                nums[mode] = nums[mode] * 10 + (c - 0x30);
+            wasNum = true;
+         }
+         else if (!wasNum && c == '-') {
+            isNeg = true;
+         }
+         else {
+            if (isNeg) {
+               nums[mode] *= -1;
+               isNeg = false;
+            }
+            if (wasNum) {
+               if (mode >= 2 || (mode == 1 && c != 'e' && c != 'E') || (mode == 0 && mode != '.')) {
+                  numbers.add(nums);
+                  nums[0] = 0;
+                  nums[1] = 0;
+                  nums[2] = 0;
+               }
+               else {
+                  mode++;
+               }
+            }
             wasNum = false;
          }
       }
       if (wasNum)
-         numbers.add(n);
+         numbers.add(nums);
 
-      int[] result = new int[numbers.size()];
-      for (int i = 0; i < result.length; i++)
-         result[i] = (int)numbers.get(i);
+      double[] values = new double[numbers.size / 3];
+      for (int i = 0; i < numbers.size-2; i += 3) {
+         int frac = numbers.buf[i+1];
+         int f = frac;
+         int fDigits = 0;
+         boolean seenNonZero = false;
+         while (f > 0) {
+            if (f % 10 != 0)
+               seenNonZero = true;
+            if (!seenNonZero)
+               frac /= 10;
+            else
+               fDigits++;
+            f /= 10;
+         }
 
-      return result;
+         double v = (double)numbers.buf[i];
+         v += (double)frac * Math.pow(10.0, -fDigits);
+         v *= Math.pow(10.0, numbers.buf[i+2]);
+         values[i/3] = v;
+      }
+
+      return values;
    }
 
-   public static String formatIntArray(int[] array) {
+   public static String formatDoubleArray(double[] array) {
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < array.length; i++) {
          if (i != 0)
             sb.append(", ");
-         sb.append(array[i]);
+         sb.append(formatDouble(array[i]));
       }
       return sb.toString();
    }

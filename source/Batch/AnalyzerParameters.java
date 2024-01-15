@@ -1,11 +1,10 @@
 package Batch;
 
-import java.awt.Color;
-import java.util.ArrayList;
+import java.lang.reflect.Field;
 
 public class AnalyzerParameters {
     public String defaultPath;
-    public String[] inputPaths;
+    public String[] inputImagePaths;
     public String excelFilePath;
     public boolean shouldSaveResultImages;
     public String resultImagesPath;
@@ -24,16 +23,16 @@ public class AnalyzerParameters {
     public double linearScalingFactor;
     public boolean shouldShowOverlayOrGallery;
     public boolean shouldDrawOutline;
-    public Color outlineColor;
+    public Rgb outlineColor;
     public double outlineSize;
     public boolean shouldDrawSkeleton;
-    public Color skeletonColor;
+    public Rgb skeletonColor;
     public double skeletonSize;
     public boolean shouldDrawBranchPoints;
-    public Color branchingPointsColor;
+    public Rgb branchingPointsColor;
     public double branchingPointsSize;
     public boolean shouldDrawConvexHull;
-    public Color convexHullColor;
+    public Rgb convexHullColor;
     public double convexHullSize;
     public boolean shouldScalePixelValues; // doScaling, ie. pixels that had values between min-max become between 0-255
     public boolean shouldComputeLacunarity;
@@ -43,7 +42,7 @@ public class AnalyzerParameters {
 
     public AnalyzerParameters(
         String defaultPath,
-        String[] inputPaths,
+        String[] inputImagePaths,
         String excelFilePath,
         boolean shouldSaveResultImages,
         String resultImagesPath,
@@ -62,23 +61,23 @@ public class AnalyzerParameters {
         double linearScalingFactor,
         boolean shouldShowOverlayOrGallery,
         boolean shouldDrawOutline,
-        Color outlineColor,
+        Rgb outlineColor,
         double outlineSize,
         boolean shouldDrawSkeleton,
-        Color skeletonColor,
+        Rgb skeletonColor,
         double skeletonSize,
         boolean shouldDrawBranchPoints,
-        Color branchingPointsColor,
+        Rgb branchingPointsColor,
         double branchingPointsSize,
         boolean shouldDrawConvexHull,
-        Color convexHullColor,
+        Rgb convexHullColor,
         double convexHullSize,
         boolean shouldScalePixelValues,
         boolean shouldComputeLacunarity,
         boolean shouldComputeThickness
     ) {
         this.defaultPath = defaultPath;
-        this.inputPaths = inputPaths;
+        this.inputImagePaths = inputImagePaths;
         this.excelFilePath = excelFilePath;
         this.shouldSaveResultImages = shouldSaveResultImages;
         this.resultImagesPath = resultImagesPath;
@@ -116,35 +115,41 @@ public class AnalyzerParameters {
     public static AnalyzerParameters defaults() {
         AnalyzerParameters p = new AnalyzerParameters();
         p.defaultPath = "C:/";
-        p.outlineColor = "FFFF00";
-        p.skeletonColor = "FF0000";
-        p.branchingPointsColor = "0099FF";
-        p.convexHullColor = "CCFFFF";
+        p.outlineColor = new Rgb("FFFF00");
+        p.skeletonColor = new Rgb("FF0000");
+        p.branchingPointsColor = new Rgb("0099FF");
+        p.convexHullColor = new Rgb("CCFFFF");
         p.outlineSize = 1;
         p.skeletonSize = 5;
         p.branchingPointsSize = 8;
         p.convexHullSize = 1;
         p.resultImageFormat = "jpg";
-        p.showOverlay = true;
-        p.showOutline = true;
-        p.showSkeleton = true;
-        p.showBranchingPoints = true;
-        p.showConvexHull = true;
-        p.doScaling = false;
-        p.fillHoles = false;
-        p.smallParticles = false;
+        p.shouldShowOverlayOrGallery = true;
+        p.shouldDrawOutline = true;
+        p.shouldDrawSkeleton = true;
+        p.shouldDrawBranchPoints = true;
+        p.shouldDrawConvexHull = true;
+        p.shouldScalePixelValues = false;
+        p.shouldFillHoles = false;
+        p.shouldRemoveSmallParticles = false;
         p.resizingFactor = 1.0;
-        p.computeLacunarity = true;
-        p.computeThickness = true;
-        p.LinearScalingFactor = 0.0;
-        p.currentSigmas = new double[5.0];
+        p.shouldComputeLacunarity = true;
+        p.shouldComputeThickness = true;
+        p.linearScalingFactor = 0.0;
+        p.sigmas = new double[] {5.0};
         p.thresholdLow = 10;
         p.thresholdHigh = 50;
+        return p;
     }
 
-    public ArrayList<String> validate() {
-        ArrayList<String> errors = new ArrayList<>();
-        if (inputPaths == null || inputPaths.length == 0)
+    // TODO: something more sophisticated
+    public static boolean shouldPersistField(Field f) {
+        return !f.getName().equals("inputImagePaths");
+    }
+
+    public RefVector<String> validate() {
+        RefVector<String> errors = new RefVector<>(String.class);
+        if (inputImagePaths == null || inputImagePaths.length == 0)
             errors.add("At least one input folder is required");
         if (excelFilePath == null || excelFilePath.length() == 0)
             errors.add("Path to spreadsheet is missing");
@@ -179,10 +184,10 @@ public class AnalyzerParameters {
             errors.add("Branch color is missing");
         if (shouldDrawBranchPoints && branchingPointsSize <= 0)
             errors.add("Branch size must be >0 (not " + branchingPointsSize + ")");
-        if (shouldDrawBoundary && boundaryColor == null)
+        if (shouldDrawConvexHull && convexHullColor == null)
             errors.add("Boundary color is missing");
-        if (shouldDrawBoundary && boundarySize <= 0)
-            errors.add("Boundary size must be >0 (not " + boundarySize + ")");
+        if (shouldDrawConvexHull && convexHullSize <= 0)
+            errors.add("Boundary size must be >0 (not " + convexHullSize + ")");
         return errors;
     }
 }
