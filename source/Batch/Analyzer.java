@@ -1,5 +1,6 @@
 package Batch;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.io.File;
 import java.util.Date;
@@ -132,6 +133,25 @@ public class Analyzer
         }
     }
 
+    static int calculateUpdateCountPerImage(AnalyzerParameters params) {
+        int count = 8;
+        if (params.shouldDrawOutline)
+            count++;
+        if (params.shouldComputeLacunarity)
+            count++;
+        if (params.shouldDrawConvexHull)
+            count++;
+        if (params.shouldComputeThickness)
+            count++;
+        if (params.shouldDrawSkeleton)
+            count++;
+        if (params.shouldDrawBranchPoints)
+            count++;
+        if (params.shouldSaveResultImages)
+            count++;
+        return count;
+    }
+
     public static void doBatchAnalysis(
         AnalyzerParameters params,
         BatchAnalysisUi uiToken,
@@ -161,7 +181,7 @@ public class Analyzer
 
         double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
 
-        uiToken.startProgressBars(inputs.size(), 120);
+        uiToken.startProgressBars(inputs.size(), calculateUpdateCountPerImage(params));
         boolean startedAnyImages = false;
 
         for (File inFile : inputs) {
@@ -194,10 +214,10 @@ public class Analyzer
             }
 
             if (exception == null) {
-                uiToken.updateImageProgress(110, "Saving result image...");
-     
-                if (params.shouldSaveResultImages)
+                if (params.shouldSaveResultImages) {
+                    uiToken.updateImageProgress("Saving result image...");
                     IJ.saveAs(result.imageResult.flatten(), "jpg", inFile.getAbsolutePath() + " result.jpg");
+                }
             }
             else if (!analyzeSucceeded) {
                 try {
@@ -247,7 +267,7 @@ public class Analyzer
 
     static Result analyze(File inFile, ImagePlus inputImage, AnalyzerParameters params, double linearScalingFactor, BatchAnalysisUi uiToken)
     {
-        uiToken.updateImageProgress(0, "Loading image...");
+        uiToken.updateImageProgress("Loading image...");
 
         Result result = new Result();
         result.allantoisOverlay = new Overlay();
@@ -264,7 +284,7 @@ public class Analyzer
 
         result.ipOriginal = result.imageResult.getProcessor().convertToByte(false);
 
-        uiToken.updateImageProgress(10, "Calculating tubeness...");
+        uiToken.updateImageProgress("Calculating tubeness...");
 
         //for (Integer s : params.sigmasMarks)
 
@@ -314,7 +334,7 @@ public class Analyzer
         }
         */
 
-        uiToken.updateImageProgress(20, "Filtering image...");
+        uiToken.updateImageProgress("Filtering image...");
 
         result.tempProcessor1 = result.tubenessIp.duplicate().convertToByte(true);
         Utils.thresholdFlexible(result.tempProcessor1, params.thresholdLow, params.thresholdHigh);
@@ -340,32 +360,39 @@ public class Analyzer
             result.tempProcessor2.invert();
         }
 
-        uiToken.updateImageProgress(30, "Drawing Allantois overlay...");
+        if (params.shouldDrawOutline) {
+            uiToken.updateImageProgress("Drawing outltine...");
 
-        result.iplus = new ImagePlus("tubenessIp", result.imageThresholded.getProcessor());
-        result.outlineRoi = Utils.thresholdToSelection(result.iplus);
-        result.outlineRoi.setStrokeWidth(params.outlineSize);
-        result.allantoisOverlay.clear();
-        result.allantoisOverlay.add(result.outlineRoi);
-        result.allantoisOverlay.setStrokeColor(params.outlineColor.toColor());
-        result.imageResult.setOverlay(result.allantoisOverlay);
-
-        uiToken.updateImageProgress(40, "Computing lacunarity...");
+            result.iplus = new ImagePlus("tubenessIp", result.imageThresholded.getProcessor());
+            result.outlineRoi = Utils.thresholdToSelection(result.iplus);
+            result.outlineRoi.setStrokeColor(params.outlineColor.toColor());
+            result.outlineRoi.setStrokeWidth(params.outlineSize);
+            result.allantoisOverlay.add(result.outlineRoi);
+        }
 
         result.vesselPixelArea = Utils.thresholdedPixelArea(result.imageThresholded.getProcessor());
+
         if (params.shouldComputeLacunarity) {
+            uiToken.updateImageProgress("Computing lacunarity...");
             result.tempProcessor3 = result.imageThresholded.getProcessor().duplicate();
             result.iplusTemp = new ImagePlus("iplusTemp", result.tempProcessor3);
             result.lacunarity = new Lacunarity(result.iplusTemp, 10, 10, 5, true);
         }
 
-        uiToken.updateImageProgress(50, "Computing convex hull...");
+        uiToken.updateImageProgress("Computing convex hull...");
 
         result.convexHull = Utils.computeConvexHull(result.imageThresholded.getProcessor());
         result.convexHullArea = result.convexHull.area();
         result.convexHullRoi = new PolygonRoi(result.convexHull.polygon(), 2);
 
-        uiToken.updateImageProgress(60, "Computing skeleton...");
+        if (params.shouldDrawConvexHull) {
+            uiToken.updateImageProgress("Drawing convex hull...");
+            result.convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
+            result.convexHullRoi.setStrokeWidth(params.convexHullSize);
+            result.allantoisOverlay.add(result.convexHullRoi);
+        }
+
+        uiToken.updateImageProgress("Computing skeleton...");
 
         result.iplusSkeleton = result.imageThresholded.duplicate();
         result.iplusSkeleton.setTitle("iplusSkeleton");
@@ -380,9 +407,9 @@ public class Analyzer
         result.skelResult = result.skeleton.run(0, false, false, result.iplusSkeleton, false, false);
         result.graphs = result.skeleton.getGraphs();
 
-        uiToken.updateImageProgress(70, "Computing thickness...");
-
         if (params.shouldComputeThickness) {
+            uiToken.updateImageProgress("Computing thickness...");
+
             EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
             ed.setup(null, result.imageThresholded);
             ed.run(result.imageThresholded.getProcessor());
@@ -392,7 +419,7 @@ public class Analyzer
             result.stats.averageVesselDiameter = thickness * linearScalingFactor;
         }
 
-        uiToken.updateImageProgress(80, "Generating skeleton points...");
+        uiToken.updateImageProgress("Generating skeleton points...");
 
         result.skeletonRoi = new ArrayList();
 
@@ -415,7 +442,7 @@ public class Analyzer
             }
         }
 
-        uiToken.updateImageProgress(90, "Computing junctions...");
+        uiToken.updateImageProgress("Computing junctions...");
 
         result.al2 = result.skelResult.getListOfJunctionVoxels();
         result.removedJunctions = Utils.computeActualJunctions(result.al2);
@@ -431,6 +458,40 @@ public class Analyzer
             result.junctionsRoi.add(or);
         }
 
+        if (params.shouldDrawSkeleton) {
+            uiToken.updateImageProgress("Drawing skeleton...");
+            Color skelColor = params.skeletonColor.toColor();
+
+            for(int i = 0; i < result.skeletonRoi.size(); ++i) {
+                Roi r = (Roi)result.skeletonRoi.get(i);
+                r.setStrokeWidth((float)params.skeletonSize);
+                r.setStrokeColor(skelColor);
+                result.allantoisOverlay.add(r);
+            }
+
+            for(int i = 0; i < result.removedJunctions.size(); ++i) {
+                Point p = result.removedJunctions.get(i);
+                OvalRoi r = new OvalRoi(p.x, p.y, 1, 1);
+                r.setStrokeWidth((float)params.skeletonSize);
+                r.setStrokeColor(skelColor);
+                result.allantoisOverlay.add(r);
+            }
+        }
+
+        if (params.shouldDrawBranchPoints) {
+            uiToken.updateImageProgress("Drawing branch points...");
+            Color branchColor = params.branchingPointsColor.toColor();
+
+            for(int i = 0; i < result.junctionsRoi.size(); ++i) {
+                Roi r = (Roi)result.junctionsRoi.get(i);
+                r.setStrokeWidth(params.branchingPointsSize);
+                r.setStrokeColor(branchColor);
+                result.allantoisOverlay.add(r);
+            }
+        }
+
+        result.imageResult.setOverlay(result.allantoisOverlay);
+
         //updateOverlay()
         //populateResults()
 
@@ -445,7 +506,7 @@ public class Analyzer
         double linearScalingFactor,
         BatchAnalysisUi uiToken
     ) {
-        uiToken.updateImageProgress(100, "Saving image stats to Excel");
+        uiToken.updateImageProgress("Saving image stats to Excel");
 
         double areaScalingFactor = linearScalingFactor * linearScalingFactor;
 

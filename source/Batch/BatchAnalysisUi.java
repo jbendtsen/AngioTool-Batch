@@ -617,14 +617,14 @@ public class BatchAnalysisUi
         });
     }
 
-    public void updateImageProgress(int newProgress, String statusMsg)
+    public void updateImageProgress(String statusMsg)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
                 return;
 
             imageLabel.setText(statusMsg);
-            imageProgress.setValue(newProgress);
+            imageProgress.setValue(imageProgress.getValue() + 1);
 
             updateDialogSize(jdialog);
         });
