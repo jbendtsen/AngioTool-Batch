@@ -216,7 +216,15 @@ public class Analyzer
             if (exception == null) {
                 if (params.shouldSaveResultImages) {
                     uiToken.updateImageProgress("Saving result image...");
-                    IJ.saveAs(result.imageResult.flatten(), "jpg", inFile.getAbsolutePath() + " result.jpg");
+                    String basePath =
+                        //params.shouldSaveImagesToSpecificFolder ? resolveOutputPath(outputPathMap, inFile) :
+                        inFile.getAbsolutePath();
+                    String format =
+                        //resolveImageFormat(
+                        params.resultImageFormat
+                        //)
+                        ;
+                    IJ.saveAs(result.imageResult.flatten(), format, basePath + " result." + format);
                 }
             }
             else if (!analyzeSucceeded) {

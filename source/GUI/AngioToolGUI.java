@@ -1922,6 +1922,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          null,
          "",
          this.saveResultImageCheckBox.isSelected(),
+         false,
          "",
          params.resultImageFormat,
          this.resizeImageCheckBox.isSelected(),

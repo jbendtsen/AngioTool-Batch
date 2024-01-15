@@ -7,6 +7,7 @@ public class AnalyzerParameters {
     public String[] inputImagePaths;
     public String excelFilePath;
     public boolean shouldSaveResultImages;
+    public boolean shouldSaveImagesToSpecificFolder;
     public String resultImagesPath;
     public String resultImageFormat;
     public boolean shouldResizeImage;
@@ -45,6 +46,7 @@ public class AnalyzerParameters {
         String[] inputImagePaths,
         String excelFilePath,
         boolean shouldSaveResultImages,
+        boolean shouldSaveImagesToSpecificFolder,
         String resultImagesPath,
         String resultImageFormat,
         boolean shouldResizeImage,
@@ -80,6 +82,7 @@ public class AnalyzerParameters {
         this.inputImagePaths = inputImagePaths;
         this.excelFilePath = excelFilePath;
         this.shouldSaveResultImages = shouldSaveResultImages;
+        this.shouldSaveImagesToSpecificFolder = shouldSaveImagesToSpecificFolder;
         this.resultImagesPath = resultImagesPath;
         this.resultImageFormat = resultImageFormat;
         this.shouldResizeImage = shouldResizeImage;
@@ -147,13 +150,19 @@ public class AnalyzerParameters {
         return !f.getName().equals("inputImagePaths");
     }
 
+    // TODO: also something more sophisticated
+    public static boolean isValidPath(String path) {
+        return path != null && path.length() > 0;
+    }
+
     public RefVector<String> validate() {
         RefVector<String> errors = new RefVector<>(String.class);
         if (inputImagePaths == null || inputImagePaths.length == 0)
             errors.add("At least one input folder is required");
-        if (excelFilePath == null || excelFilePath.length() == 0)
+        if (!isValidPath(excelFilePath))
             errors.add("Path to spreadsheet is missing");
-        //resultImagesPath
+        if (shouldSaveImagesToSpecificFolder && !isValidPath(resultImagesPath))
+            errors.add("Specific output folder was selected but not provided");
         if (resultImageFormat == null || resultImageFormat.length() == 0)
             errors.add("Result image format is missing");
         if (shouldResizeImage && resizingFactor <= 0.0)

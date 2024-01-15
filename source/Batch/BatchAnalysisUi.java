@@ -37,15 +37,25 @@ public class BatchAnalysisUi
     final JLabel labelExcel = new JLabel();
     final JButton btnExcel = new JButton();
     final JTextField textExcel = new JTextField();
-    final JCheckBox cbSaveResults = new JCheckBox();
+    final ButtonGroup groupSaveResults = new ButtonGroup();
+    final JRadioButton rbNoOutput = new JRadioButton();
+    final JRadioButton rbSameOutput = new JRadioButton();
+    final JRadioButton rbSaveResultsTo = new JRadioButton();
     final JButton btnSaveResultsFolder = new JButton();
     final JTextField textSaveResultsFolder = new JTextField();
-     
+    final JLabel labelResultsImageFormat = new JLabel();
+    final JTextField textResultsImageFormat = new JTextField();
+
     final JLabel labelAnalysis = new JLabel();
-    final NumberEntry elemResizeInputs;
-    final NumberEntry elemLinearScaleFactor;
     final JCheckBox cbComputeLacunarity = new JCheckBox();
     final JCheckBox cbComputeThickness = new JCheckBox();
+    final JSeparator sepAnalysis = new JSeparator(SwingConstants.VERTICAL);
+    final JLabel labelSkeletonizer = new JLabel();
+    final ButtonGroup groupSkeletonizer = new ButtonGroup();
+    final JRadioButton rbSkelFast = new JRadioButton();
+    final JRadioButton rbSkelThorough = new JRadioButton();
+    final NumberEntry elemResizeInputs;
+    final NumberEntry elemLinearScaleFactor;
     final NumberEntry elemRemoveParticles;
     final NumberEntry elemFillHoles;
     final JLabel labelSigmas = new JLabel();
@@ -99,33 +109,62 @@ public class BatchAnalysisUi
         btnExcel.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectExcelFile());
         //textExcel
 
-        cbSaveResults.setText("Save result images to:");
-        cbSaveResults.setSelected(params.shouldSaveResultImages);
-        cbSaveResults.addActionListener((ActionEvent e) -> {
-            boolean enabled = cbSaveResults.isSelected();
-            btnSaveResultsFolder.setEnabled(enabled);
-            textSaveResultsFolder.setEnabled(enabled);
-        });
+        rbNoOutput.setText("No output");
+        rbNoOutput.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+
+        rbSameOutput.setText("Same folders as inputs");
+        rbSameOutput.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+
+        rbSaveResultsTo.setText("Save result images to:");
+        rbSaveResultsTo.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+
+        groupSaveResults.add(rbNoOutput);
+        groupSaveResults.add(rbSameOutput);
+        groupSaveResults.add(rbSaveResultsTo);
+
+        if (params.shouldSaveResultImages) {
+            ButtonModel m = params.shouldSaveImagesToSpecificFolder ? rbSaveResultsTo.getModel() : rbSameOutput.getModel();
+            groupSaveResults.setSelected(m, true);
+        }
+        else {
+            groupSaveResults.setSelected(rbNoOutput.getModel(), true);
+        }
 
         btnSaveResultsFolder.setIcon(Utils.ATOpenImageSmall);
-        btnSaveResultsFolder.setEnabled(params.shouldSaveResultImages);
         btnSaveResultsFolder.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectResultFolder());
+        //textSaveResultsFolder
 
-        textSaveResultsFolder.setText("<input image folders>");
-        textSaveResultsFolder.setEnabled(params.shouldSaveResultImages);
+        toggleSaveResults();
+
+        labelResultsImageFormat.setText("Result image format: ");
+        textResultsImageFormat.setText(params.resultImageFormat);
 
         labelAnalysis.setText("Analysis");
         Utils.setNewFontSizeOn(labelAnalysis, 20);
 
-        elemResizeInputs = new NumberEntry("Resize inputs by:", params.shouldResizeImage, params.resizingFactor, "x");
+        labelSkeletonizer.setText("Skeletonizer:");
 
-        elemLinearScaleFactor = new NumberEntry("Measurement Scale:", params.shouldApplyLinearScale, params.linearScalingFactor, "x");
+        rbSkelFast.setText("Fast (Zha84)");
+
+        rbSkelThorough.setText("Thorough (Lee94)");
+
+        groupSkeletonizer.add(rbSkelFast);
+        groupSkeletonizer.add(rbSkelThorough);
+
+        {
+            ButtonModel m = params.shouldUseFastSkeletonizer ? rbSkelFast.getModel() : rbSkelThorough.getModel();
+            groupSaveResults.setSelected(m, true);
+        }
 
         cbComputeLacunarity.setText("Lacunarity");
         cbComputeLacunarity.setSelected(params.shouldComputeLacunarity);
 
         cbComputeThickness.setText("Thickness");
         cbComputeThickness.setSelected(params.shouldComputeThickness);
+
+        elemResizeInputs = new NumberEntry("Resize inputs by:", params.shouldResizeImage, params.resizingFactor, "x");
+
+        elemLinearScaleFactor = new NumberEntry("Measurement Scale:", params.shouldApplyLinearScale, params.linearScalingFactor, "x");
 
         elemRemoveParticles = new NumberEntry("Remove Particles:", params.shouldRemoveSmallParticles, params.removeSmallParticlesThreshold, "px");
 
@@ -215,14 +254,30 @@ public class BatchAnalysisUi
                     .addComponent(textExcel)
                 )
             )
+            .addComponent(rbNoOutput)
+            .addComponent(rbSameOutput)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(cbSaveResults)
+                .addComponent(rbSaveResultsTo)
                 .addComponent(btnSaveResultsFolder)
                 .addComponent(textSaveResultsFolder)
             )
-            .addComponent(labelAnalysis)
-            .addComponent(cbComputeLacunarity)
-            .addComponent(cbComputeThickness)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(labelResultsImageFormat)
+                .addComponent(textResultsImageFormat, 40, 60, 80)
+            )
+            .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup()
+                    .addComponent(labelAnalysis)
+                    .addComponent(cbComputeLacunarity)
+                    .addComponent(cbComputeThickness)
+                )
+                .addComponent(sepAnalysis)
+                .addGroup(layout.createParallelGroup()
+                    .addComponent(labelSkeletonizer)
+                    .addComponent(rbSkelFast)
+                    .addComponent(rbSkelThorough)
+                )
+            )
             .addGroup(
                 arrangeParallelEntries(
                     elemLinearScaleFactor, elemRemoveParticles, layout, arrangeParallelEntries(
@@ -279,16 +334,33 @@ public class BatchAnalysisUi
                 .addComponent(btnExcel)
                 .addComponent(textExcel, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
             )
+            .addComponent(rbNoOutput)
+            .addComponent(rbSameOutput)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
-                .addComponent(cbSaveResults)
+                .addComponent(rbSaveResultsTo)
                 .addComponent(btnSaveResultsFolder)
                 .addComponent(textSaveResultsFolder, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
             )
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                .addComponent(labelResultsImageFormat)
+                .addComponent(textResultsImageFormat)
+            )
             .addGap(12)
-            .addComponent(labelAnalysis)
-            .addGap(8)
-            .addComponent(cbComputeLacunarity)
-            .addComponent(cbComputeThickness)
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(labelAnalysis)
+                .addComponent(sepAnalysis)
+                .addComponent(labelSkeletonizer)
+            )
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(cbComputeLacunarity)
+                .addComponent(sepAnalysis)
+                .addComponent(rbSkelFast)
+            )
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(cbComputeThickness)
+                .addComponent(sepAnalysis)
+                .addComponent(rbSkelThorough)
+            )
             .addGroup(
                 elemLinearScaleFactor.addToGroup(
                     elemResizeInputs.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
@@ -363,6 +435,12 @@ public class BatchAnalysisUi
             );
 
         return sequentialGroup;
+    }
+
+    void toggleSaveResults() {
+        boolean enabled = rbSaveResultsTo.isSelected();
+        btnSaveResultsFolder.setEnabled(enabled);
+        textSaveResultsFolder.setEnabled(enabled);
     }
 
     static JFileChooser createFileChooser() {
@@ -463,13 +541,33 @@ public class BatchAnalysisUi
     }
 
     AnalyzerParameters buildNewParamsFromUi() {
+        boolean shouldSaveImages;
+        boolean shouldUseSpecificOutputFolder;
+        ButtonModel saveImageType = groupSaveResults.getSelection();
+        if (saveImageType == rbSaveResultsTo.getModel()) {
+            shouldSaveImages = true;
+            shouldUseSpecificOutputFolder = true;
+        }
+        else if (saveImageType == rbNoOutput.getModel()) {
+            shouldSaveImages = false;
+            shouldUseSpecificOutputFolder = false;
+        }
+        else {
+            shouldSaveImages = true;
+            shouldUseSpecificOutputFolder = false;
+        }
+
+        ButtonModel skelType = groupSkeletonizer.getSelection();
+        boolean shouldUseFastSkel = skelType == rbSkelFast.getModel();
+
         return new AnalyzerParameters(
             defaultPath,
             Utils.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
             textExcel.getText(),
-            cbSaveResults.isSelected(),
+            shouldSaveImages,
+            shouldUseSpecificOutputFolder,
             textSaveResultsFolder.getText(),
-            "jpg", //resultImageFormat
+            textResultsImageFormat.getText(),
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.value,
             elemRemoveParticles.cb.isSelected(),
@@ -479,10 +577,10 @@ public class BatchAnalysisUi
             Utils.getSomeDoubles(textSigmas.getText()),
             Integer.parseInt(textMaxIntensity.getText()),
             Integer.parseInt(textMinIntensity.getText()),
-            false, // shouldUseFastSkeletonizer
+            shouldUseFastSkel, // shouldUseFastSkeletonizer
             elemLinearScaleFactor.cb.isSelected(),
             elemLinearScaleFactor.value,
-            false, // shouldShowOverlayOrGallery
+            true, // shouldShowOverlayOrGallery
             elemOutline.cb.isSelected(),
             elemOutline.color,
             elemOutline.value,
