@@ -75,6 +75,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -96,33 +97,7 @@ import vesselThickness.EDT_S1D;
 public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    public static Point ATAboutBoxLoc;
 
-   //private boolean doScaling = false;
-   //private boolean fillHoles = false;
-   //private boolean smallParticles = false;
-   //private double resizingFactor = 1.0;
-   //private boolean sigmaIsChanged = false;
-   //private boolean fillHolesIsChanged = false;
-   //private boolean smallParticlesIsChanged = false;
-   //private boolean hideOverlay = false;
-   //private boolean showOverlay;
-   //private boolean showOutline;
-   //private boolean showSkeleton;
-   //private boolean showBranchingPoints;
-   //private boolean showConvexHull;
-   //private int OutlineStrokeWidth;
-   //private int SkeletonStrokeWidth;
-   //private int BranchingPointsStrokeWidth;
-   //private int ConvexHullStrokeWidth;
-   //private Color OutlineColor;
-   //private Color SkeletonColor;
-   //private Color BranchingPointColor;
-   //private Color ConvexHullColor;
-   //private String imageResultFormat = "jpg";
-   //private boolean computeLacunarity = true;
-   //private boolean computeThickness = true;
-   //private double LinearScalingFactor = 0.0;
-   //private double AreaScalingFactor = 0.0;
-   AnalyzerParameters params;
+   private AnalyzerParameters params;
 
    private SaveToExcel ste;
    private File currentDir;
@@ -641,7 +616,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.resizingFactorSpinner.setModel(new SpinnerNumberModel(1.0, 1.0, 10.0, 0.5));
       this.resizingFactorSpinner.setToolTipText("Set resizing factor");
       this.resizingFactorSpinner.setEnabled(false);
-      this.resizingFactorSpinner.setValue(1.0); // must be a Double
+      setSpinnerValue(this.resizingFactorSpinner, 1.0); // must be a Double
       this.resizingFactorSpinner.addChangeListener(new ChangeListener() {
          @Override
          public void stateChanged(ChangeEvent evt) {
@@ -752,7 +727,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       });
       this.overlaySettingsPanel.add(this.showSkeletonCheckBox, new AbsoluteConstraints(20, 90, -1, -1));
       this.outlineSpinner.setModel(new SpinnerNumberModel(1, 1, null, 1));
-      this.outlineSpinner.setValue(params.outlineSize);
+      setSpinnerValue(this.outlineSpinner, params.outlineSize);
       this.outlineSpinner.addChangeListener(new ChangeListener() {
          @Override
          public void stateChanged(ChangeEvent evt) {
@@ -761,7 +736,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       });
       this.overlaySettingsPanel.add(this.outlineSpinner, new AbsoluteConstraints(180, 60, 50, 23));
       this.skeletonSpinner.setModel(new SpinnerNumberModel(1, 1, null, 1));
-      this.skeletonSpinner.setValue(params.skeletonSize);
+      setSpinnerValue(this.skeletonSpinner, params.skeletonSize);
       this.skeletonSpinner.addChangeListener(new ChangeListener() {
          @Override
          public void stateChanged(ChangeEvent evt) {
@@ -770,7 +745,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       });
       this.overlaySettingsPanel.add(this.skeletonSpinner, new AbsoluteConstraints(180, 90, 50, 23));
       this.branchingPointsSpinner.setModel(new SpinnerNumberModel(1, 1, null, 1));
-      this.branchingPointsSpinner.setValue(params.branchingPointsSize);
+      setSpinnerValue(this.branchingPointsSpinner, params.branchingPointsSize);
       this.branchingPointsSpinner.addChangeListener(new ChangeListener() {
          @Override
          public void stateChanged(ChangeEvent evt) {
@@ -779,7 +754,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       });
       this.overlaySettingsPanel.add(this.branchingPointsSpinner, new AbsoluteConstraints(420, 60, 50, 23));
       this.convexHullSizeSpinner.setModel(new SpinnerNumberModel(1, 1, null, 1));
-      this.convexHullSizeSpinner.setValue(params.convexHullSize);
+      setSpinnerValue(this.convexHullSizeSpinner, params.convexHullSize);
       this.convexHullSizeSpinner.addChangeListener(new ChangeListener() {
          @Override
          public void stateChanged(ChangeEvent evt) {
@@ -1081,12 +1056,91 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.updateOverlay();
    }
 
+   static int getSpinnerValueInt(JSpinner spinner) {
+      SpinnerModel model = spinner.getModel();
+      if (model instanceof SpinnerNumberModel)
+         return ((SpinnerNumberModel)model).getNumber().intValue();
+
+      try {
+         return (int)model.getValue();
+      }
+      catch (Throwable t1) {
+         try {
+            return (int)((double)model.getValue());
+         }
+         catch (Throwable t2) {
+            try {
+               return Integer.parseInt(model.getValue().toString());
+            }
+            catch (Throwable t3) {
+               return 0;
+            }
+         }
+      }
+   }
+
+   static double getSpinnerValueDouble(JSpinner spinner) {
+      SpinnerModel model = spinner.getModel();
+      if (model instanceof SpinnerNumberModel)
+         return ((SpinnerNumberModel)model).getNumber().doubleValue();
+
+      try {
+         return (double)model.getValue();
+      }
+      catch (Throwable t1) {
+         try {
+            return (double)((int)model.getValue());
+         }
+         catch (Throwable t2) {
+            try {
+               return Double.parseDouble(model.getValue().toString());
+            }
+            catch (Throwable t3) {
+               return 0.0;
+            }
+         }
+      }
+   }
+
+   static void setSpinnerValue(JSpinner spinner, Number value) {
+      Object existing = spinner.getValue();
+      if (existing instanceof Integer) {
+         int valueInt = value == null ? 0 : (value instanceof Integer ? (int)value : (int)((double)value));
+         spinner.setValue(valueInt);
+      }
+      else if (existing instanceof Double) {
+         double valueDbl = value == null ? 0.0 : (value instanceof Integer ? (double)((int)value) : (double)value);
+         spinner.setValue(valueDbl);
+      }
+      else if (value == null) {
+         spinner.setValue(0);
+      }
+      else if (value instanceof Integer) {
+         try {
+            spinner.setValue((int)value);
+         }
+         catch (Throwable t) {
+            spinner.setValue((double)((int)value));
+         }
+      }
+      else {
+         try {
+            spinner.setValue((double)value);
+         }
+         catch (Throwable t) {
+            spinner.setValue((int)((double)value));
+         }
+      }
+   }
+
    private void sigmasSpinnerStateChanged(ChangeEvent evt) {
-      if ((int)this.sigmasSpinner.getValue() <= 0) {
-         this.sigmasSpinner.setValue(0);
+      int curValue = getSpinnerValueInt(sigmasSpinner);
+      if (curValue <= 0) {
+         setSpinnerValue(this.sigmasSpinner, 0);
+         curValue = 0;
       }
 
-      this.sigmasMarkSlider.setMaximum((int)this.sigmasSpinner.getValue());
+      this.sigmasMarkSlider.setMaximum(curValue);
    }
 
    private void saveResultsToButtonActionPerformed(ActionEvent evt) {
@@ -1120,7 +1174,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private void resizingFactorSpinnerStateChanged(ChangeEvent evt) {
-      params.resizingFactor = (float)this.resizingFactorSpinner.getValue();
+      params.resizingFactor = getSpinnerValueDouble(this.resizingFactorSpinner);
    }
 
    private void skeletonColorButtonActionPerformed(ActionEvent evt) {
@@ -1176,22 +1230,26 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private void fillHolesSpinnerStateChanged(ChangeEvent evt) {
-      if ((int)this.fillHolesSpinner.getValue() <= 0) {
-         this.fillHolesSpinner.setValue(0);
+      int curValue = getSpinnerValueInt(this.fillHolesSpinner);
+      if (curValue <= 0) {
+         setSpinnerValue(this.fillHolesSpinner, 0);
+         curValue = 0;
       }
 
-      this.fillHolesRangeSlider2.setMaximum((int)this.fillHolesSpinner.getValue());
+      this.fillHolesRangeSlider2.setMaximum(curValue);
       this.fillHolesRangeSlider2.setMajorTickSpacing(this.fillHolesRangeSlider2.getMaximum() / 10);
       Hashtable h = this.fillHolesRangeSlider2.createStandardLabels(this.fillHolesRangeSlider2.getMaximum() / 10);
       this.fillHolesRangeSlider2.setLabelTable(h);
    }
 
    private void removeSmallParticlesSpinnerStateChanged(ChangeEvent evt) {
-      if ((int)this.removeSmallParticlesSpinner.getValue() <= 0) {
-         this.removeSmallParticlesSpinner.setValue(0);
+      int curValue = getSpinnerValueInt(this.removeSmallParticlesSpinner);
+      if (curValue <= 0) {
+         setSpinnerValue(this.removeSmallParticlesSpinner, 0);
+         curValue = 0;
       }
 
-      this.smallParticlesRangeSlider2.setMaximum((int)this.removeSmallParticlesSpinner.getValue());
+      this.smallParticlesRangeSlider2.setMaximum(curValue);
       this.smallParticlesRangeSlider2.setMajorTickSpacing(this.smallParticlesRangeSlider2.getMaximum() / 10);
       Hashtable h = this.smallParticlesRangeSlider2.createStandardLabels(this.smallParticlesRangeSlider2.getMaximum() / 10);
       this.smallParticlesRangeSlider2.setLabelTable(h);
@@ -1393,18 +1451,18 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          if (params.shouldShowOverlayOrGallery) {
             if (this.outlineRoi != null && params.shouldDrawOutline) {
                this.outlineRoi.setStrokeColor(params.outlineColor.toColor());
-               params.outlineSize = (int)this.outlineSpinner.getValue();
+               params.outlineSize = getSpinnerValueInt(this.outlineSpinner);
                this.outlineRoi.setStrokeWidth((float)params.outlineSize);
                this.allantoisOverlay.add(this.outlineRoi);
             }
 
             if (this.graph != null) {
-               params.skeletonSize = (int)this.skeletonSpinner.getValue();
+               params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
                this.skeletonRoi = this.computeSkeletonRoi(this.graph, params.skeletonColor, (int)params.skeletonSize);
             }
 
             if (this.skeletonRoi != null && params.shouldDrawSkeleton) {
-               params.skeletonSize = (int)this.skeletonSpinner.getValue();
+               params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
                Color skelColor = params.skeletonColor.toColor();
 
                for(int i = 0; i < this.skeletonRoi.size(); ++i) {
@@ -1424,11 +1482,11 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             }
 
             if (this.al2 != null) {
-               this.junctionsRoi = this.computeJunctionsRoi(this.al2, this.branchingPointsRoundedPanel.getBackground(), (int)this.branchingPointsSpinner.getValue());
+               this.junctionsRoi = this.computeJunctionsRoi(this.al2, this.branchingPointsRoundedPanel.getBackground(), getSpinnerValueInt(this.branchingPointsSpinner));
             }
 
             if (this.junctionsRoi != null && params.shouldDrawBranchPoints) {
-               params.branchingPointsSize = (int)this.branchingPointsSpinner.getValue();
+               params.branchingPointsSize = getSpinnerValueInt(this.branchingPointsSpinner);
                Color branchColor = params.branchingPointsColor.toColor();
 
                for(int i = 0; i < this.junctionsRoi.size(); ++i) {
@@ -1441,7 +1499,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
             if (this.convexHullRoi != null && params.shouldDrawConvexHull) {
                this.convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
-               params.convexHullSize = (int)this.convexHullSizeSpinner.getValue();
+               params.convexHullSize = getSpinnerValueInt(convexHullSizeSpinner);
                this.convexHullRoi.setStrokeWidth((float)params.convexHullSize);
                this.allantoisOverlay.add(this.convexHullRoi);
             }
@@ -1530,7 +1588,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       ImagePlus iplus = new ImagePlus("tubenessIp", this.imageThresholded.getProcessor());
       this.outlineRoi = Utils.thresholdToSelection(iplus);
-      this.outlineRoi.setStrokeWidth((float)((Integer)this.outlineSpinner.getValue()).intValue());
+      this.outlineRoi.setStrokeWidth((float)getSpinnerValueDouble(this.outlineSpinner));
       this.allantoisOverlay.clear();
       this.allantoisOverlay.add(this.outlineRoi);
       this.allantoisOverlay.setStrokeColor(this.outlineRoundedPanel.getBackground());
@@ -1546,7 +1604,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.sigmasMarkSlider.resetAll();
       this.sigmasMarkSlider.setMaximum(100);
       this.sigmasMarkSlider.setEnabled(false);
-      this.sigmasSpinner.setValue(100);
+      setSpinnerValue(this.sigmasSpinner, 100);
       this.minSigma = Integer.MAX_VALUE;
       this.maxSigma = Integer.MIN_VALUE;
       this.allSigmas = new ArrayList<>();
@@ -1680,7 +1738,10 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private void updateCurrentSimgas(double[] s) {
-      this.currentSigmas.clear();
+      if (this.currentSigmas == null)
+         this.currentSigmas = new ArrayList<>();
+      else
+         this.currentSigmas.clear();
 
       for(int i = 0; i < s.length; ++i) {
          this.currentSigmas.add(s[i]);
@@ -1716,7 +1777,10 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private void updateCurrentSimgas(int low, int high) {
-      this.currentSigmas.clear();
+      if (this.currentSigmas == null)
+         this.currentSigmas = new ArrayList<>();
+      else
+         this.currentSigmas.clear();
 
       for(int i = 0; i < this.allSigmas.size(); ++i) {
          double s = this.allSigmas.get(i);
@@ -1748,7 +1812,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.sigmasMarkSlider.setMaximum(this.minSigma);
       this.sigmasMarkSlider.setMaximum(this.maxSigma);
       this.sigmasSpinner.setEnabled(true);
-      this.sigmasSpinner.setValue(this.maxSigma);
+      setSpinnerValue(this.sigmasSpinner, this.maxSigma);
       this.thresholdRangeSliderLow.setEnabled(true);
       this.thresholdRangeSliderHigh.setEnabled(true);
       this.thresholdRangeSliderLow.setValue(15);
@@ -1761,7 +1825,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.fillHolesRangeSlider2.setMaximum(30 * this.maxSigma);
       this.fillHolesRangeSlider2.setMajorTickSpacing(30 * this.maxSigma / 10);
       this.fillHolesSpinner.setEnabled(this.fillHolesCheckBox.isSelected());
-      this.fillHolesSpinner.setValue(30 * this.maxSigma);
+      setSpinnerValue(this.fillHolesSpinner, 30 * this.maxSigma);
       this.smallParticlesCheckBox.setEnabled(true);
       this.smallParticlesCheckBox.setSelected(false);
       this.smallParticlesRangeSlider2.setEnabled(this.smallParticlesCheckBox.isSelected());
@@ -1769,13 +1833,13 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.smallParticlesRangeSlider2.setMaximum(40 * this.maxSigma);
       this.smallParticlesRangeSlider2.setMajorTickSpacing(40 * this.maxSigma / 10);
       this.removeSmallParticlesSpinner.setEnabled(this.smallParticlesCheckBox.isSelected());
-      this.removeSmallParticlesSpinner.setValue(40 * this.maxSigma / 10);
+      setSpinnerValue(this.removeSmallParticlesSpinner, 40 * this.maxSigma / 10);
       this.firstSigma[0] = (double)Math.round((float)(this.maxSigma / 4));
       this.toggleOverlayToggleButton.setEnabled(true);
-      this.outlineSpinner.setValue(1);
-      this.skeletonSpinner.setValue(this.maxSigma / 8);
-      this.branchingPointsSpinner.setValue(this.maxSigma / 5);
-      this.convexHullSizeSpinner.setValue(1);
+      setSpinnerValue(this.outlineSpinner, 1);
+      setSpinnerValue(this.skeletonSpinner, this.maxSigma / 8);
+      setSpinnerValue(this.branchingPointsSpinner, this.maxSigma / 5);
+      setSpinnerValue(this.convexHullSizeSpinner, 1);
    }
 
    private void computeFirstOutline(double[] sigmas) {
@@ -1875,16 +1939,16 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          params.shouldShowOverlayOrGallery,
          this.showOutlineCheckBox.isSelected(),
          new Rgb(this.outlineRoundedPanel.getBackground()),
-         (double)this.outlineSpinner.getValue(),
+         getSpinnerValueDouble(this.outlineSpinner),
          this.showSkeletonCheckBox.isSelected(),
          new Rgb(this.skeletonColorRoundedPanel.getBackground()),
-         (double)this.skeletonSpinner.getValue(),
+         getSpinnerValueDouble(this.skeletonSpinner),
          this.showBranchingPointsCheckBox.isSelected(),
          new Rgb(this.branchingPointsRoundedPanel.getBackground()),
-         (double)this.branchingPointsSpinner.getValue(),
+         getSpinnerValueDouble(this.branchingPointsSpinner),
          this.showConvexHullCheckBox.isSelected(),
          new Rgb(this.convexHullRoundedPanel.getBackground()),
-         (double)this.convexHullSizeSpinner.getValue(),
+         getSpinnerValueDouble(this.convexHullSizeSpinner),
          params.shouldScalePixelValues,
          params.shouldComputeLacunarity,
          params.shouldComputeThickness
@@ -1973,10 +2037,10 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
         skelAnalyzer.setup("", iplusSkeleton);
         this.skelResult = skelAnalyzer.run(0, false, false, iplusSkeleton, false, false);
         this.graph = skelAnalyzer.getGraphs();
-        this.skeletonRoi = this.computeSkeletonRoi(this.graph, new Rgb(this.skeletonColorRoundedPanel.getBackground()), (int)this.skeletonSpinner.getValue());
+        this.skeletonRoi = this.computeSkeletonRoi(this.graph, new Rgb(this.skeletonColorRoundedPanel.getBackground()), getSpinnerValueInt(this.skeletonSpinner));
         this.al2 = this.skelResult.getListOfJunctionVoxels();
         this.removedJunctions = Utils.computeActualJunctions(this.al2);
-        this.junctionsRoi = this.computeJunctionsRoi(this.al2, this.branchingPointsRoundedPanel.getBackground(), (int)this.branchingPointsSpinner.getValue());
+        this.junctionsRoi = this.computeJunctionsRoi(this.al2, this.branchingPointsRoundedPanel.getBackground(), getSpinnerValueInt(this.branchingPointsSpinner));
         this.updateOverlay();
         updateStatus(95, " Saving result image... ");
         updateStatus(100, "Done... ");

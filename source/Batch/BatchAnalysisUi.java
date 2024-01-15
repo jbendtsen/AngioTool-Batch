@@ -535,6 +535,8 @@ public class BatchAnalysisUi
 
         cancelBtn.setEnabled(true);
 
+        ATPreferences.savePreferences(params, AngioTool.BATCH_TXT);
+
         analysisTaskFuture = (Future<Void>)AngioToolMain.threadPool.submit(
             () -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this, originalSheets)
         );
