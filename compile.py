@@ -8,6 +8,8 @@ import subprocess
 
 JAVA = "java"
 JAVAC = "javac"
+#JAVA = "/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin/java"
+#JAVAC = "/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin/javac"
 
 if shutil.which(JAVAC) is None:
     print("Could not find '" + JAVAC + "'.")

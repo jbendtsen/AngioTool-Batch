@@ -462,10 +462,10 @@ public class BatchAnalysisUi
             return;
 
         StringBuilder sb = new StringBuilder();
-        for (File f : folderList) {
-            if (!sb.isEmpty())
+        for (int i = 0; i < folderList.length; i++) {
+            if (i > 0)
                 sb.append(";");
-            sb.append(f.getAbsolutePath().replace(";", "" + File.separatorChar + ";"));
+            sb.append(folderList[i].getAbsolutePath().replace(";", "" + File.separatorChar + ";"));
         }
 
         textInputFolders.setText(sb.toString());
