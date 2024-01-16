@@ -111,24 +111,19 @@ public class BatchAnalysisUi
 
         rbNoOutput.setText("No output");
         rbNoOutput.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+        rbNoOutput.setSelected(!params.shouldSaveResultImages);
 
         rbSameOutput.setText("Same folders as inputs");
         rbSameOutput.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+        rbSameOutput.setSelected(params.shouldSaveResultImages && !params.shouldSaveImagesToSpecificFolder);
 
         rbSaveResultsTo.setText("Save result images to:");
         rbSaveResultsTo.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+        rbSaveResultsTo.setSelected(params.shouldSaveResultImages && params.shouldSaveImagesToSpecificFolder);
 
         groupSaveResults.add(rbNoOutput);
         groupSaveResults.add(rbSameOutput);
         groupSaveResults.add(rbSaveResultsTo);
-
-        if (params.shouldSaveResultImages) {
-            ButtonModel m = params.shouldSaveImagesToSpecificFolder ? rbSaveResultsTo.getModel() : rbSameOutput.getModel();
-            groupSaveResults.setSelected(m, true);
-        }
-        else {
-            groupSaveResults.setSelected(rbNoOutput.getModel(), true);
-        }
 
         btnSaveResultsFolder.setIcon(Utils.ATOpenImageSmall);
         btnSaveResultsFolder.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectResultFolder());
@@ -145,16 +140,18 @@ public class BatchAnalysisUi
         labelSkeletonizer.setText("Skeletonizer:");
 
         rbSkelFast.setText("Fast (Zha84)");
+        rbSkelFast.setSelected(params.shouldUseFastSkeletonizer);
 
         rbSkelThorough.setText("Thorough (Lee94)");
+        rbSkelThorough.setSelected(!params.shouldUseFastSkeletonizer);
 
         groupSkeletonizer.add(rbSkelFast);
         groupSkeletonizer.add(rbSkelThorough);
 
-        {
+        /*{
             ButtonModel m = params.shouldUseFastSkeletonizer ? rbSkelFast.getModel() : rbSkelThorough.getModel();
             groupSaveResults.setSelected(m, true);
-        }
+        }*/
 
         cbComputeLacunarity.setText("Lacunarity");
         cbComputeLacunarity.setSelected(params.shouldComputeLacunarity);
@@ -569,30 +566,30 @@ public class BatchAnalysisUi
             textSaveResultsFolder.getText(),
             textResultsImageFormat.getText(),
             elemResizeInputs.cb.isSelected(),
-            elemResizeInputs.value,
+            elemResizeInputs.getValue(),
             elemRemoveParticles.cb.isSelected(),
-            elemRemoveParticles.value,
+            elemRemoveParticles.getValue(),
             elemFillHoles.cb.isSelected(),
-            elemFillHoles.value,
+            elemFillHoles.getValue(),
             Utils.getSomeDoubles(textSigmas.getText()),
             Integer.parseInt(textMaxIntensity.getText()),
             Integer.parseInt(textMinIntensity.getText()),
-            shouldUseFastSkel, // shouldUseFastSkeletonizer
+            shouldUseFastSkel,
             elemLinearScaleFactor.cb.isSelected(),
-            elemLinearScaleFactor.value,
+            elemLinearScaleFactor.getValue(),
             true, // shouldShowOverlayOrGallery
             elemOutline.cb.isSelected(),
             elemOutline.color,
-            elemOutline.value,
+            elemOutline.getValue(),
             elemSkeleton.cb.isSelected(),
             elemSkeleton.color,
-            elemSkeleton.value,
+            elemSkeleton.getValue(),
             elemBranches.cb.isSelected(),
             elemBranches.color,
-            elemBranches.value,
+            elemBranches.getValue(),
             elemConvexHull.cb.isSelected(),
             elemConvexHull.color,
-            elemConvexHull.value,
+            elemConvexHull.getValue(),
             false, // shouldScalePixelValues
             cbComputeLacunarity.isSelected(),
             cbComputeThickness.isSelected()
@@ -644,10 +641,8 @@ public class BatchAnalysisUi
         Dimension preferred = dlg.getPreferredSize();
         Dimension curSize = dlg.getSize();
 
-        if (preferred.width > curSize.width || preferred.height > curSize.height) {
-            //dlg.setMinimumSize(new Dimension(curMin.width, preferred.height));
-            dlg.setSize(preferred);
-        }
+        if (preferred.height > curSize.height)
+            dlg.setSize(new Dimension(curSize.width, preferred.height));
     }
 
     public void notifyNoImages()
@@ -692,11 +687,15 @@ public class BatchAnalysisUi
         });
     }
 
+    boolean wasStartImageJustCalled = false;
+
     public void onStartImage(String absPath)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
                 return;
+
+            wasStartImageJustCalled = true;
 
             int pathLen = absPath.length();
             String partialFileName = pathLen > 60 ?
@@ -711,6 +710,8 @@ public class BatchAnalysisUi
             status += " Processing " + partialFileName + "...";
             overallLabel.setText(status);
 
+            imageProgress.setValue(0);
+
             updateDialogSize(jdialog);
         });
     }
@@ -721,8 +722,11 @@ public class BatchAnalysisUi
             if (isClosed.get())
                 return;
 
+            int progress = wasStartImageJustCalled ? 0 : (imageProgress.getValue() + 1);
+            wasStartImageJustCalled = false;
+
             imageLabel.setText(statusMsg);
-            imageProgress.setValue(imageProgress.getValue() + 1);
+            imageProgress.setValue(progress);
 
             updateDialogSize(jdialog);
         });
@@ -737,6 +741,7 @@ public class BatchAnalysisUi
             if (error != null)
                 nErrors++;
 
+            imageProgress.setValue(imageProgress.getMaximum());
             overallProgress.setValue(overallProgress.getValue() + 1);
         });
     }
@@ -782,13 +787,11 @@ public class BatchAnalysisUi
         public JTextField tf;
 
         public String name;
-        public double value;
         public final double originalValue;
 
         public NumberEntry(String name, boolean enabled, double value, String unitsStr)
         {
             this.name = name;
-            this.value = value;
             this.originalValue = value;
 
             cb = new JCheckBox();
@@ -804,6 +807,16 @@ public class BatchAnalysisUi
             cb.setSelected(enabled);
         }
 
+        public double getValue() {
+            String str = tf.getText();
+            try {
+                return Double.parseDouble(str);
+            }
+            catch (Exception ex) {
+                return originalValue;
+            }
+        }
+
         public GroupLayout.Group addToGroup(GroupLayout.Group group)
         {
             group.addComponent(cb).addComponent(units);
@@ -815,20 +828,9 @@ public class BatchAnalysisUi
         public void toggleCheckbox()
         {
             boolean enabled = cb.isSelected();
-            if (enabled) {
-                tf.setEnabled(true);
-                tf.setText(Utils.formatDouble(value));
-            }
-            else {
-                String str = tf.getText();
-                try {
-                    value = Double.parseDouble(str);
-                }
-                catch (Exception ex) {
-                    value = originalValue;
-                }
-                tf.setEnabled(false);
-            }
+            double value = getValue();
+            tf.setText(Utils.formatDouble(value));
+            tf.setEnabled(enabled);
         }
     }
 

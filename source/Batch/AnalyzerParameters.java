@@ -157,14 +157,19 @@ public class AnalyzerParameters {
 
     public RefVector<String> validate() {
         RefVector<String> errors = new RefVector<>(String.class);
+        try {
+            Analyzer.resolveImageFormat(resultImageFormat);
+        }
+        catch (Exception ex) {
+            errors.add("Result image format: " + ex.getMessage());
+        }
+
         if (inputImagePaths == null || inputImagePaths.length == 0)
             errors.add("At least one input folder is required");
         if (!isValidPath(excelFilePath))
             errors.add("Path to spreadsheet is missing");
         if (shouldSaveImagesToSpecificFolder && !isValidPath(resultImagesPath))
             errors.add("Specific output folder was selected but not provided");
-        if (resultImageFormat == null || resultImageFormat.length() == 0)
-            errors.add("Result image format is missing");
         if (shouldResizeImage && resizingFactor <= 0.0)
             errors.add("Image resize factor must be >0 (not " + resizingFactor + ")");
         if (shouldRemoveSmallParticles && removeSmallParticlesThreshold <= 0.0)
@@ -197,6 +202,7 @@ public class AnalyzerParameters {
             errors.add("Boundary color is missing");
         if (shouldDrawConvexHull && convexHullSize <= 0)
             errors.add("Boundary size must be >0 (not " + convexHullSize + ")");
+
         return errors;
     }
 }

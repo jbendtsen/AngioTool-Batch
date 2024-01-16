@@ -158,8 +158,9 @@ public class Analyzer
         ArrayList<XlsxReader.SheetCells> originalSheets
     ) {
         ArrayList<File> inputs = new ArrayList<>();
+        BidirectionalMap<String, String> outputPathMap = new BidirectionalMap<>();
         for (String path : params.inputImagePaths) {
-            enumerateImageFilesRecursively(inputs, new File(path), uiToken);
+            enumerateImageFilesRecursively(inputs, new File(path), outputPathMap, uiToken);
             if (uiToken.isClosed.get())
                 return;
         }
@@ -215,16 +216,19 @@ public class Analyzer
 
             if (exception == null) {
                 if (params.shouldSaveResultImages) {
-                    uiToken.updateImageProgress("Saving result image...");
-                    String basePath =
-                        //params.shouldSaveImagesToSpecificFolder ? resolveOutputPath(outputPathMap, inFile) :
-                        inFile.getAbsolutePath();
-                    String format =
-                        //resolveImageFormat(
-                        params.resultImageFormat
-                        //)
-                        ;
-                    IJ.saveAs(result.imageResult.flatten(), format, basePath + " result." + format);
+                    try {
+                        uiToken.updateImageProgress("Saving result image...");
+
+                        String basePath = params.shouldSaveImagesToSpecificFolder ?
+                            resolveOutputPath(params.resultImagesPath, outputPathMap, inFile) :
+                            inFile.getAbsolutePath();
+                        String format = resolveImageFormat(params.resultImageFormat);
+
+                        IJ.saveAs(result.imageResult.flatten(), format, basePath + " result." + format);
+                    }
+                    catch (Throwable ex) {
+                        exception = ex;
+                    }
                 }
             }
             else if (!analyzeSucceeded) {
@@ -249,12 +253,78 @@ public class Analyzer
             uiToken.onFinished(writer.fileName);
     }
 
-    static void enumerateImageFilesRecursively(ArrayList<File> images, File currentFolder, BatchAnalysisUi uiToken)
+    static String resolveOutputPath(String resultImagesPath, BidirectionalMap<String, String> outputPathMap, File inFile) {
+        String outFolder = outputPathMap.getBack(inFile.getParent());
+        File outFolderPath = new File(resultImagesPath, outFolder);
+        if (outFolderPath.exists()) {
+            if (outFolderPath.isFile())
+                outFolderPath.delete();
+        }
+        else {
+            outFolderPath.mkdirs();
+        }
+        return new File(outFolderPath, inFile.getName()).getAbsolutePath();
+    }
+
+    public static String resolveImageFormat(String str) throws Exception {
+        if (str == null || str.length() == 0)
+            throw new Exception("File extension was null");
+
+        byte[] bytes = str.getBytes();
+        int start = 0;
+        for (int i = bytes.length - 1; i >= 0; i--) {
+            byte c = bytes[i];
+            c = (byte)(c >= 'A' && c <= 'Z' ? c + 0x20 : c);
+            if (c == '.') {
+                start = i + 1;
+                break;
+            }
+            if (c >= 0x7f)
+                throw new Exception("File extension contains non-ASCII characters");
+            bytes[i] = c;
+        }
+
+        if (start >= bytes.length)
+            throw new Exception("Invalid file extension: " + str);
+
+        return new String(bytes, start, bytes.length - start);
+    }
+
+    static void enumerateImageFilesRecursively(ArrayList<File> images, File currentFolder, BidirectionalMap<String, String> outputPathMap, BatchAnalysisUi uiToken)
     {
+        String curAbsPath = currentFolder.getAbsolutePath();
+        String outFolder = currentFolder.getName();
+        outFolder = outFolder == null || outFolder.length() == 0 ? "root" : outFolder;
+
+        boolean addedParent = false;
+        int retries = 0;
+        String retryStr = "";
+
+        while (true) {
+            int status = outputPathMap.maybeAdd(curAbsPath, outFolder + retryStr);
+            if (status == BidirectionalMap.SUCCESS || (status & BidirectionalMap.FAIL_FRONT) != 0)
+                break;
+
+            if (!addedParent) {
+                addedParent = true;
+                File parent = currentFolder.getParentFile();
+                if (parent != null) {
+                    String pName = parent.getName();
+                    if (pName != null && pName.length() > 0) {
+                        outFolder += "_" + pName;
+                        continue;
+                    }
+                }
+            }
+
+            retries++;
+            retryStr = "_" + (retries + 1);
+        }
+
         File[] list = currentFolder.listFiles();
         for (File f : list) {
             if (f.isDirectory()) {
-                enumerateImageFilesRecursively(images, f, uiToken);
+                enumerateImageFilesRecursively(images, f, outputPathMap, uiToken);
                 if (uiToken.isClosed.get())
                     return;
             }
@@ -266,6 +336,10 @@ public class Analyzer
 
                 String baseName = name.substring(0, extIdx);
                 if (baseName.endsWith("result") || baseName.endsWith("tubeness") || baseName.endsWith("filtered") || baseName.endsWith("overlay"))
+                    continue;
+
+                String ext = name.substring(extIdx).toLowerCase();
+                if (ext.equals(".txt") || ext.equals(".zip") || ext.equals(".xls") || ext.equals(".xlsx"))
                     continue;
 
                 images.add(f);
