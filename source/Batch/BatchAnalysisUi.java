@@ -7,6 +7,7 @@ import GUI.RoundedPanel;
 import Utils.Utils;
 import java.awt.Color;
 import java.awt.BorderLayout;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
@@ -746,11 +747,14 @@ public class BatchAnalysisUi
         });
     }
 
-    public void onFinished(String sheetFileName)
+    public void onFinished(SpreadsheetWriter sw)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
                 return;
+
+            if (sw.currentSheetIdx >= 0 && sw.currentSheetIdx < sw.sheets.size)
+                originalSheets.add(new XlsxReader.SheetCells(sw.sheets.buf[sw.currentSheetIdx].valueRows));
 
             int nImages = overallProgress.getMaximum();
             String status = "" + nImages + "/" + nImages;
@@ -764,11 +768,17 @@ public class BatchAnalysisUi
             }
 
             overallLabel.setText(status);
-            imageLabel.setText("Saved Excel results to " + sheetFileName);
+            imageLabel.setText("Saved Excel results to " + sw.fileName);
             imageProgress.setValue(imageProgress.getMaximum());
             cancelBtn.setEnabled(false);
 
             updateDialogSize(jdialog);
+
+            final File xlsxFile = new File(sw.parentFolder, sw.fileName);
+            AngioToolMain.threadPool.submit(() -> {
+                try { Desktop.getDesktop().open(xlsxFile); }
+                catch (IOException ex) { ex.printStackTrace(); }
+            });
         });
     }
 

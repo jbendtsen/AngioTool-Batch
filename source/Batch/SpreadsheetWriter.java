@@ -10,6 +10,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.zip.ZipOutputStream;
@@ -19,6 +20,7 @@ public class SpreadsheetWriter {
     public static class Sheet {
         public String name = "";
         public RefVector<String> formattedRows = new RefVector<>(String.class);
+        public RefVector<Object[]> valueRows = new RefVector<>(Object[].class);
         public int colsInWidestRow = 0;
     }
 
@@ -60,8 +62,16 @@ public class SpreadsheetWriter {
             if (s.rows <= 0 || s.cols <= 0)
                 continue;
 
-            for (int i = 0; i < s.rows; i++)
-                writeRowFromObjectArray(s.cells, i * s.cols, s.cols);
+            if (s.cells != null) {
+                for (int i = 0; i < s.rows; i++)
+                    writeRowFromObjectArray(s.cells, i * s.cols, s.cols);
+            }
+            else if (s.valueRows != null) {
+                for (int i = 0; i < s.rows; i++) {
+                    Object[] row = s.valueRows.buf[i];
+                    writeRowFromObjectArray(row, 0, row.length);
+                }
+            }
 
             currentSheetIdx++;
         }
@@ -145,6 +155,11 @@ public class SpreadsheetWriter {
         if (colNumber > s.colsInWidestRow)
             s.colsInWidestRow = colNumber;
 
+        Object[] valueRow = off == 0 && len == values.length ?
+            values :
+            Arrays.copyOfRange(values, off, off+len);
+
+        s.valueRows.add(valueRow);
         s.formattedRows.add(sb.toString());
 
         if (shouldSaveAfterEveryRow)

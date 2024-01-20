@@ -13,14 +13,28 @@ import java.util.zip.ZipInputStream;
 public class XlsxReader {
     public static class SheetCells {
         public Object[] cells;
+        public RefVector<Object[]> valueRows;
         public int rows;
         public int cols;
         public int flags = 0;
 
         public SheetCells(Object[] cells, int rows, int cols) {
             this.cells = cells;
+            this.valueRows = null;
             this.rows = rows;
             this.cols = cols;
+        }
+
+        public SheetCells(RefVector<Object[]> valueRows) {
+            this.cells = null;
+            this.valueRows = valueRows;
+            this.rows = valueRows.size;
+            int c = 0;
+            for (int i = 0; i < rows; i++) {
+                if (valueRows.size > c)
+                    c = valueRows.size;
+            }
+            this.cols = c;
         }
     }
 

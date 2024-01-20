@@ -250,7 +250,7 @@ public class Analyzer
         if (!startedAnyImages)
             uiToken.notifyNoImages();
         else
-            uiToken.onFinished(writer.fileName);
+            uiToken.onFinished(writer);
     }
 
     static String resolveOutputPath(String resultImagesPath, BidirectionalMap<String, String> outputPathMap, File inFile) {
