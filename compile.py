@@ -8,6 +8,8 @@ import subprocess
 
 JAVA = "java"
 JAVAC = "javac"
+#JAVA = "/usr/lib/jvm/java-8-openjdk/bin/java"
+#JAVAC = "/usr/lib/jvm/java-8-openjdk/bin/javac" 
 #JAVA = "/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin/java"
 #JAVAC = "/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin/javac"
 
@@ -80,7 +82,7 @@ try:
 except:
     pass
 
-with zipfile.ZipFile("AngioTool-Batch.jar", compression=zipfile.ZIP_DEFLATED, compresslevel=4, mode="w") as zip:
+with zipfile.ZipFile("AngioTool-Batch.jar", compression=zipfile.ZIP_DEFLATED, compresslevel=6, mode="w") as zip:
     for f in asset_files:
         zip.write("source/" + f, arcname=f)
     for f in build_files:
