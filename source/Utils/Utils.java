@@ -1,8 +1,5 @@
 package Utils;
 
-import AnalyzeSkeleton.Edge;
-import AnalyzeSkeleton.Graph;
-import AnalyzeSkeleton.Point;
 import AngioTool.AngioTool;
 import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
@@ -79,6 +76,7 @@ public class Utils {
    public static final String xls = "xls";
    public static final String xlsx = "xlsx";
 
+   /*
    public static double computeMedianThickness(Graph[] graph, ImagePlus distanceMap) {
       ArrayList<Float> vesselThickness = computeTickness(graph, distanceMap);
       Collections.sort(vesselThickness);
@@ -88,7 +86,6 @@ public class Utils {
          : (double)(vesselThickness.get(middle - 1) + vesselThickness.get(middle)) / 2.0;
    }
 
-   /*
    public static ImageProcessor skeletonize(ImageProcessor ip, String algorithm) {
       if (ip.isBinary()) {
          ImagePlus iplusThresholded = new ImagePlus("iplusThresholded Kike", ip);
@@ -105,7 +102,6 @@ public class Utils {
 
       return null;
    }
-   */
 
    private static ArrayList<Float> computeTickness(Graph[] graph, ImagePlus distanceMap) {
       ArrayList<Float> vesselThickness = new ArrayList<>();
@@ -126,6 +122,36 @@ public class Utils {
 
       return vesselThickness;
    }
+   
+   public static ArrayList<Point> computeActualJunctions(ArrayList<Point> jv) {
+      ArrayList<Point> removed = new ArrayList<>();
+
+      for(int i = 0; i < jv.size(); ++i) {
+         Point jv1 = jv.get(i);
+
+         for(int ii = 0; ii < jv.size(); ++ii) {
+            Point jv2 = jv.get(ii);
+            if (isNeighbor(jv1, jv2)) {
+               removed.add(jv2);
+               jv.remove(ii);
+            }
+         }
+      }
+
+      return removed;
+   }
+
+   private static boolean isNeighbor(Point p1, Point p2) {
+      return p1.x == p2.x - 1 && p1.y == p2.y - 1
+         || p1.x == p2.x - 1 && p1.y == p2.y
+         || p1.x == p2.x - 1 && p1.y == p2.y + 1
+         || p1.x == p2.x && p1.y == p2.y - 1
+         || p1.x == p2.x && p1.y == p2.y + 1
+         || p1.x == p2.x + 1 && p1.y == p2.y - 1
+         || p1.x == p2.x + 1 && p1.y == p2.y
+         || p1.x == p2.x + 1 && p1.y == p2.y + 1;
+   }
+   */
 
    public static String getSystemInfo() {
       Runtime runtime = Runtime.getRuntime();
@@ -154,35 +180,6 @@ public class Utils {
       }
 
       return str;
-   }
-
-   public static ArrayList<Point> computeActualJunctions(ArrayList<Point> jv) {
-      ArrayList<Point> removed = new ArrayList<>();
-
-      for(int i = 0; i < jv.size(); ++i) {
-         Point jv1 = jv.get(i);
-
-         for(int ii = 0; ii < jv.size(); ++ii) {
-            Point jv2 = jv.get(ii);
-            if (isNeighbor(jv1, jv2)) {
-               removed.add(jv2);
-               jv.remove(ii);
-            }
-         }
-      }
-
-      return removed;
-   }
-
-   private static boolean isNeighbor(Point p1, Point p2) {
-      return p1.x == p2.x - 1 && p1.y == p2.y - 1
-         || p1.x == p2.x - 1 && p1.y == p2.y
-         || p1.x == p2.x - 1 && p1.y == p2.y + 1
-         || p1.x == p2.x && p1.y == p2.y - 1
-         || p1.x == p2.x && p1.y == p2.y + 1
-         || p1.x == p2.x + 1 && p1.y == p2.y - 1
-         || p1.x == p2.x + 1 && p1.y == p2.y
-         || p1.x == p2.x + 1 && p1.y == p2.y + 1;
    }
 
    public static int getAnInt(String str) {
