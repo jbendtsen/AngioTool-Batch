@@ -88,6 +88,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         bail("Failed to build path to jvm.dll");
 
     HMODULE javaServer = LoadLibraryA(path);
+
+    if (javaServer == NULL) {
+        stripFromLast(path, &pos, '\\');
+        stripFromLast(path, &pos, '\\');
+        addString(path, &pos, PATH_SIZE, "\\client\\jvm.dll");
+        javaServer = LoadLibraryA(path);
+    }
+
+    if (javaServer == NULL) {
+        stripFromLast(path, &pos, '\\');
+        stripFromLast(path, &pos, '\\');
+        addString(path, &pos, PATH_SIZE, "\\jvm.dll");
+        javaServer = LoadLibraryA(path);
+    }
+
     if (javaServer == NULL) {
         char errorMsg[PATH_SIZE + 64];
         int errorPos = 0;
