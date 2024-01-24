@@ -104,10 +104,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 
     if (javaServer == NULL) {
-        char errorMsg[PATH_SIZE + 64];
+        stripFromLast(path, &pos, '\\');
+        char errorMsg[PATH_SIZE + 128];
         int errorPos = 0;
-        addString(errorMsg, &errorPos, 64, "Failed to open ");
-        addString(errorMsg, &errorPos, PATH_SIZE + 64, path);
+        addString(errorMsg, &errorPos, 128, "Failed to open server\\jvm.dll, client\\jvm.dll or jvm.dll in ");
+        addString(errorMsg, &errorPos, PATH_SIZE + 128, path);
         bail(errorMsg);
     }
 
