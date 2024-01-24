@@ -1,5 +1,6 @@
 package Batch;
 
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 // Generics in Java fall apart as soon as primitives are involved, so we keepin it ol skool
@@ -14,7 +15,7 @@ public class BufferPool {
 
     public static int findQueueNumber(int allocSize) {
         int leadingZeros = Integer.numberOfLeadingZeros(allocSize);
-        return (32 - leadingZeros) / 7;
+        return Math.min((32 - leadingZeros) / 6, N_QUEUES - 1);
     }
 
     public static class B {
@@ -24,7 +25,7 @@ public class BufferPool {
             for (int i = 0; i < N_QUEUES; i++)
                 queues[i] = new ConcurrentLinkedQueue<byte[]>();
         }
-        public byte[] acquire(int minSize) {
+        public byte[] acquireAsIs(int minSize) {
             int idx = findQueueNumber(minSize);
             byte[] buffer;
             do {
@@ -33,6 +34,11 @@ public class BufferPool {
                     return new byte[minSize];
             }
             while (buffer.length < minSize);
+            return buffer;
+        }
+        public byte[] acquireZeroed(int minSize) {
+            byte[] buffer = acquireAsIs(minSize);
+            Arrays.fill(buffer, 0, minSize, (byte)0);
             return buffer;
         }
         public void release(byte[] buffer) {
@@ -47,7 +53,7 @@ public class BufferPool {
             for (int i = 0; i < N_QUEUES; i++)
                 queues[i] = new ConcurrentLinkedQueue<int[]>();
         }
-        public int[] acquire(int minSize) {
+        public int[] acquireAsIs(int minSize) {
             int idx = findQueueNumber(minSize);
             int[] buffer;
             do {
@@ -56,6 +62,11 @@ public class BufferPool {
                     return new int[minSize];
             }
             while (buffer.length < minSize);
+            return buffer;
+        }
+        public int[] acquireZeroed(int minSize) {
+            int[] buffer = acquireAsIs(minSize);
+            Arrays.fill(buffer, 0, minSize, 0);
             return buffer;
         }
         public void release(int[] buffer) {
@@ -70,7 +81,7 @@ public class BufferPool {
             for (int i = 0; i < N_QUEUES; i++)
                 queues[i] = new ConcurrentLinkedQueue<double[]>();
         }
-        public double[] acquire(int minSize) {
+        public double[] acquireAsIs(int minSize) {
             int idx = findQueueNumber(minSize);
             double[] buffer;
             do {
@@ -79,6 +90,11 @@ public class BufferPool {
                     return new double[minSize];
             }
             while (buffer.length < minSize);
+            return buffer;
+        }
+        public double[] acquireZeroed(int minSize) {
+            double[] buffer = acquireAsIs(minSize);
+            Arrays.fill(buffer, 0, minSize, 0.0);
             return buffer;
         }
         public void release(double[] buffer) {

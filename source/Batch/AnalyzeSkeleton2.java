@@ -28,7 +28,7 @@ public class AnalyzeSkeleton2
     public static void analyze(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int depth)
     {
         result.reset();
-        int[] taggedImage = BufferPool.intPool.acquire(width * height);
+        int[] taggedImage = BufferPool.intPool.acquireAsIs(width * height);
 
         IntVector[] pointVectors = new IntVector[4];
         pointVectors[NONE] = null;
@@ -65,10 +65,7 @@ public class AnalyzeSkeleton2
         int nTrees = 0;
         int[][] markedImages = new int[depth][];
         for(int z = 0; z < depth; ++z)
-            markedImages[z] = BufferPool.intPool.acquire(width * height);
-
-        int[] visitMap = BufferPool.intPool.acquire(width * height);
-        int[] point = new int[3];
+            markedImages[z] = BufferPool.intPool.acquireZeroed(width * height);
 
         for (int type = END_POINT; type <= SLAB; type++) {
             int n = pointVectors[type].size;
@@ -95,46 +92,62 @@ public class AnalyzeSkeleton2
                     result.toRevisit.add(z);
                 }
 
-                boolean didFindPoint = getNextUnvisitedVoxel(point);
                 int revisitIdx = 0;
+                boolean wasRevisit = false;
+                boolean didFindPoint;
+                do {
+                    didFindPoint = false;
+                    for (int j = 0; j < 27; j++) {
+                        if (j == 13)
+                            continue;
 
-                while (didFindPoint || revistIdx < toRevist.size) {
+                        int xx = x + (j / 9) - 1;
+                        int yy = y + ((j / 3) % 3) - 1;
+                        int zz = z + (j % 3) - 1;
+                        if (
+                            ((skeletonImage[xx + width * yy] >>> zz) & 1) != 0 &&
+                            markedImages[zz][xx + width * yy] == 0
+                        ) {
+                            x = xx;
+                            y = yy;
+                            z = zz;
+                            didFindPoint = true;
+                            break;
+                        }
+                    }
+
                     if (didFindPoint) {
-                        //if (!this.isVisited(nextPoint)) { // infinite loop if this if doesn't trigger
                         ++numOfVoxels;
-
-                        x = point[0];
-                        y = point[1];
-                        z = point[2];
                         markedImages[z][x + width * y] = nTrees + 1;
-                        if (isJunction(x, y, z)) {
+
+                        if (((taggedImage[x + width * y] >>> (z << 1)) & 3) == JUNCTION) {
                             result.toRevisit.add(x);
                             result.toRevisit.add(y);
                             result.toRevisit.add(z);
                         }
-
-                        didFindPoint = getNextUnvisitedVoxel(point);
-                        //}
                     }
                     else {
-                        point[0] = result.toRevisit.buf[revisitIdx];
-                        point[1] = result.toRevisit.buf[revisitIdx+1];
-                        point[2] = result.toRevisit.buf[revisitIdx+2];
-                        didFindPoint = getNextUnvisitedVoxel(point);
-                        if (!didFindPoint)
+                        if (wasRevisit)
                             revistIdx += 3;
+
+                        if (revisitIdx < toRevist.size) {
+                            x = result.toRevisit.buf[revisitIdx];
+                            y = result.toRevisit.buf[revisitIdx+1];
+                            z = result.toRevisit.buf[revisitIdx+2];
+                        }
                     }
+                    wasRevisit = !didFindPoint;
                 }
+                while (didFindPoint || revistIdx < toRevist.size);
 
-                return numOfVoxels;
-
-                if (type == END_POINT || length != 0)
+                if (type == END_POINT || numOfVoxels != 0)
                     nTrees++;
             }
         }
 
         nTrees = Math.max(nTrees, 1);
 
+        /*
         if (nTrees > 1) {
             divideVoxelsByTrees();
         }
@@ -145,8 +158,19 @@ public class AnalyzeSkeleton2
             this.numberOfJunctionVoxels[0] = this.listOfJunctionVoxels.size();
             this.startingSlabTree[0] = this.listOfStartingSlabVoxels;
         }
+        */
 
-        this.resetVisited();
+        //this.resetVisited();
+
+        int[] visitMap = BufferPool.intPool.acquire(width * height);
+
+        for (int i = 0; i < listOfJunctionVoxels.size; i++) {
+            if (visitMap[...])
+                continue;
+        }
+
+        // This          ^ |
+        // replaces this | v
 
         for(int iTree = 0; iTree < this.numOfTrees; ++iTree) {
             for(int i = 0; i < this.numberOfJunctionVoxels[iTree]; ++i) {
@@ -193,7 +217,7 @@ public class AnalyzeSkeleton2
             }
         }
 
-        this.resetVisited();
+        //this.resetVisited();
 
         for (int t = 0; t < nTrees; t++) {
             int iTree = currentTree - 1;
