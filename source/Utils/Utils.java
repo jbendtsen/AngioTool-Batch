@@ -4,7 +4,6 @@ import AngioTool.AngioTool;
 import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
 import Batch.ISliceCompute;
-import Batch.PointVectorInt;
 import Batch.IntVector;
 import features.Tubeness;
 import ij.IJ;

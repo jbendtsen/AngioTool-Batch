@@ -187,8 +187,8 @@ public class Lee94 {
 
         //writePgm(layersByte[0], width, height, "before.pgm");
 
-        PointVectorInt offsetLengthPairs = ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1);
-        Params params = new Params(offsetLengthPairs.size, planes, width, height, breadth);
+        IntVector offsetLengthPairs = ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1);
+        Params params = new Params(offsetLengthPairs.size / 2, planes, width, height, breadth);
 
         boolean anyChanged;
         do {
@@ -241,7 +241,7 @@ public class Lee94 {
     static boolean thin(
         ThreadPoolExecutor threadPool,
         int maxWorkers,
-        PointVectorInt offsetLengthPairs,
+        IntVector offsetLengthPairs,
         Params params,
         int border
     ) {

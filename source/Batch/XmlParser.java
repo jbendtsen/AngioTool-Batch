@@ -8,7 +8,7 @@ public class XmlParser {
         public int nameLen = 0;
         public int innerStart = 0;
         public int innerLen = 0;
-        public PointVectorInt attrSpans = null;
+        public IntVector attrSpans = null;
         public RefVector<Node> children = null;
 
         public Node getChild(int idx) {
@@ -28,7 +28,7 @@ public class XmlParser {
                 return false;
             if (attrSpans == null)
                 return false;
-            if (idx < 0 || idx >= attrSpans.size * 2)
+            if (idx < 0 || idx * 4 + 3 >= attrSpans.size)
                 return false;
 
             int attrNameStart  = attrSpans.buf[idx*4];
@@ -60,7 +60,7 @@ public class XmlParser {
             this.innerStart = node.innerStart;
             this.innerLen = node.innerLen;
 
-            int nAttrs = node.attrSpans != null ? node.attrSpans.size / 2 : 0;
+            int nAttrs = node.attrSpans != null ? node.attrSpans.size / 4 : 0;
             if (nAttrs > 0) {
                 this.attrSpans = new int[nAttrs * 4];
                 System.arraycopy(node.attrSpans.buf, 0, this.attrSpans, 0, nAttrs * 4);
@@ -224,10 +224,12 @@ public class XmlParser {
                     }
                     else if (valueStart > 0 && valueLen == 0) {
                         if (cur.attrSpans == null)
-                            cur.attrSpans = new PointVectorInt();
+                            cur.attrSpans = new IntVector();
 
-                        cur.attrSpans.add(attrStart, attrLen);
-                        cur.attrSpans.add(valueStart, i - valueStart);
+                        cur.attrSpans.add(attrStart);
+                        cur.attrSpans.add(attrLen);
+                        cur.attrSpans.add(valueStart);
+                        cur.attrSpans.add(i - valueStart);
                         attrStart = attrLen = valueStart = valueLen = 0;
                     }
 
@@ -237,9 +239,11 @@ public class XmlParser {
                     if (c == '>') {
                         if (attrLen > 0) {
                             if (cur.attrSpans == null)
-                                cur.attrSpans = new PointVectorInt();
-                            cur.attrSpans.add(attrStart, attrLen);
-                            cur.attrSpans.add(0, 0);
+                                cur.attrSpans = new IntVector();
+                            cur.attrSpans.add(attrStart);
+                            cur.attrSpans.add(attrLen);
+                            cur.attrSpans.add(0);
+                            cur.attrSpans.add(0);
                         }
 
                         if (isSelfContained)
@@ -329,12 +333,12 @@ public class XmlParser {
         sb.add(originalBuf, node.nameStart, node.nameLen);
 
         if (node.attrSpans != null) {
-            for (int i = 0; i < node.attrSpans.size / 2; i++) {
+            for (int i = 0; i < node.attrSpans.size - 3; i += 4) {
                 sb.add(' ');
-                sb.add(originalBuf, node.attrSpans.buf[4*i], node.attrSpans.buf[4*i+1]);
+                sb.add(originalBuf, node.attrSpans.buf[i], node.attrSpans.buf[i+1]);
 
-                int valueStart = node.attrSpans.buf[4*i+2];
-                int valueLen = node.attrSpans.buf[4*i+3];
+                int valueStart = node.attrSpans.buf[i+2];
+                int valueLen = node.attrSpans.buf[i+3];
                 if (valueStart != 0 && valueLen != 0) {
                     sb.add('=');
                     sb.add(originalBuf, valueStart, valueLen);
@@ -378,12 +382,12 @@ public class XmlParser {
             sb.add(originalBuf, node.nameStart, node.nameLen);
 
             if (node.attrSpans != null) {
-                for (int j = 0; j < node.attrSpans.length / 4; j++) {
+                for (int j = 0; j < node.attrSpans.length - 3; j += 4) {
                     sb.add(' ');
-                    sb.add(originalBuf, node.attrSpans[4*j], node.attrSpans[4*j+1]);
+                    sb.add(originalBuf, node.attrSpans[j], node.attrSpans[j+1]);
 
-                    int valueStart = node.attrSpans[4*j+2];
-                    int valueLen = node.attrSpans[4*j+3];
+                    int valueStart = node.attrSpans[j+2];
+                    int valueLen = node.attrSpans[j+3];
                     if (valueStart != 0 && valueLen != 0) {
                         sb.add('=');
                         sb.add(originalBuf, valueStart, valueLen);

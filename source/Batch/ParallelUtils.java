@@ -5,15 +5,16 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ParallelUtils {
-    public static PointVectorInt makeBinaryTreeOfSlices(int length, int largestAtom) {
-        PointVectorInt offsetLengthPairs = new PointVectorInt();
+    public static IntVector makeBinaryTreeOfSlices(int length, int largestAtom) {
+        IntVector offsetLengthPairs = new IntVector();
         makeBinaryTreeOfSlices(offsetLengthPairs, 0, length, largestAtom);
         return offsetLengthPairs;
     }
 
-    public static void makeBinaryTreeOfSlices(PointVectorInt offsetLengthPairs, int start, int length, int largestAtom) {
+    public static void makeBinaryTreeOfSlices(IntVector offsetLengthPairs, int start, int length, int largestAtom) {
         if (length <= largestAtom) {
-            offsetLengthPairs.add(start, length);
+            offsetLengthPairs.add(start);
+            offsetLengthPairs.add(length);
         }
         else {
             int split = length / 2;
@@ -28,10 +29,10 @@ public class ParallelUtils {
     public static boolean computeSlicesInParallel(
         ThreadPoolExecutor threadPool,
         int maxWorkers,
-        PointVectorInt offsetLengthPairs,
+        IntVector offsetLengthPairs,
         ISliceCompute params
     ) {
-        final int nSlices = offsetLengthPairs.size;
+        final int nSlices = offsetLengthPairs.size / 2;
         ArrayBlockingQueue<ISliceCompute.Result> resultQueue = new ArrayBlockingQueue<>(nSlices);
 
         if (nSlices <= maxWorkers) {

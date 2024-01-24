@@ -123,7 +123,7 @@ public class XlsxReader {
         }
 
         String[] attr = new String[2];
-        PointVectorInt positions = new PointVectorInt();
+        IntVector positions = new IntVector();
         RefVector<Object> cellValues = new RefVector<>(Object.class);
 
         ArrayList<SheetCells> outSheets = new ArrayList<>();
@@ -162,8 +162,8 @@ public class XlsxReader {
                     continue;
                 }
 
-                totalRows = Math.max(totalRows, positions.buf[positions.size*2-2] + 1);
-                totalCols = Math.max(totalCols, positions.buf[positions.size*2-1] + 1);
+                totalRows = Math.max(totalRows, positions.buf[positions.size-2] + 1);
+                totalCols = Math.max(totalCols, positions.buf[positions.size-1] + 1);
 
                 XmlParser.FlatNode valueNode = flattened[j].getChild(flattened, 0);
 
@@ -197,10 +197,10 @@ public class XlsxReader {
             }
 
             Object[] cells = new Object[totalRows * totalCols];
-            for (int j = 0; j < positions.size; j++) {
-                int row = positions.buf[2*j];
-                int col = positions.buf[2*j+1];
-                cells[col + totalCols*row] = cellValues.buf[j];
+            for (int j = 0; j < positions.size; j += 2) {
+                int row = positions.buf[j];
+                int col = positions.buf[j+1];
+                cells[col + totalCols*row] = cellValues.buf[j >>> 1];
             }
 
             SheetCells sc = new SheetCells(cells, totalRows, totalCols);
@@ -253,7 +253,7 @@ public class XlsxReader {
         return buf;
     }
 
-    static boolean addRowColToVector(PointVectorInt vec, String cellRef) {
+    static boolean addRowColToVector(IntVector vec, String cellRef) {
         if (cellRef == null || cellRef == "")
             return false;
 
@@ -292,7 +292,8 @@ public class XlsxReader {
         if (row < 0 || col < 0)
             return false;
 
-        vec.add(row, col);
+        vec.add(row);
+        vec.add(col);
         return true;
     }
 }
