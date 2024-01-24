@@ -101,7 +101,7 @@ public class Lee94 {
                             xIsBorder || yIsBorder || zIsBorder ||
                             ((planes[(x + offs[0]) + width * (y + offs[1])] >>> (z + offs[2])) & 1) == 0
                         ) {
-                            int neighborBits = getNeighborBits(planes, width, height, breadth, x, y, z);
+                            int neighborBits = AnalyzeSkeleton2.getBooleanNeighborBits(planes, width, height, breadth, x, y, z);
                             if (Integer.bitCount(neighborBits) != 1 && isSimplePoint(neighborBits) && isEulerInvariant(neighborBits)) {
                                 vertices.add(x);
                                 vertices.add(y);
@@ -261,31 +261,13 @@ public class Lee94 {
             int y = params.finalSimplePoints.buf[i+1];
             int z = params.finalSimplePoints.buf[i+2];
             int pos = x + y*params.width;
-            boolean isSimple = isSimplePoint(getNeighborBits(params.planes, params.width, params.height, params.breadth, x, y, z));
+            boolean isSimple = isSimplePoint(AnalyzeSkeleton2.getBooleanNeighborBits(params.planes, params.width, params.height, params.breadth, x, y, z));
 
             params.planes[pos] = (byte)((params.planes[pos] & ~(1 << z)) | (isSimple ? 0 : (1 << z)));
             anyChange = anyChange || isSimple;
         }
 
         return anyChange;
-    }
-
-    // returns a 26-bit number containing each neighbor within a 3x3x3 vicinity (-1 to exclude the point itself)
-    static int getNeighborBits(byte[] planes, int width, int height, int breadth, int x, int y, int z) {
-        int bits = 0;
-        for (int i = 0; i < 27; i++) {
-            if (i == 13)
-                continue;
-            int xx = x + (i % 3) - 1;
-            int yy = y + ((i / 3) % 3) - 1;
-            int zz = z + ((i / 9) % 3) - 1;
-            int p = 0;
-            if (xx >= 0 && xx < width && yy >= 0 && yy < height && zz >= 0 && zz < breadth)
-                p = (planes[xx + width * yy] >> zz) & 1;
-            bits = (bits << 1) | p;
-        }
-
-        return bits;
     }
 
     static boolean isSimplePoint(int neighborBits) {
