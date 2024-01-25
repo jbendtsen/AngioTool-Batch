@@ -1,5 +1,7 @@
 package Batch;
 
+import java.util.Arrays;
+
 public class AnalyzeSkeleton2
 {
     public static final int NONE = 0;
@@ -17,7 +19,7 @@ public class AnalyzeSkeleton2
                 continue;
             int xx = x + (i % 3) - 1;
             int yy = y + ((i / 3) % 3) - 1;
-            int zz = z + ((i / 9) % 3) - 1;
+            int zz = z + (i / 9) - 1;
             int p = 0;
             if (xx >= 0 && xx < width && yy >= 0 && yy < height && zz >= 0 && zz < breadth)
                 p = (planes[xx + width * yy] >> zz) & 1;
@@ -27,13 +29,67 @@ public class AnalyzeSkeleton2
         return bits;
     }
 
-    public static void analyze(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth)
+    public static void analyze(SkeletonResult2 result, PixelCalibration calibration, byte[] skeletonImages, int width, int height, int breadth)
     {
+        result.reset();
         breadth = Math.min(Math.max(1, breadth), MAX_BREADTH);
 
-        result.reset();
         int[] taggedImage = BufferPool.intPool.acquireAsIs(width * height);
+        IntVector[] pointVectors = tagImages(result, skeletonImages, width, height, breadth);
 
+        int[][] markedImages = new int[depth][];
+        for(int z = 0; z < depth; ++z)
+            markedImages[z] = BufferPool.intPool.acquireZeroed(width * height);
+
+        int nTrees = markTreesOnImages(result, skeletonImage, width, height, breadth, pointVectors, markedImages);
+        if (nTrees <= 0)
+            nTrees = 1;
+
+        /*
+        if (nTrees > 1) {
+            divideVoxelsByTrees();
+        }
+        else {
+            this.endPointsTree[0] = this.listOfEndPoints;
+            this.numberOfEndPoints[0] = this.listOfEndPoints.size();
+            this.junctionVoxelTree[0] = this.listOfJunctionVoxels;
+            this.numberOfJunctionVoxels[0] = this.listOfJunctionVoxels.size();
+            this.startingSlabTree[0] = this.listOfStartingSlabVoxels;
+        }
+        */
+
+        int[] visitMap = BufferPool.intPool.acquireZeroed(width * height);
+        result.triplePointCounts.resize(nTrees);
+        result.quadruplePointCounts.resize(nTrees);
+
+        groupJunctions(result, skeletonImage, width, height, breadth, nTrees, visitMap);
+
+        /*
+        for(int iTree = 0; iTree < this.numOfTrees; ++iTree) {
+            this.numberOfJunctions[iTree] = this.listOfSingleJunctions[iTree].size();
+            this.junctionVertex[iTree] = new Vertex[this.listOfSingleJunctions[iTree].size()];
+
+            for(int j = 0; j < this.listOfSingleJunctions[iTree].size(); ++j) {
+                ArrayList<Point> list = this.listOfSingleJunctions[iTree].get(j);
+                this.junctionVertex[iTree][j] = new Vertex();
+
+                for(Point p : list) {
+                    this.junctionVertex[iTree][j].addPoint(p);
+                }
+            }
+        }
+        */
+
+        buildSkeletonGraphs(result, calibration, skeletonImage, width, height, breadth, nTrees, visitMap);
+
+        BufferPool.intPool.release(taggedImage);
+        BufferPool.intPool.release(visitMap);
+        for (int z = 0; z < breadth; z++)
+            BufferPool.intPool.release(markedImages[z]);
+    }
+
+    static IntVector[] tagImage(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth)
+    {
         IntVector[] pointVectors = new IntVector[4];
         pointVectors[NONE] = null;
         pointVectors[END_POINT] = result.listOfEndPoints;
@@ -66,11 +122,11 @@ public class AnalyzeSkeleton2
             }
         }
 
-        int nTrees = 0;
-        int[][] markedImages = new int[depth][];
-        for(int z = 0; z < depth; ++z)
-            markedImages[z] = BufferPool.intPool.acquireZeroed(width * height);
+        return pointVectors;
+    }
 
+    static int markTreesOnImages(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth, IntVector[] pointVectors) {
+        int nTrees = 0;
         for (int type = END_POINT; type <= SLAB; type++) {
             int n = pointVectors[type].size;
             for (int i = 0; i < n; i += 3) {
@@ -148,32 +204,20 @@ public class AnalyzeSkeleton2
                     nTrees++;
             }
         }
+        return nTrees;
+    }
 
-        nTrees = Math.max(nTrees, 1);
+    static void groupJunctions(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth)
+    {
+        if (result.triplePointCounts.size > 0)
+            Arrays.fill(result.triplePointCounts.buf, 0, result.triplePointCounts.size, 0);
+        if (result.quadruplePointCounts.size > 0)
+            Arrays.fill(result.quadruplePointCounts.buf, 0, result.quadruplePointCounts.size, 0);
 
-        /*
-        if (nTrees > 1) {
-            divideVoxelsByTrees();
-        }
-        else {
-            this.endPointsTree[0] = this.listOfEndPoints;
-            this.numberOfEndPoints[0] = this.listOfEndPoints.size();
-            this.junctionVoxelTree[0] = this.listOfJunctionVoxels;
-            this.numberOfJunctionVoxels[0] = this.listOfJunctionVoxels.size();
-            this.startingSlabTree[0] = this.listOfStartingSlabVoxels;
-        }
-        */
-
-        //this.resetVisited();
-
-        int[] visitMap = BufferPool.intPool.acquireZeroed(width * height);
-        result.triplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
-        result.quadruplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
-
-        for (int i = 0; i < listOfJunctionVoxels.size; i += 3) {
-            int x = listOfJunctionVoxels.buf[i];
-            int y = listOfJunctionVoxels.buf[i+1];
-            int z = listOfJunctionVoxels.buf[i+2];
+        for (int i = 0; i < result.listOfJunctionVoxels.size; i += 3) {
+            int x = result.listOfJunctionVoxels.buf[i];
+            int y = result.listOfJunctionVoxels.buf[i+1];
+            int z = result.listOfJunctionVoxels.buf[i+2];
             if (((visitMap[x + width * y] >>> z) & 1) != 0)
                 continue;
 
@@ -187,9 +231,9 @@ public class AnalyzeSkeleton2
 
             int revisitIdx = 0;
             boolean wasRevisit = false;
-            boolean didFindPoint;
+            int pointFound;
             do {
-                didFindPoint = false;
+                pointFound = -1;
                 int nBranches = 0;
                 for (int j = 0; j < 27; j++) {
                     if (j == 13)
@@ -205,28 +249,30 @@ public class AnalyzeSkeleton2
                         ((visitMap[xx + width * yy] >>> zz) & 1) == 0 &&
                         type == JUNCTION
                     ) {
-                        x = xx;
-                        y = yy;
-                        z = zz;
-                        didFindPoint = true;
+                        pointFound = j;
                     }
 
                     if (type == END_POINT || type == SLAB)
                         nBranches++;
                 }
 
-                if (didFindPoint) {
+                if (pointFound >= 0) {
+                    x += (pointFound / 9) - 1;
+                    y += ((pointFound / 3) % 3) - 1;
+                    z += (pointFound % 3) - 1;
+
                     visitMap[x + width * y] |= 1 << z;
-                    listOfSingleJunctions.add(x);
-                    listOfSingleJunctions.add(y);
-                    listOfSingleJunctions.add(z);
+                    result.listOfSingleJunctions.add(x);
+                    result.listOfSingleJunctions.add(y);
+                    result.listOfSingleJunctions.add(z);
                     result.toRevisit.add(x);
                     result.toRevisit.add(y);
                     result.toRevisit.add(z);
+
                     if (nBranches == 3)
-                        result.triplePointCounts[treeIdx]++;
+                        result.triplePointCounts.buf[treeIdx]++;
                     else if (nBranches == 4)
-                        result.quadruplePointCounts[treeIdx]++;
+                        result.quadruplePointCounts.buf[treeIdx]++;
                 }
                 else {
                     if (wasRevisit)
@@ -238,30 +284,16 @@ public class AnalyzeSkeleton2
                         z = result.toRevisit.buf[revisitIdx+2];
                     }
                 }
-                wasRevisit = !didFindPoint;
+                wasRevisit = pointFound == -1;
             }
-            while (didFindPoint || revisitIdx < result.toRevisit.size);
+            while (pointFound >= 0 || revisitIdx < result.toRevisit.size);
 
             // ...
         }
+    }
 
-        /*
-        for(int iTree = 0; iTree < this.numOfTrees; ++iTree) {
-            this.numberOfJunctions[iTree] = this.listOfSingleJunctions[iTree].size();
-            this.junctionVertex[iTree] = new Vertex[this.listOfSingleJunctions[iTree].size()];
-
-            for(int j = 0; j < this.listOfSingleJunctions[iTree].size(); ++j) {
-                ArrayList<Point> list = this.listOfSingleJunctions[iTree].get(j);
-                this.junctionVertex[iTree][j] = new Vertex();
-
-                for(Point p : list) {
-                    this.junctionVertex[iTree][j].addPoint(p);
-                }
-            }
-        }
-        */
-
-        //this.resetVisited();
+    static void buildSkeletonGraphs(SkeletonResult2 result, PixelCalibration calibration, byte[] skeletonImages, int width, int height, int breadth)
+    {
         int endPointStart = 0;
 
         for (int t = 0; t < nTrees; t++) {
@@ -277,6 +309,7 @@ public class AnalyzeSkeleton2
             this.maximumBranchLength[t] = 0.0;
             this.numberOfSlabs[t] = 0;
 
+            //for(int i = 0; i < this.numberOfEndPoints[iTree]; ++i)
             for (int i = endPointStart; i < result.listOfEndPoints.size; i += 3) {
                 int x = result.listOfEndPoints.buf[i];
                 int y = result.listOfEndPoints.buf[i+1];
@@ -288,23 +321,70 @@ public class AnalyzeSkeleton2
                 if (((visitMap[x + width * y] >>> (MAX_BREADTH + z)) & 1) != 0)
                     continue;
 
-                
-            }
+                visitMap[x + width * y] |= 1 << (MAX_BREADTH + z);
 
-            for(int i = 0; i < this.numberOfEndPoints[iTree]; ++i) {
-                Point endPointCoord = this.endPointsTree[iTree].get(i);
-                if (this.isVisited(endPointCoord))
-                    continue;
-
+                /*
                 Vertex v1 = new Vertex();
                 v1.addPoint(endPointCoord);
                 this.graph[iTree].addVertex(v1);
                 if (i == 0) {
                     this.graph[iTree].setRoot(v1);
                 }
+                */
 
-                this.slabList = new ArrayList<>();
-                double length = this.visitBranch(endPointCoord, iTree);
+                result.slabList.size = 0;
+
+                double length = 0.0;
+
+                Point previousPoint = endPointCoord;
+                Point nextPoint = null;
+                boolean didFindPoint;
+                while (true) {
+                    didFindPoint = false;
+                    for (int j = 0; j < 27; j++) {
+                        if (j == 13)
+                            continue;
+
+                        int xx = x + (j / 9) - 1;
+                        int yy = y + ((j / 3) % 3) - 1;
+                        int zz = z + (j % 3) - 1;
+                        if (
+                            ((skeletonImage[xx + width * yy] >>> zz) & 1) != 0 &&
+                            ((visitMap[xx + width * yy] >>> (MAX_BREADTH + zz)) & 1) == 0
+                        ) {
+                            
+                            x = xx;
+                            y = yy;
+                            z = zz;
+                            didFindPoint = true;
+                            break;
+                        }
+                    }
+                    if (nextPoint == null || !isSlab(nextPoint))
+                        break;
+
+                    this.numberOfSlabs[iTree]++;
+                    this.slabList.add(nextPoint);
+                    length += this.calculateDistance(previousPoint, nextPoint);
+                    this.setVisited(nextPoint, true);
+                    previousPoint = nextPoint;
+                }
+
+                if (nextPoint != null) {
+                    length += this.calculateDistance(previousPoint, nextPoint);
+                    this.setVisited(nextPoint, true);
+                    if (this.isEndPoint(nextPoint)) {
+                        this.auxFinalVertex = new Vertex();
+                        this.auxFinalVertex.addPoint(nextPoint);
+                    } else if (this.isJunction(nextPoint)) {
+                        this.auxFinalVertex = this.findPointVertex(this.junctionVertex[iTree], nextPoint);
+                    }
+
+                    this.auxPoint = nextPoint;
+                } else {
+                    this.auxPoint = previousPoint;
+                }
+
                 if (length == 0.0)
                     continue;
 
@@ -407,7 +487,5 @@ public class AnalyzeSkeleton2
                 this.averageBranchLength[iTree] = branchLength / (double)this.numberOfBranches[iTree];
             }
         }
-
-        return assembleResults();
     }
 }

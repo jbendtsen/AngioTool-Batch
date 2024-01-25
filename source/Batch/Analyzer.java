@@ -661,10 +661,10 @@ public class Analyzer
             "Average Vessels Length",
             "Total Number of End Points",
             "Average Vessel Diameter",
-            "Elacunarity",
-            "Elacunarity Slope",
-            "Flacunarity",
-            "Flacunarity Slope",
+            "E Lacunarity",
+            "E Lacunarity Slope",
+            "F Lacunarity",
+            "F Lacunarity Slope",
             "Mean F Lacunarity",
             "Mean E Lacunarity"
         );
