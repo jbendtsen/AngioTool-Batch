@@ -28,6 +28,12 @@ public class IntVector {
         size = newSize;
     }
 
+    public void fillSizeWithZeroes() {
+        final int s = size;
+        for (int i = 0; i < s; i++)
+            buf[i] = 0;
+    }
+
     public void add(int v) {
         int pos = size;
         resize(pos + 1);

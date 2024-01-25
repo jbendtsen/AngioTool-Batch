@@ -41,8 +41,10 @@ public class BufferPool {
             Arrays.fill(buffer, 0, minSize, (byte)0);
             return buffer;
         }
-        public void release(byte[] buffer) {
-            queue[findQueueNumber(buffer.length)].add(buffer);
+        public byte[] release(byte[] buffer) {
+            if (buffer != null)
+                queue[findQueueNumber(buffer.length)].add(buffer);
+            return null;
         }
     }
 
@@ -69,8 +71,10 @@ public class BufferPool {
             Arrays.fill(buffer, 0, minSize, 0);
             return buffer;
         }
-        public void release(int[] buffer) {
-            queue[findQueueNumber(buffer.length)].add(buffer);
+        public int[] release(int[] buffer) {
+            if (buffer != null)
+                queue[findQueueNumber(buffer.length)].add(buffer);
+            return null;
         }
     }
 
@@ -97,8 +101,10 @@ public class BufferPool {
             Arrays.fill(buffer, 0, minSize, 0.0);
             return buffer;
         }
-        public void release(double[] buffer) {
-            queue[findQueueNumber(buffer.length)].add(buffer);
+        public double[] release(double[] buffer) {
+            if (buffer != null)
+                queue[findQueueNumber(buffer.length)].add(buffer);
+            return null;
         }
     }
 }

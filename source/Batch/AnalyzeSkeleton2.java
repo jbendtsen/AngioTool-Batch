@@ -1,7 +1,5 @@
 package Batch;
 
-import java.util.Arrays;
-
 public class AnalyzeSkeleton2
 {
     public static final int NONE = 0;
@@ -29,19 +27,37 @@ public class AnalyzeSkeleton2
         return bits;
     }
 
+    public static void resetSkeletonResult2(SkeletonResult2 result, int newBreadth)
+    {
+        if (result.pointVectors == null)
+            result.pointVectors = new IntVector[4];
+
+        for (int i = 0; i < result.breadth; i++)
+            result.markedImages[i] = BufferPool.intPool.release(result.markedImages[i]);
+
+        result.triplePointCounts = BufferPool.intPool.release(result.triplePointCounts);
+        result.quadruplePointCounts = BufferPool.intPool.release(result.quadruplePointCounts);
+        result.maximumBranchLength = BufferPool.doublePool.release(result.maximumBranchLength);
+        result.numberOfSlabs = BufferPool.intPool.release(result.numberOfSlabs);
+
+        if (newBreadth > result.breadth)
+            result.markedImages = new int[newBreadth][];
+
+        result.breadth = newBreadth;
+    }
+
     public static void analyze(SkeletonResult2 result, PixelCalibration calibration, byte[] skeletonImages, int width, int height, int breadth)
     {
-        result.reset();
         breadth = Math.min(Math.max(1, breadth), MAX_BREADTH);
+        resetSkeletonResult2(result, breadth);
 
         int[] taggedImage = BufferPool.intPool.acquireAsIs(width * height);
-        IntVector[] pointVectors = tagImages(result, skeletonImages, width, height, breadth);
+        tagImages(result, skeletonImages, width, height, breadth, taggedImage);
 
-        int[][] markedImages = new int[depth][];
-        for(int z = 0; z < depth; ++z)
-            markedImages[z] = BufferPool.intPool.acquireZeroed(width * height);
+        for (int z = 0; z < breadth; z++)
+            result.markedImages[z] = BufferPool.intPool.acquireZeroed(width * height);
 
-        int nTrees = markTreesOnImages(result, skeletonImage, width, height, breadth, pointVectors, markedImages);
+        int nTrees = markTreesOnImages(result, skeletonImage, width, height, breadth, taggedImage);
         if (nTrees <= 0)
             nTrees = 1;
 
@@ -59,10 +75,11 @@ public class AnalyzeSkeleton2
         */
 
         int[] visitMap = BufferPool.intPool.acquireZeroed(width * height);
-        result.triplePointCounts.resize(nTrees);
-        result.quadruplePointCounts.resize(nTrees);
 
-        groupJunctions(result, skeletonImage, width, height, breadth, nTrees, visitMap);
+        result.triplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
+        result.quadruplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
+
+        groupJunctions(result, skeletonImage, width, height, breadth, nTrees, taggedImage, visitMap);
 
         /*
         for(int iTree = 0; iTree < this.numOfTrees; ++iTree) {
@@ -80,21 +97,21 @@ public class AnalyzeSkeleton2
         }
         */
 
-        buildSkeletonGraphs(result, calibration, skeletonImage, width, height, breadth, nTrees, visitMap);
+        result.maximumBranchLength = BufferPool.doublePool.acquireZeroed(nTrees);
+        result.numberOfSlabs = BufferPool.intPool.acquireZeroed(nTrees);
+
+        buildSkeletonGraphs(result, calibration, skeletonImage, width, height, breadth, nTrees, taggedImage, visitMap);
 
         BufferPool.intPool.release(taggedImage);
         BufferPool.intPool.release(visitMap);
-        for (int z = 0; z < breadth; z++)
-            BufferPool.intPool.release(markedImages[z]);
     }
 
-    static IntVector[] tagImage(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth)
+    static void tagImage(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth, int[] taggedImage)
     {
-        IntVector[] pointVectors = new IntVector[4];
-        pointVectors[NONE] = null;
-        pointVectors[END_POINT] = result.listOfEndPoints;
-        pointVectors[JUNCTION] = result.listOfJunctionVoxels;
-        pointVectors[SLAB] = result.listOfSlabVoxels;
+        result.pointVectors[NONE] = null;
+        result.pointVectors[END_POINT] = result.listOfEndPoints;
+        result.pointVectors[JUNCTION] = result.listOfJunctionVoxels;
+        result.pointVectors[SLAB] = result.listOfSlabVoxels;
 
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -112,27 +129,25 @@ public class AnalyzeSkeleton2
                         else
                             type = SLAB;
 
-                        pointVectors[type].add(x);
-                        pointVectors[type].add(y);
-                        pointVectors[type].add(z);
+                        result.pointVectors[type].add(x);
+                        result.pointVectors[type].add(y);
+                        result.pointVectors[type].add(z);
                     }
                     value = (value << 2) | type;
                 }
                 taggedImage[idx] = value;
             }
         }
-
-        return pointVectors;
     }
 
-    static int markTreesOnImages(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth, IntVector[] pointVectors) {
+    static int markTreesOnImages(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth, int[] taggedImage) {
         int nTrees = 0;
         for (int type = END_POINT; type <= SLAB; type++) {
             int n = pointVectors[type].size;
             for (int i = 0; i < n; i += 3) {
-                int x = pointVectors[type].buf[i];
-                int y = pointVectors[type].buf[i+1];
-                int z = pointVectors[type].buf[i+2];
+                int x = result.pointVectors[type].buf[i];
+                int y = result.pointVectors[type].buf[i+1];
+                int z = result.pointVectors[type].buf[i+2];
                 if (markedImages[z][x + width * y] != 0)
                     continue;
 
@@ -166,7 +181,7 @@ public class AnalyzeSkeleton2
                         int zz = z + (j % 3) - 1;
                         if (
                             ((skeletonImage[xx + width * yy] >>> zz) & 1) != 0 &&
-                            markedImages[zz][xx + width * yy] == 0
+                            result.markedImages[zz][xx + width * yy] == 0
                         ) {
                             x = xx;
                             y = yy;
@@ -178,7 +193,7 @@ public class AnalyzeSkeleton2
 
                     if (didFindPoint) {
                         ++numOfVoxels;
-                        markedImages[z][x + width * y] = nTrees + 1;
+                        result.markedImages[z][x + width * y] = nTrees + 1;
 
                         if (((taggedImage[x + width * y] >>> (z << 1)) & 3) == JUNCTION) {
                             result.toRevisit.add(x);
@@ -204,16 +219,12 @@ public class AnalyzeSkeleton2
                     nTrees++;
             }
         }
+
         return nTrees;
     }
 
-    static void groupJunctions(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth)
+    static void groupJunctions(SkeletonResult2 result, byte[] skeletonImage, int width, int height, int breadth, int nTrees, int[] taggedImage, int[] visitMap)
     {
-        if (result.triplePointCounts.size > 0)
-            Arrays.fill(result.triplePointCounts.buf, 0, result.triplePointCounts.size, 0);
-        if (result.quadruplePointCounts.size > 0)
-            Arrays.fill(result.quadruplePointCounts.buf, 0, result.quadruplePointCounts.size, 0);
-
         for (int i = 0; i < result.listOfJunctionVoxels.size; i += 3) {
             int x = result.listOfJunctionVoxels.buf[i];
             int y = result.listOfJunctionVoxels.buf[i+1];
@@ -292,7 +303,7 @@ public class AnalyzeSkeleton2
         }
     }
 
-    static void buildSkeletonGraphs(SkeletonResult2 result, PixelCalibration calibration, byte[] skeletonImages, int width, int height, int breadth)
+    static void buildSkeletonGraphs(SkeletonResult2 result, PixelCalibration calibration, byte[] skeletonImages, int width, int height, int breadth, int nTrees, int[] taggedImage, int[] visitMap)
     {
         int endPointStart = 0;
 
@@ -306,8 +317,6 @@ public class AnalyzeSkeleton2
             */
 
             double branchLength = 0.0;
-            this.maximumBranchLength[t] = 0.0;
-            this.numberOfSlabs[t] = 0;
 
             //for(int i = 0; i < this.numberOfEndPoints[iTree]; ++i)
             for (int i = endPointStart; i < result.listOfEndPoints.size; i += 3) {
