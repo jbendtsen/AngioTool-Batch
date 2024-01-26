@@ -28,28 +28,41 @@ public class IntVector {
         size = newSize;
     }
 
-    public void fillSizeWithZeroes() {
-        final int s = size;
-        for (int i = 0; i < s; i++)
-            buf[i] = 0;
-    }
-
-    public void add(int v) {
+    public int add(int v) {
         int pos = size;
         resize(pos + 1);
         buf[pos] = v;
+        return pos;
     }
 
-    public void add(int[] data) {
-        add(data, 0, data.length);
+    public int add(int[] data) {
+        return add(data, 0, data.length);
     }
 
-    public void add(int[] data, int off, int len) {
+    public int add(int[] data, int off, int len) {
+        int pos = this.size;
         if (off >= 0 && len > 0 && off+len <= data.length) {
-            int pos = this.size;
             resize(pos + len);
             System.arraycopy(data, off, this.buf, pos, len);
         }
+        return pos;
+    }
+
+    public int addTwo(int a, int b) {
+        int pos = size;
+        resize(pos + 2);
+        buf[pos] = a;
+        buf[pos+1] = b;
+        return pos;
+    }
+
+    public int addThree(int a, int b, int c) {
+        int pos = size;
+        resize(pos + 3);
+        buf[pos] = a;
+        buf[pos+1] = b;
+        buf[pos+2] = c;
+        return pos;
     }
 
     public int popOr(int defaultValue) {
