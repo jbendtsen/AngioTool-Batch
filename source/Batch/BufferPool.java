@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 // Generics in Java fall apart as soon as primitives are involved, so we keepin it ol skool
-// TODO: consider adding code to compile.py that generates these classes for us -- that way we can't make copy-paste errors
+// TODO: consider adding code to compile.py that generates these classes. This would eliminate potential copy-paste errors
 
 public class BufferPool {
     public static final int N_QUEUES = 4;
@@ -26,6 +26,8 @@ public class BufferPool {
                 queues[i] = new ConcurrentLinkedQueue<byte[]>();
         }
         public byte[] acquireAsIs(int minSize) {
+            if (minSize <= 0)
+                return null;
             int idx = findQueueNumber(minSize);
             byte[] buffer;
             do {
@@ -37,6 +39,8 @@ public class BufferPool {
             return buffer;
         }
         public byte[] acquireZeroed(int minSize) {
+            if (minSize <= 0)
+                return null;
             byte[] buffer = acquireAsIs(minSize);
             Arrays.fill(buffer, 0, minSize, (byte)0);
             return buffer;
@@ -56,6 +60,8 @@ public class BufferPool {
                 queues[i] = new ConcurrentLinkedQueue<int[]>();
         }
         public int[] acquireAsIs(int minSize) {
+            if (minSize <= 0)
+                return null;
             int idx = findQueueNumber(minSize);
             int[] buffer;
             do {
@@ -67,6 +73,8 @@ public class BufferPool {
             return buffer;
         }
         public int[] acquireZeroed(int minSize) {
+            if (minSize <= 0)
+                return null;
             int[] buffer = acquireAsIs(minSize);
             Arrays.fill(buffer, 0, minSize, 0);
             return buffer;
@@ -86,6 +94,8 @@ public class BufferPool {
                 queues[i] = new ConcurrentLinkedQueue<double[]>();
         }
         public double[] acquireAsIs(int minSize) {
+            if (minSize <= 0)
+                return null;
             int idx = findQueueNumber(minSize);
             double[] buffer;
             do {
@@ -97,6 +107,8 @@ public class BufferPool {
             return buffer;
         }
         public double[] acquireZeroed(int minSize) {
+            if (minSize <= 0)
+                return null;
             double[] buffer = acquireAsIs(minSize);
             Arrays.fill(buffer, 0, minSize, 0.0);
             return buffer;
