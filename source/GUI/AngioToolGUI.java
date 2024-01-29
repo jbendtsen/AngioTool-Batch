@@ -17,10 +17,12 @@ import AngioTool.Results;
 import AngioTool.SaveToExcel;
 import Batch.Analyzer;
 import Batch.AnalyzerParameters;
+import Batch.AnalyzeSkeleton2;
 import Batch.BatchAnalysisUi;
 import Batch.ComputeShapeRoiSplines;
 import Batch.Lee94;
 import Batch.Rgb;
+import Batch.SkeletonResult2;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
 //import com.jidesoft.swing.RangeSlider;
@@ -121,9 +123,9 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<Double> currentSigmas;
    private ArrayList<AngioToolGUI.sigmaImages> sI;
    private ArrayList<int[]> al;
-   private ArrayList<AnalyzeSkeleton.Point> al2;
-   private ArrayList<AnalyzeSkeleton.Point> removedJunctions;
-   private ArrayList<AnalyzeSkeleton.Point> endPoints;
+   //private ArrayList<AnalyzeSkeleton.Point> al2;
+   //private ArrayList<AnalyzeSkeleton.Point> removedJunctions;
+   //private ArrayList<AnalyzeSkeleton.Point> endPoints;
    private PolygonPlus convexHull;
    private double convexHullArea;
    private Overlay allantoisOverlay;
@@ -132,7 +134,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<Roi> skeletonRoi;
    private ArrayList<Roi> junctionsRoi;
    private long thresholdedPixelArea = 0L;
-   private AnalyzeSkeleton.Graph[] graph;
+   //private AnalyzeSkeleton.Graph[] graph;
    private double ElSlope;
    private double medialELacunarity;
    private double FlSlope;
@@ -142,7 +144,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<Double> Flamdas = new ArrayList<>();
    private double meanEl;
    private double meanFl;
-   private AnalyzeSkeleton.SkeletonResult skelResult;
+   private SkeletonResult2 skelResult;
 
    private Results results;
    private JLabel batchStatusLabel;
@@ -1458,7 +1460,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
             if (this.graph != null) {
                params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
-               this.skeletonRoi = this.computeSkeletonRoi(this.graph, params.skeletonColor, (int)params.skeletonSize);
+               this.skeletonRoi = this.computeSkeletonRoi(params.skeletonColor, (int)params.skeletonSize);
             }
 
             if (this.skeletonRoi != null && params.shouldDrawSkeleton) {
@@ -1681,36 +1683,43 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.meanFl = l.getMeanFl();
    }
 
-   private ArrayList<Roi> computeSkeletonRoi(AnalyzeSkeleton.Graph[] graph, Rgb color, int size) {
-      ArrayList<Roi> r = new ArrayList();
+   private ArrayList<Roi> computeSkeletonRoi(int size) {
+      ArrayList<Roi> list = new ArrayList<>();
 
-      for(int g = 0; g < graph.length; ++g) {
-         ArrayList<AnalyzeSkeleton.Edge> edges = graph[g].getEdges();
+      for (int i = 0; i < skelResult.slabList.size; i += 3) {
+         int x = skelResult.slabList.buf[i];
+         int y = skelResult.slabList.buf[i+1];
 
-         for(int e = 0; e < edges.size(); ++e) {
-            AnalyzeSkeleton.Edge edge = edges.get(e);
-            ArrayList<AnalyzeSkeleton.Point> points = edge.getSlabs();
-
-            for(int p1 = 0; p1 < points.size(); ++p1) {
-               OvalRoi or = new OvalRoi(points.get(p1).x - size / 2, points.get(p1).y - size / 2, size, size);
-               r.add(or);
-            }
-         }
+         OvalRoi r = new OvalRoi(
+            x - size / 2,
+            y - size / 2,
+            size,
+            size
+         );
+         list.add(r);
       }
 
-      return r;
+      return list;
    }
 
-   private ArrayList<Roi> computeJunctionsRoi(ArrayList<AnalyzeSkeleton.Point> al, Color color, int size) {
-      ArrayList<Roi> r = new ArrayList();
+   private ArrayList<Roi> computeJunctionsRoi(int size) {
+      ArrayList<Roi> list = new ArrayList<>();
 
-      for(int i = 0; i < al.size(); ++i) {
-         AnalyzeSkeleton.Point p = al.get(i);
-         OvalRoi or = new OvalRoi(p.x - size / 2, p.y - size / 2, size, size);
-         r.add(or);
+      for (int i = 0; i < data.skelResult.isolatedJunctions.size; i++) {
+         int idx = data.skelResult.isolatedJunctions.buf[i];
+         int x = data.skelResult.junctionVoxels.buf[idx];
+         int y = data.skelResult.junctionVoxels.buf[idx+1];
+
+         Roi r = new OvalRoi(
+            x - size / 2,
+            y - size / 2,
+            size,
+            size
+         );
+         list.add(r);
       }
 
-      return r;
+      return list;
    }
 
    private Object updateSigmas(double[] s) {
@@ -2038,7 +2047,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
         skelAnalyzer.setup("", iplusSkeleton);
         this.skelResult = skelAnalyzer.run(0, false, false, iplusSkeleton, false, false);
         this.graph = skelAnalyzer.getGraphs();
-        this.skeletonRoi = this.computeSkeletonRoi(this.graph, new Rgb(this.skeletonColorRoundedPanel.getBackground()), getSpinnerValueInt(this.skeletonSpinner));
+        this.skeletonRoi = this.computeSkeletonRoi(new Rgb(this.skeletonColorRoundedPanel.getBackground()), getSpinnerValueInt(this.skeletonSpinner));
         this.al2 = this.skelResult.getListOfJunctionVoxels();
         this.removedJunctions = Utils.computeActualJunctions(this.al2);
         this.junctionsRoi = this.computeJunctionsRoi(this.al2, this.branchingPointsRoundedPanel.getBackground(), getSpinnerValueInt(this.branchingPointsSpinner));

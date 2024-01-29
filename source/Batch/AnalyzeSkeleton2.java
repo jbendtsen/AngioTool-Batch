@@ -411,12 +411,6 @@ public class AnalyzeSkeleton2
                     );
                 }
             }
-
-            /*
-            if (this.numberOfBranches[iTree] != 0) {
-                this.averageBranchLength[iTree] = branchLength / (double)this.numberOfBranches[iTree];
-            }
-            */
         }
     }
 

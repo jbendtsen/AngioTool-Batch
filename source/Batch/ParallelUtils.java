@@ -13,8 +13,7 @@ public class ParallelUtils {
 
     public static void makeBinaryTreeOfSlices(IntVector offsetLengthPairs, int start, int length, int largestAtom) {
         if (length <= largestAtom) {
-            offsetLengthPairs.add(start);
-            offsetLengthPairs.add(length);
+            offsetLengthPairs.addTwo(start, length);
         }
         else {
             int split = length / 2;
