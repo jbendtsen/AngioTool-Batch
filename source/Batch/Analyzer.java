@@ -29,39 +29,37 @@ import vesselThickness.EDT_S1D;
 
 public class Analyzer
 {
-    public static class Result
+    static class Stats
     {
-        static class Stats
-        {
-            public String imageFileName;
-            public String imageAbsolutePath;
-            public int thresholdLow;
-            public int thresholdHigh;
-            public double[] sigmas;
-            public double removeSmallParticlesThreshold;
-            public double fillHolesValue;
-            public double linearScalingFactor;
-            public double allantoisMMArea;
-            public double vesselMMArea;
-            public double vesselPercentageArea;
-            public double totalNJunctions;
-            public double junctionsPerScaledArea;
-            public double totalLength;
-            public double averageBranchLength;
-            public int totalNEndPoints;
-            public double averageVesselDiameter;
-            public double ELacunarity;
-            public double ELacunaritySlope;
-            public double FLacuanrity;
-            public double FLacunaritySlope;
-            public double meanFl;
-            public double meanEl;
-        }
+        public String imageFileName;
+        public String imageAbsolutePath;
+        public int thresholdLow;
+        public int thresholdHigh;
+        public double[] sigmas;
+        public double removeSmallParticlesThreshold;
+        public double fillHolesValue;
+        public double linearScalingFactor;
+        public double allantoisMMArea;
+        public double vesselMMArea;
+        public double vesselPercentageArea;
+        public double totalNJunctions;
+        public double junctionsPerScaledArea;
+        public double totalLength;
+        public double averageBranchLength;
+        public int totalNEndPoints;
+        public double averageVesselDiameter;
+        public double ELacunarity;
+        public double ELacunaritySlope;
+        public double FLacuanrity;
+        public double FLacunaritySlope;
+        public double meanFl;
+        public double meanEl;
 
         public Exception exception;
+    }
 
-        public Stats stats = new Stats();
-
+    public static class Scratch
+    {
         public ArrayList<Point> al2;
         public Overlay allantoisOverlay;
         public PolygonPlus convexHull;
@@ -84,18 +82,22 @@ public class Analyzer
         public ImageProcessor tempProcessor1;
         public ImageProcessor tempProcessor2;
         public ImageProcessor tempProcessor3;
-        public AnalyzeSkeleton skeleton;
         public ArrayList<Roi> junctionsRoi;
         public Lacunarity lacunarity;
         public Roi outlineRoi;
         public ArrayList<Point> removedJunctions;
         //public ArrayList<AngioToolGUI.sigmaImages> sI;
-        public SkeletonResult skelResult;
         public ArrayList<Roi> skeletonRoi;
         public ImageProcessor tubenessIp;
         public long vesselPixelArea;
 
-        public void cleanup()
+        // Recycling resources
+        public SkeletonResult2 skelResult;
+        public byte[] skeletonImagePlanes;
+        public byte[] zha84ScratchImage;
+        public Lee94.Scratch lee94Scratch;
+
+        public void reset()
         {
             exception = null;
             allantoisOverlay = null;
@@ -123,13 +125,25 @@ public class Analyzer
             lacunarity = null;
             outlineRoi = null;
             removedJunctions = null;
-            skelResult = null;
+            //skelResult = null;
             skeletonRoi = null;
             tubenessIp = null;
-            stats.sigmas = null;
-            stats = null;
+            //stats.sigmas = null;
+            //stats = null;
 
             System.gc();
+        }
+
+        public void close()
+        {
+            if (skelResult != null)
+                skelResult.reset(0);
+
+            skeletonImagePlanes = BufferPool.bytePool.release(skeletonImagePlanes);
+            zha84ScratchImage = BufferPool.bytePool.release(zha84ScratchImage);
+            lee94Scratch.reset(0);
+
+            reset();
         }
     }
 
@@ -185,6 +199,8 @@ public class Analyzer
         uiToken.startProgressBars(inputs.size(), calculateUpdateCountPerImage(params));
         boolean startedAnyImages = false;
 
+        Scratch data = new Scratch();
+
         for (File inFile : inputs) {
             if (uiToken.isClosed.get())
                 return;
@@ -201,13 +217,14 @@ public class Analyzer
             uiToken.onStartImage(inFile.getAbsolutePath());
             startedAnyImages = true;
 
-            Result result = null;
+            Stats result = null;
             Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
-                result = analyze(inFile, image, params, linearScalingFactor, uiToken);
+                result = analyze(data, inFile, image, params, linearScalingFactor, uiToken);
                 analyzeSucceeded = true;
-                saveResult(writer, result, inFile, params, linearScalingFactor, uiToken);
+                uiToken.updateImageProgress("Saving image stats to Excel");
+                writeResultToSheet(sheet, result);
             }
             catch (Throwable ex) {
                 ex.printStackTrace();
@@ -224,7 +241,7 @@ public class Analyzer
                             inFile.getAbsolutePath();
                         String format = resolveImageFormat(params.resultImageFormat);
 
-                        IJ.saveAs(result.imageResult.flatten(), format, basePath + " result." + format);
+                        IJ.saveAs(data.imageResult.flatten(), format, basePath + " data." + format);
                     }
                     catch (Throwable ex) {
                         exception = ex;
@@ -241,11 +258,12 @@ public class Analyzer
             if (exception != null)
                 Utils.showExceptionInDialogBox(exception);
 
-            if (result != null)
-                result.cleanup();
+            data.cleanup();
 
             uiToken.onImageDone(exception);
         }
+
+        data.close();
 
         if (!startedAnyImages)
             uiToken.notifyNoImages();
@@ -253,7 +271,11 @@ public class Analyzer
             uiToken.onFinished(writer);
     }
 
-    static String resolveOutputPath(String resultImagesPath, BidirectionalMap<String, String> outputPathMap, File inFile) {
+    static String resolveOutputPath(
+        String resultImagesPath,
+        BidirectionalMap<String, String> outputPathMap,
+        File inFile
+    ) {
         String outFolder = outputPathMap.getBack(inFile.getParent());
         File outFolderPath = new File(resultImagesPath, outFolder);
         if (outFolderPath.exists()) {
@@ -290,8 +312,12 @@ public class Analyzer
         return new String(bytes, start, bytes.length - start);
     }
 
-    static void enumerateImageFilesRecursively(ArrayList<File> images, File currentFolder, BidirectionalMap<String, String> outputPathMap, BatchAnalysisUi uiToken)
-    {
+    static void enumerateImageFilesRecursively(
+        ArrayList<File> images,
+        File currentFolder,
+        BidirectionalMap<String, String> outputPathMap,
+        BatchAnalysisUi uiToken
+    ) {
         String curAbsPath = currentFolder.getAbsolutePath();
         String outFolder = currentFolder.getName();
         outFolder = outFolder == null || outFolder.length() == 0 ? "root" : outFolder;
@@ -347,45 +373,50 @@ public class Analyzer
         }
     }
 
-    static Result analyze(File inFile, ImagePlus inputImage, AnalyzerParameters params, double linearScalingFactor, BatchAnalysisUi uiToken)
-    {
+    static Stats analyze(
+        Scratch data,
+        File inFile,
+        ImagePlus inputImage,
+        AnalyzerParameters params,
+        double linearScalingFactor,
+        BatchAnalysisUi uiToken
+    ) {
         uiToken.updateImageProgress("Loading image...");
 
-        Result result = new Result();
-        result.allantoisOverlay = new Overlay();
-        result.imageThresholded = new ImagePlus();
-        result.imageResult = inputImage;
+        data.allantoisOverlay = new Overlay();
+        data.imageThresholded = new ImagePlus();
+        data.imageResult = inputImage;
 
-        if (result.imageResult.getType() == 4)
-            result.imageResult = RGBStackSplitter.split(result.imageResult, "green");
+        if (data.imageResult.getType() == 4)
+            data.imageResult = RGBStackSplitter.split(data.imageResult, "green");
 
         if (params.shouldResizeImage) {
-            ImageProcessor resized = result.imageResult.getProcessor().resize((int)((double)result.imageResult.getWidth() / params.resizingFactor));
-            result.imageResult.setProcessor(resized);
+            ImageProcessor resized = data.imageResult.getProcessor().resize((int)((double)data.imageResult.getWidth() / params.resizingFactor));
+            data.imageResult.setProcessor(resized);
         }
 
-        result.ipOriginal = result.imageResult.getProcessor().convertToByte(false);
+        data.ipOriginal = data.imageResult.getProcessor().convertToByte(false);
 
         uiToken.updateImageProgress("Calculating tubeness...");
 
         //for (Integer s : params.sigmasMarks)
 
         double[] sigmasDouble = new double[] {(double)params.sigmas[0]};
-        result.tubenessProcessor = new TubenessProcessor(100, sigmasDouble);
-        result.imageCopy = new ImagePlus("imageTubeness", result.ipOriginal);
-        result.imageTubeness = result.tubenessProcessor.generateImage(result.imageCopy);
-        result.tubenessIp = result.imageTubeness.getProcessor();
-        //result.sI.add(new AngioToolGUI.sigmaImages(sigma, result.imageTubeness.getProcessor()));
+        data.tubenessProcessor = new TubenessProcessor(100, sigmasDouble);
+        data.imageCopy = new ImagePlus("imageTubeness", data.ipOriginal);
+        data.imageTubeness = data.tubenessProcessor.generateImage(data.imageCopy);
+        data.tubenessIp = data.imageTubeness.getProcessor();
+        //data.sI.add(new AngioToolGUI.sigmaImages(sigma, data.imageTubeness.getProcessor()));
         /*
         this.sI.add(new AngioToolGUI.sigmaImages(sigmas[0], this.tubenessIp));
         this.sigmasMarkSlider.addMark((int)sigmas[0]);
         this.allSigmas.add(sigmas[0]);
         this.currentSigmas.add(sigmas[0]);
         */
-        result.ipThresholded = result.tubenessIp.duplicate().convertToByte(false);
-        result.imageThresholded.setProcessor(result.ipThresholded);
-        Utils.thresholdFlexible(result.ipThresholded, params.thresholdLow, params.thresholdHigh);
-        result.ipThresholded.setThreshold(255.0, 255.0, 2);
+        data.ipThresholded = data.tubenessIp.duplicate().convertToByte(false);
+        data.imageThresholded.setProcessor(data.ipThresholded);
+        Utils.thresholdFlexible(data.ipThresholded, params.thresholdLow, params.thresholdHigh);
+        data.ipThresholded.setThreshold(255.0, 255.0, 2);
         /*
         this.sigmaIsChanged = false;
         this.fillHolesIsChanged = false;
@@ -396,13 +427,13 @@ public class Analyzer
         /*
         boolean sigmaIsChanged = false;
         if (sigmaIsChanged) {
-            ImageProcessor ip = new ByteProcessor(result.tubenessIp.getWidth(), result.tubenessIp.getHeight());
+            ImageProcessor ip = new ByteProcessor(data.tubenessIp.getWidth(), data.tubenessIp.getHeight());
 
-            for(int i = 0; i < result.currentSigmas.size(); ++i) {
-                double s = result.currentSigmas.get(i);
+            for(int i = 0; i < data.currentSigmas.size(); ++i) {
+                double s = data.currentSigmas.get(i);
 
-                for(int si = 0; si < result.sI.size(); ++si) {
-                    AngioToolGUI.sigmaImages siTemp = result.sI.get(si);
+                for(int si = 0; si < data.sI.size(); ++si) {
+                    AngioToolGUI.sigmaImages siTemp = data.sI.get(si);
                     if (siTemp.sigma == s) {
                         ImageProcessor tempIp = siTemp.tubenessImage.duplicate();
                         tempIp.copyBits(ip, 0, 0, 13);
@@ -412,101 +443,130 @@ public class Analyzer
                 }
             }
 
-            result.tubenessIp = ip.duplicate();
+            data.tubenessIp = ip.duplicate();
         }
         */
 
         uiToken.updateImageProgress("Filtering image...");
 
-        result.tempProcessor1 = result.tubenessIp.duplicate().convertToByte(true);
-        Utils.thresholdFlexible(result.tempProcessor1, params.thresholdLow, params.thresholdHigh);
-        result.imageThresholded.setProcessor(result.tempProcessor1);
-        result.tempProcessor1.setThreshold(255.0, 255.0, 2);
+        data.tempProcessor1 = data.tubenessIp.duplicate().convertToByte(true);
+        Utils.thresholdFlexible(data.tempProcessor1, params.thresholdLow, params.thresholdHigh);
+        data.imageThresholded.setProcessor(data.tempProcessor1);
+        data.tempProcessor1.setThreshold(255.0, 255.0, 2);
 
         int iterations = 2;
 
         for (int i = 0; i < iterations; ++i)
-            result.imageThresholded.getProcessor().erode();
+            data.imageThresholded.getProcessor().erode();
 
         for (int i = 0; i < iterations; ++i)
-            result.imageThresholded.getProcessor().dilate();
+            data.imageThresholded.getProcessor().dilate();
 
         if (params.shouldRemoveSmallParticles)
-            Utils.fillHoles(result.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
+            Utils.fillHoles(data.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
 
         if (params.shouldFillHoles) {
-            result.imageThresholded.killRoi();
-            result.tempProcessor2 = result.imageThresholded.getProcessor();
-            result.tempProcessor2.invert();
-            Utils.fillHoles(result.imageThresholded, 0.0, params.fillHolesValue, 0.0, 1.0, 0);
-            result.tempProcessor2.invert();
+            data.imageThresholded.killRoi();
+            data.tempProcessor2 = data.imageThresholded.getProcessor();
+            data.tempProcessor2.invert();
+            Utils.fillHoles(data.imageThresholded, 0.0, params.fillHolesValue, 0.0, 1.0, 0);
+            data.tempProcessor2.invert();
         }
 
         if (params.shouldDrawOutline) {
             uiToken.updateImageProgress("Drawing outltine...");
 
-            result.iplus = new ImagePlus("tubenessIp", result.imageThresholded.getProcessor());
-            result.outlineRoi = Utils.thresholdToSelection(result.iplus);
-            result.outlineRoi.setStrokeColor(params.outlineColor.toColor());
-            result.outlineRoi.setStrokeWidth(params.outlineSize);
-            result.allantoisOverlay.add(result.outlineRoi);
+            data.iplus = new ImagePlus("tubenessIp", data.imageThresholded.getProcessor());
+            data.outlineRoi = Utils.thresholdToSelection(data.iplus);
+            data.outlineRoi.setStrokeColor(params.outlineColor.toColor());
+            data.outlineRoi.setStrokeWidth(params.outlineSize);
+            data.allantoisOverlay.add(data.outlineRoi);
         }
 
-        result.vesselPixelArea = Utils.thresholdedPixelArea(result.imageThresholded.getProcessor());
+        data.vesselPixelArea = Utils.thresholdedPixelArea(data.imageThresholded.getProcessor());
 
         if (params.shouldComputeLacunarity) {
             uiToken.updateImageProgress("Computing lacunarity...");
-            result.tempProcessor3 = result.imageThresholded.getProcessor().duplicate();
-            result.iplusTemp = new ImagePlus("iplusTemp", result.tempProcessor3);
-            result.lacunarity = new Lacunarity(result.iplusTemp, 10, 10, 5, true);
+            data.tempProcessor3 = data.imageThresholded.getProcessor().duplicate();
+            data.iplusTemp = new ImagePlus("iplusTemp", data.tempProcessor3);
+            data.lacunarity = new Lacunarity(data.iplusTemp, 10, 10, 5, true);
         }
 
         uiToken.updateImageProgress("Computing convex hull...");
 
-        result.convexHull = Utils.computeConvexHull(result.imageThresholded.getProcessor());
-        result.convexHullArea = result.convexHull.area();
-        result.convexHullRoi = new PolygonRoi(result.convexHull.polygon(), 2);
+        data.convexHull = Utils.computeConvexHull(data.imageThresholded.getProcessor());
+        data.convexHullArea = data.convexHull.area();
+        data.convexHullRoi = new PolygonRoi(data.convexHull.polygon(), 2);
 
         if (params.shouldDrawConvexHull) {
             uiToken.updateImageProgress("Drawing convex hull...");
-            result.convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
-            result.convexHullRoi.setStrokeWidth(params.convexHullSize);
-            result.allantoisOverlay.add(result.convexHullRoi);
+            data.convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
+            data.convexHullRoi.setStrokeWidth(params.convexHullSize);
+            data.allantoisOverlay.add(data.convexHullRoi);
         }
 
         uiToken.updateImageProgress("Computing skeleton...");
 
-        result.iplusSkeleton = result.imageThresholded.duplicate();
-        result.iplusSkeleton.setTitle("iplusSkeleton");
+        data.iplusSkeleton = data.imageThresholded.duplicate();
+        data.iplusSkeleton.setTitle("iplusSkeleton");
 
-        if (params.shouldUseFastSkeletonizer)
-            Zha84.skeletonize(result.iplusSkeleton);
-        else
-            Lee94.skeletonize(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, result.iplusSkeleton);
+        int skelWidth = data.iplusSkeleton.getWidth();
+        int skelHeight = data.iplusSkeleton.getHeight();
+        int skelBreadth = data.iplusSkeleton.getStackSize();
 
-        result.skeleton = new AnalyzeSkeleton();
-        result.skeleton.setup("", result.iplusSkeleton);
-        result.skelResult = result.skeleton.run(0, false, false, result.iplusSkeleton, false, false);
-        result.graphs = result.skeleton.getGraphs();
+        //BufferPool.bytePool.release(data.skeletonImagePlanes);
+        data.skeletonImagePlanes = BufferPool.bytePool.acquire(skelWidth * skelHeight);
+
+        if (params.shouldUseFastSkeletonizer) {
+            data.zha84ScratchImage = BufferPool.bytePool.acquire(skelWidth * skelHeight);
+            Zha84.skeletonize(data.skeletonImagePlanes, data.zha84ScratchImage, data.iplusSkeleton);
+            data.zha84ScratchImage = BufferPool.bytePool.release(data.zha84ScratchImage);
+        }
+        else {
+            Lee94.skeletonize(
+                data.lee94Scratch,
+                AngioToolMain.threadPool,
+                AngioToolMain.MAX_WORKERS,
+                data.skeletonImagePlanes,
+                data.iplusSkeleton
+            );
+        }
+
+        /*
+        data.skeleton = new AnalyzeSkeleton();
+        data.skeleton.setup("", data.iplusSkeleton);
+        data.skelResult = data.skeleton.run(0, false, false, data.iplusSkeleton, false, false);
+        data.graphs = data.skeleton.getGraphs();
+        */
+        AnalyzeSkeleton2.analyze(
+            data.skelResult,
+            calibration,
+            data.skeletonImagePlanes,
+            skelWidth,
+            skelHeight,
+            skelBreadth
+        );
+
+        skeletonImagePlanes = BufferPool.bytePool.release(skeletonImagePlanes);
 
         if (params.shouldComputeThickness) {
             uiToken.updateImageProgress("Computing thickness...");
 
             EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
-            ed.setup(null, result.imageThresholded);
-            ed.run(result.imageThresholded.getProcessor());
-            result.imageThickness = ed.getImageResult();
+            ed.setup(null, data.imageThresholded);
+            ed.run(data.imageThresholded.getProcessor());
+            data.imageThickness = ed.getImageResult();
 
-            double thickness = Utils.computeMedianThickness(result.graphs, result.imageThickness);
-            result.stats.averageVesselDiameter = thickness * linearScalingFactor;
+            double thickness = Utils.computeMedianThickness(data.graphs, data.imageThickness);
+            data.stats.averageVesselDiameter = thickness * linearScalingFactor;
         }
 
         uiToken.updateImageProgress("Generating skeleton points...");
 
-        result.skeletonRoi = new ArrayList();
+        data.skeletonRoi = new ArrayList();
 
-        for(int g = 0; g < result.graphs.length; ++g) {
-            ArrayList<Edge> edges = result.graphs[g].getEdges();
+        for(int g = 0; g < data.graphs.length; ++g) {
+            ArrayList<Edge> edges = data.graphs[g].getEdges();
 
             for(int e = 0; e < edges.size(); ++e) {
                 Edge edge = edges.get(e);
@@ -519,44 +579,44 @@ public class Analyzer
                         params.skeletonSize,
                         params.skeletonSize
                     );
-                    result.skeletonRoi.add(or);
+                    data.skeletonRoi.add(or);
                 }
             }
         }
 
         uiToken.updateImageProgress("Computing junctions...");
 
-        result.al2 = result.skelResult.getListOfJunctionVoxels();
-        result.removedJunctions = Utils.computeActualJunctions(result.al2);
-        result.junctionsRoi = new ArrayList<Roi>();
+        data.al2 = data.skelResult.getListOfJunctionVoxels();
+        data.removedJunctions = Utils.computeActualJunctions(data.al2);
+        data.junctionsRoi = new ArrayList<Roi>();
 
-        for (Point p : result.al2) {
+        for (Point p : data.al2) {
             OvalRoi or = new OvalRoi(
                 p.x - params.branchingPointsSize / 2,
                 p.y - params.branchingPointsSize / 2,
                 params.branchingPointsSize,
                 params.branchingPointsSize
             );
-            result.junctionsRoi.add(or);
+            data.junctionsRoi.add(or);
         }
 
         if (params.shouldDrawSkeleton) {
             uiToken.updateImageProgress("Drawing skeleton...");
             Color skelColor = params.skeletonColor.toColor();
 
-            for(int i = 0; i < result.skeletonRoi.size(); ++i) {
-                Roi r = (Roi)result.skeletonRoi.get(i);
+            for(int i = 0; i < data.skeletonRoi.size(); ++i) {
+                Roi r = (Roi)data.skeletonRoi.get(i);
                 r.setStrokeWidth((float)params.skeletonSize);
                 r.setStrokeColor(skelColor);
-                result.allantoisOverlay.add(r);
+                data.allantoisOverlay.add(r);
             }
 
-            for(int i = 0; i < result.removedJunctions.size(); ++i) {
-                Point p = result.removedJunctions.get(i);
+            for(int i = 0; i < data.removedJunctions.size(); ++i) {
+                Point p = data.removedJunctions.get(i);
                 OvalRoi r = new OvalRoi(p.x, p.y, 1, 1);
                 r.setStrokeWidth((float)params.skeletonSize);
                 r.setStrokeColor(skelColor);
-                result.allantoisOverlay.add(r);
+                data.allantoisOverlay.add(r);
             }
         }
 
@@ -564,58 +624,46 @@ public class Analyzer
             uiToken.updateImageProgress("Drawing branch points...");
             Color branchColor = params.branchingPointsColor.toColor();
 
-            for(int i = 0; i < result.junctionsRoi.size(); ++i) {
-                Roi r = (Roi)result.junctionsRoi.get(i);
+            for(int i = 0; i < data.junctionsRoi.size(); ++i) {
+                Roi r = (Roi)data.junctionsRoi.get(i);
                 r.setStrokeWidth(params.branchingPointsSize);
                 r.setStrokeColor(branchColor);
-                result.allantoisOverlay.add(r);
+                data.allantoisOverlay.add(r);
             }
         }
 
-        result.imageResult.setOverlay(result.allantoisOverlay);
+        data.imageResult.setOverlay(data.allantoisOverlay);
 
         //updateOverlay()
         //populateResults()
 
-        return result;
-    }
-
-    static void saveResult(
-        SpreadsheetWriter sheet,
-        Result result,
-        File inFile,
-        AnalyzerParameters params,
-        double linearScalingFactor,
-        BatchAnalysisUi uiToken
-    ) {
-        uiToken.updateImageProgress("Saving image stats to Excel");
-
         double areaScalingFactor = linearScalingFactor * linearScalingFactor;
 
-        result.stats.imageFileName = inFile.getName();
-        result.stats.imageAbsolutePath = inFile.getAbsolutePath();
-        result.stats.thresholdLow = params.thresholdLow;
-        result.stats.thresholdHigh = params.thresholdHigh;
-        result.stats.sigmas = params.sigmas;
-        result.stats.removeSmallParticlesThreshold = params.removeSmallParticlesThreshold;
-        result.stats.fillHolesValue = (int)params.fillHolesValue;
-        result.stats.linearScalingFactor = linearScalingFactor;
-        //result.stats.allantoisPixelsArea = result.convexHullArea;
-        result.stats.allantoisMMArea = result.convexHullArea * areaScalingFactor;
-        result.stats.totalNJunctions = result.al2.size();
-        //result.stats.junctionsPerArea = (double)result.al2.size() / result.convexHullArea;
-        result.stats.junctionsPerScaledArea = (double)result.al2.size() / result.stats.allantoisMMArea;
-        result.stats.vesselMMArea = (double)result.vesselPixelArea * areaScalingFactor;
-        result.stats.vesselPercentageArea = result.stats.vesselMMArea * 100.0 / result.stats.allantoisMMArea;
-        result.stats.ELacunaritySlope = result.lacunarity.getEl3Slope();
-        result.stats.ELacunarity = result.lacunarity.getMedialELacunarity();
-        result.stats.FLacunaritySlope = result.lacunarity.getFl3Slope();
-        result.stats.FLacuanrity = result.lacunarity.getMedialFLacunarity();
-        result.stats.meanEl = result.lacunarity.getMeanEl();
-        result.stats.meanFl = result.lacunarity.getMeanFl();
+        Stats stats = new Stats();
+        stats.imageFileName = inFile.getName();
+        stats.imageAbsolutePath = inFile.getAbsolutePath();
+        stats.thresholdLow = params.thresholdLow;
+        stats.thresholdHigh = params.thresholdHigh;
+        stats.sigmas = params.sigmas;
+        stats.removeSmallParticlesThreshold = params.removeSmallParticlesThreshold;
+        stats.fillHolesValue = (int)params.fillHolesValue;
+        stats.linearScalingFactor = linearScalingFactor;
+        //stats.allantoisPixelsArea = data.convexHullArea;
+        stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;
+        stats.totalNJunctions = data.al2.size();
+        //stats.junctionsPerArea = (double)data.al2.size() / data.convexHullArea;
+        stats.junctionsPerScaledArea = (double)data.al2.size() / data.stats.allantoisMMArea;
+        stats.vesselMMArea = (double)data.vesselPixelArea * areaScalingFactor;
+        stats.vesselPercentageArea = data.stats.vesselMMArea * 100.0 / data.stats.allantoisMMArea;
+        stats.ELacunaritySlope = data.lacunarity.getEl3Slope();
+        stats.ELacunarity = data.lacunarity.getMedialELacunarity();
+        stats.FLacunaritySlope = data.lacunarity.getFl3Slope();
+        stats.FLacuanrity = data.lacunarity.getMedialFLacunarity();
+        stats.meanEl = data.lacunarity.getMeanEl();
+        stats.meanFl = data.lacunarity.getMeanFl();
 
-        double[] branchLengths = result.skelResult.getAverageBranchLength();
-        int[] branchNumbers = result.skelResult.getBranches();
+        double[] branchLengths = data.skelResult.getAverageBranchLength();
+        int[] branchNumbers = data.skelResult.getBranches();
         double totalLength = 0.0;
         double averageLength = 0.0;
 
@@ -623,14 +671,11 @@ public class Analyzer
             totalLength += (double)branchNumbers[i] * branchLengths[i];
         }
 
-        result.stats.totalLength = totalLength * linearScalingFactor;
-        result.stats.averageBranchLength = totalLength / (double)branchNumbers.length * linearScalingFactor;
-        result.stats.totalNEndPoints = result.skelResult.getListOfEndPoints().size();
+        stats.totalLength = totalLength * linearScalingFactor;
+        stats.averageBranchLength = totalLength / (double)branchNumbers.length * linearScalingFactor;
+        stats.totalNEndPoints = data.skelResult.getListOfEndPoints().size();
 
-        try {
-            writeResultToSheet(sheet, result.stats);
-        }
-        catch (IOException ignored) {}
+        return stats;
     }
 
     static SpreadsheetWriter createWriterWithNewSheet(

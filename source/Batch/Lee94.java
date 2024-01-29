@@ -43,7 +43,11 @@ public class Lee94 {
         -1, 1, 1, -1, 3, 1, 1, -1
     };
 
-    static class Params implements ISliceCompute {
+    public static class Scratch {
+        
+    }
+
+    public static class Params implements ISliceCompute {
         public final IntVector finalSimplePoints;
         public final IntVector[] points3d;
         public final int[] offs;
@@ -157,7 +161,14 @@ public class Lee94 {
         skeletonize(threadPool, maxWorkers, layers, width, height, bitDepth);
     }
 
-    public static void skeletonize(ThreadPoolExecutor threadPool, int maxWorkers, Object[] layersObj, int width, int height, int bitDepth) {
+    public static void skeletonize(
+        ThreadPoolExecutor threadPool,
+        int maxWorkers,
+        Object[] layersObj,
+        int width,
+        int height,
+        int bitDepth
+    ) {
         final int breadth = layersObj.length;
 
         byte[][]  layersByte  = null;

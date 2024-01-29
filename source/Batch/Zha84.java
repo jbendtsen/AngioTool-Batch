@@ -25,7 +25,7 @@ public class Zha84
         return out;
     }
 
-    public static void skeletonize(ImagePlus image)
+    public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, ImagePlus inputImage)
     {
         ImageProcessor ip = image.getProcessor();
         if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
@@ -35,35 +35,34 @@ public class Zha84
         int width = ip.getWidth();
         int height = ip.getHeight();
 
-        skeletonize(pixels, width, height);
+        skeletonize(outSkeletonImage, scratchSkeletonImage, pixels, width, height);
     }
 
-    public static void skeletonize(byte[] image, int width, int height)
+    public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, byte[] inputImage, int width, int height)
     {
         for (int i = 0; i < width; i++)
-            image[i] = 0;
+            outSkeletonImage[i] = 0;
 
         for (int i = 1; i < height - 1; i++) {
-            image[i*width] = 0;
+            outSkeletonImage[i*width] = 0;
             for (int j = 1; j < width - 1; j++) {
                 int idx = j + width*i;
-                image[idx] = (byte)(image[idx] >>> 31 | -image[idx] >>> 31);
+                outSkeletonImage[idx] = (byte)(inputImage[idx] >>> 31 | -inputImage[idx] >>> 31);
             }
-            image[(i+1)*width-1] = 0;
+            outSkeletonImage[(i+1)*width-1] = 0;
         }
 
         int lastRow = (height-1) * width;
         for (int i = 0; i < width; i++)
-            image[i+lastRow] = 0;
+            outSkeletonImage[i+lastRow] = 0;
 
-        byte[] alt = new byte[width * height];
         byte[] a = null, b = null;
 
         int nRemovals;
         do {
             nRemovals = 0;
-            a = image;
-            b = alt;
+            a = outSkeletonImage;
+            b = scratchSkeletonImage;
 
             for (int pass = 1; pass <= 2; pass++) {
                 for (int i = 1; i < height-1; i++) {
