@@ -660,6 +660,18 @@ public class BatchAnalysisUi
         });
     }
 
+    public void onEnumerationStart()
+    {
+        SwingUtilities.invokeLater(() -> {
+            if (isClosed.get())
+                return;
+
+            overallLabel.setText("Finding every image to be analyzed...");
+
+            updateDialogSize(jdialog);
+        });
+    }
+
     public void startProgressBars(int nImages, int maxProgressPerImage)
     {
         SwingUtilities.invokeLater(() -> {

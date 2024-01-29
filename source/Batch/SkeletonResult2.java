@@ -2,6 +2,7 @@ package Batch;
 
 public class SkeletonResult2 {
     int imageBreadth;
+
     IntVector[] pointVectors;
 
     IntVector endPoints;
@@ -10,6 +11,9 @@ public class SkeletonResult2 {
     IntVector slabVoxels;
     IntVector startingSlabVoxels;
     IntVector toRevisit;
+
+    IntVector isolatedJunctions;
+    IntVector removedJunctions;
     IntVector slabList;
     IntVector edgesTrees;
     IntVector edgesVerts;
@@ -20,6 +24,7 @@ public class SkeletonResult2 {
     int[][] endPointVertexMap;
     int[][] junctionVertexMap;
 
+    int treeCount;
     int[] triplePointCounts;
     int[] quadruplePointCounts;
     double[] totalBranchLengths;
@@ -52,7 +57,7 @@ public class SkeletonResult2 {
         vec.size = 0;
         return vec;
     }
-    private static IntVector resetDoubleVector(DoubleVector vec) {
+    private static DoubleVector resetDoubleVector(DoubleVector vec) {
         if (vec == null)
             return new DoubleVector();
         vec.size = 0;
@@ -70,12 +75,15 @@ public class SkeletonResult2 {
         slabVoxels = resetIntVector(slabVoxels);
         startingSlabVoxels = resetIntVector(startingSlabVoxels);
         toRevisit = resetIntVector(toRevisit);
+        isolatedJunctions = resetIntVector(isolatedJunctions);
+        removedJunctions = resetIntVector(removedJunctions);
         slabList = resetIntVector(slabList);
         edgesTrees = resetIntVector(edgesTrees);
         edgesVerts = resetIntVector(edgesVerts);
         edgesPoints = resetIntVector(edgesPoints);
         edgesLengths = resetDoubleVector(edgesLengths);
 
+        treeCount = 0;
         triplePointCounts = BufferPool.intPool.release(triplePointCounts);
         quadruplePointCounts = BufferPool.intPool.release(quadruplePointCounts);
         totalBranchLengths = BufferPool.doublePool.release(totalBranchLengths);

@@ -43,11 +43,12 @@ public class AnalyzeSkeleton2
         result.reset(breadth);
 
         int[] imageInfo = BufferPool.intPool.acquireAsIs(width * height);
+        int[] junctionMap2d = BufferPool.intPool.acquireZeroed(width * height);
 
         for (int z = 0; z < breadth; z++)
             result.endPointVertexMap[z] = BufferPool.intPool.acquireZeroed(width * height);
 
-        tagImages(result, skeletonImages, width, height, breadth, imageInfo);
+        tagImages(result, skeletonImages, width, height, breadth, imageInfo, junctionMap2d);
 
         for (int z = 0; z < breadth; z++)
             result.markedImages[z] = BufferPool.intPool.acquireZeroed(width * height);
@@ -56,6 +57,7 @@ public class AnalyzeSkeleton2
         if (nTrees <= 0)
             nTrees = 1;
 
+        result.treeCount = nTrees;
         result.triplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
         result.quadruplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
 
@@ -69,7 +71,10 @@ public class AnalyzeSkeleton2
 
         buildSkeletonGraphs(result, calibration, skeletonImages, width, height, breadth, imageInfo, nTrees);
 
+        isolateDominantJunctions(result, width, height, junctionMap2d);
+
         BufferPool.intPool.release(imageInfo);
+        BufferPool.intPool.release(junctionMap2d);
     }
 
     static void tagImages(
@@ -78,7 +83,8 @@ public class AnalyzeSkeleton2
         int width,
         int height,
         int breadth,
-        int[] imageInfo
+        int[] imageInfo,
+        int[] junctionMap2d
     ) {
         result.pointVectors[END_POINT-1] = result.endPoints;
         result.pointVectors[JUNCTION-1] = result.junctionVoxels;
@@ -105,6 +111,8 @@ public class AnalyzeSkeleton2
                         int pos = result.pointVectors[type-1].addThree(x, y, z);
                         if (type == END_POINT)
                             result.endPointVertexMap[z][idx] = pos;
+                        else if (type == JUNCTION)
+                            junctionMap2d[idx] = pos + 1;
                     }
                     value = (value << 2) | type;
                 }
@@ -119,8 +127,8 @@ public class AnalyzeSkeleton2
         int width,
         int height,
         int breadth,
-        int[] imageInfo)
-    {
+        int[] imageInfo
+    ) {
         int nTrees = 0;
         for (int type = END_POINT; type <= SLAB; type++) {
             int n = result.pointVectors[type-1].size;
@@ -324,7 +332,7 @@ public class AnalyzeSkeleton2
                 );
             }
 
-            for (int i = junctionStart; i < result.singleJunctions.size; i++) {
+            for (int i = junctionStart; i < result.singleJunctions.size; i += 3) {
                 int x = result.singleJunctions.buf[i];
                 int y = result.singleJunctions.buf[i+1];
                 int z = result.singleJunctions.buf[i+2];
@@ -545,7 +553,35 @@ public class AnalyzeSkeleton2
         result.edgesLengths.add(length);
     }
 
-    static double calculateDistance(int x1, int y1, int z1, int x2, int y2, int z2, PixelCalibration calibration) {
+    static void isolateDominantJunctions(SkeletonResult2 result, int width, int height, int[] junctionMap2d)
+    {
+        for (int i = 0; i < result.junctionVoxels.size; i += 3) {
+            int x = result.junctionVoxels.buf[i];
+            int y = result.junctionVoxels.buf[i+1];
+            int pos = junctionMap2d[x + width * y];
+            if (pos <= 0)
+                continue;
+
+            result.isolatedJunctions.add(pos - 1);
+            junctionMap2d[x + width * y] = 0;
+
+            for (int j = 0; j < 9; j++) {
+                if (j == 4)
+                    continue;
+
+                int xx = x + (j % 3) - 1;
+                int yy = y + (j / 3) - 1;
+                int p = junctionMap2d[xx + width * yy];
+                if (p > 0) {
+                    result.removedJunctions.add(p - 1);
+                    junctionMap2d[xx + width * yy] = 0;
+                }
+            }
+        }
+    }
+
+    static double calculateDistance(int x1, int y1, int z1, int x2, int y2, int z2, PixelCalibration calibration)
+    {
         double dx = (double)(x2 - x1) * calibration.widthUnits;
         double dy = (double)(y2 - y1) * calibration.heightUnits;
         double dz = (double)(z2 - z1) * calibration.breadthUnits;

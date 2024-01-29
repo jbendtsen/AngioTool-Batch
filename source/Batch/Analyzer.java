@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.IOException;
 import java.io.File;
 import java.util.Date;
+import java.util.Arrays;
 import java.util.ArrayList;
 import ij.IJ;
 import ij.ImagePlus;
@@ -12,16 +13,12 @@ import ij.gui.Overlay;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
 import ij.gui.ShapeRoi;
+import ij.measure.Calibration;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 import AngioTool.AngioToolMain;
 import AngioTool.RGBStackSplitter;
 import AngioTool.PolygonPlus;
-import AnalyzeSkeleton.AnalyzeSkeleton;
-import AnalyzeSkeleton.Edge;
-import AnalyzeSkeleton.Graph;
-import AnalyzeSkeleton.Point;
-import AnalyzeSkeleton.SkeletonResult;
 import features.TubenessProcessor;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
@@ -55,18 +52,16 @@ public class Analyzer
         public double meanFl;
         public double meanEl;
 
-        public Exception exception;
+        //public Exception exception;
     }
 
     public static class Scratch
     {
-        public ArrayList<Point> al2;
         public Overlay allantoisOverlay;
         public PolygonPlus convexHull;
         public double convexHullArea;
         public PolygonRoi convexHullRoi;
         public ArrayList<Double> currentSigmas;
-        public Graph[] graphs;
         public TubenessProcessor tubenessProcessor;
         public ImagePlus imageCopy;
         public ImagePlus imageResult;
@@ -82,12 +77,9 @@ public class Analyzer
         public ImageProcessor tempProcessor1;
         public ImageProcessor tempProcessor2;
         public ImageProcessor tempProcessor3;
-        public ArrayList<Roi> junctionsRoi;
         public Lacunarity lacunarity;
         public Roi outlineRoi;
-        public ArrayList<Point> removedJunctions;
         //public ArrayList<AngioToolGUI.sigmaImages> sI;
-        public ArrayList<Roi> skeletonRoi;
         public ImageProcessor tubenessIp;
         public long vesselPixelArea;
 
@@ -99,12 +91,10 @@ public class Analyzer
 
         public void reset()
         {
-            exception = null;
             allantoisOverlay = null;
             convexHull = null;
             convexHullRoi = null;
             currentSigmas = null;
-            graphs = null;
             tubenessProcessor = null;
             imageCopy = null;
             imageResult = null;
@@ -120,13 +110,10 @@ public class Analyzer
             tempProcessor1 = null;
             tempProcessor2 = null;
             tempProcessor3 = null;
-            skeleton = null;
-            junctionsRoi = null;
+            //skeleton = null;
             lacunarity = null;
             outlineRoi = null;
-            removedJunctions = null;
             //skelResult = null;
-            skeletonRoi = null;
             tubenessIp = null;
             //stats.sigmas = null;
             //stats = null;
@@ -136,19 +123,21 @@ public class Analyzer
 
         public void close()
         {
-            if (skelResult != null)
+            if (skelResult != null) {
                 skelResult.reset(0);
+                skelResult = null;
+            }
 
             skeletonImagePlanes = BufferPool.bytePool.release(skeletonImagePlanes);
             zha84ScratchImage = BufferPool.bytePool.release(zha84ScratchImage);
-            lee94Scratch.reset(0);
+            lee94Scratch = null;
 
             reset();
         }
     }
 
     static int calculateUpdateCountPerImage(AnalyzerParameters params) {
-        int count = 8;
+        int count = 6;
         if (params.shouldDrawOutline)
             count++;
         if (params.shouldComputeLacunarity)
@@ -171,6 +160,8 @@ public class Analyzer
         BatchAnalysisUi uiToken,
         ArrayList<XlsxReader.SheetCells> originalSheets
     ) {
+        uiToken.onEnumerationStart();
+
         ArrayList<File> inputs = new ArrayList<>();
         BidirectionalMap<String, String> outputPathMap = new BidirectionalMap<>();
         for (String path : params.inputImagePaths) {
@@ -224,7 +215,7 @@ public class Analyzer
                 result = analyze(data, inFile, image, params, linearScalingFactor, uiToken);
                 analyzeSucceeded = true;
                 uiToken.updateImageProgress("Saving image stats to Excel");
-                writeResultToSheet(sheet, result);
+                writeResultToSheet(writer, result);
             }
             catch (Throwable ex) {
                 ex.printStackTrace();
@@ -258,7 +249,7 @@ public class Analyzer
             if (exception != null)
                 Utils.showExceptionInDialogBox(exception);
 
-            data.cleanup();
+            data.reset();
 
             uiToken.onImageDone(exception);
         }
@@ -515,21 +506,29 @@ public class Analyzer
         int skelBreadth = data.iplusSkeleton.getStackSize();
 
         //BufferPool.bytePool.release(data.skeletonImagePlanes);
-        data.skeletonImagePlanes = BufferPool.bytePool.acquire(skelWidth * skelHeight);
+        data.skeletonImagePlanes = BufferPool.bytePool.acquireAsIs(skelWidth * skelHeight);
 
         if (params.shouldUseFastSkeletonizer) {
-            data.zha84ScratchImage = BufferPool.bytePool.acquire(skelWidth * skelHeight);
+            data.zha84ScratchImage = BufferPool.bytePool.acquireAsIs(skelWidth * skelHeight);
             Zha84.skeletonize(data.skeletonImagePlanes, data.zha84ScratchImage, data.iplusSkeleton);
             data.zha84ScratchImage = BufferPool.bytePool.release(data.zha84ScratchImage);
         }
         else {
             Lee94.skeletonize(
                 data.lee94Scratch,
+                data.skeletonImagePlanes,
                 AngioToolMain.threadPool,
                 AngioToolMain.MAX_WORKERS,
-                data.skeletonImagePlanes,
                 data.iplusSkeleton
             );
+        }
+
+        PixelCalibration calibration = new PixelCalibration();
+        {
+            Calibration c = data.iplusSkeleton.getCalibration();
+            calibration.widthUnits = c.pixelWidth;
+            calibration.heightUnits = c.pixelHeight;
+            calibration.breadthUnits = c.pixelDepth;
         }
 
         /*
@@ -547,7 +546,9 @@ public class Analyzer
             skelBreadth
         );
 
-        skeletonImagePlanes = BufferPool.bytePool.release(skeletonImagePlanes);
+        data.skeletonImagePlanes = BufferPool.bytePool.release(data.skeletonImagePlanes);
+
+        double averageVesselDiameter = 0.0;
 
         if (params.shouldComputeThickness) {
             uiToken.updateImageProgress("Computing thickness...");
@@ -557,63 +558,57 @@ public class Analyzer
             ed.run(data.imageThresholded.getProcessor());
             data.imageThickness = ed.getImageResult();
 
-            double thickness = Utils.computeMedianThickness(data.graphs, data.imageThickness);
-            data.stats.averageVesselDiameter = thickness * linearScalingFactor;
-        }
+            int nPoints = data.skelResult.slabList.size / 3;
+            double[] vesselThickness = BufferPool.doublePool.acquireAsIs(nPoints);
+            ImageProcessor distanceMapProcessor = data.imageThickness.getProcessor();
 
-        uiToken.updateImageProgress("Generating skeleton points...");
-
-        data.skeletonRoi = new ArrayList();
-
-        for(int g = 0; g < data.graphs.length; ++g) {
-            ArrayList<Edge> edges = data.graphs[g].getEdges();
-
-            for(int e = 0; e < edges.size(); ++e) {
-                Edge edge = edges.get(e);
-                ArrayList<Point> points = edge.getSlabs();
-
-                for (Point p : points) {
-                    OvalRoi or = new OvalRoi(
-                        p.x - params.skeletonSize / 2,
-                        p.y - params.skeletonSize / 2,
-                        params.skeletonSize,
-                        params.skeletonSize
-                    );
-                    data.skeletonRoi.add(or);
-                }
+            for (int i = 0; i < data.skelResult.slabList.size; i += 3) {
+                int x = data.skelResult.slabList.buf[i];
+                int y = data.skelResult.slabList.buf[i+1];
+                vesselThickness[i/3] = distanceMapProcessor.getPixelValue(x, y) * 2.0F;
             }
+
+            Arrays.sort(vesselThickness, 0, nPoints);
+            int middle = nPoints / 2;
+
+            double thickness = nPoints % 2 == 1 ?
+                vesselThickness[middle] :
+                (vesselThickness[middle - 1] + vesselThickness[middle]) / 2.0;
+
+            averageVesselDiameter = thickness * linearScalingFactor;
+
+            BufferPool.doublePool.release(vesselThickness);
         }
 
-        uiToken.updateImageProgress("Computing junctions...");
-
-        data.al2 = data.skelResult.getListOfJunctionVoxels();
-        data.removedJunctions = Utils.computeActualJunctions(data.al2);
-        data.junctionsRoi = new ArrayList<Roi>();
-
-        for (Point p : data.al2) {
-            OvalRoi or = new OvalRoi(
-                p.x - params.branchingPointsSize / 2,
-                p.y - params.branchingPointsSize / 2,
-                params.branchingPointsSize,
-                params.branchingPointsSize
-            );
-            data.junctionsRoi.add(or);
-        }
+        //uiToken.updateImageProgress("Generating skeleton points...");
+        //uiToken.updateImageProgress("Computing junctions...");
 
         if (params.shouldDrawSkeleton) {
             uiToken.updateImageProgress("Drawing skeleton...");
+
             Color skelColor = params.skeletonColor.toColor();
 
-            for(int i = 0; i < data.skeletonRoi.size(); ++i) {
-                Roi r = (Roi)data.skeletonRoi.get(i);
+            for (int i = 0; i < data.skelResult.slabList.size; i += 3) {
+                int x = data.skelResult.slabList.buf[i];
+                int y = data.skelResult.slabList.buf[i+1];
+
+                OvalRoi r = new OvalRoi(
+                    x - params.skeletonSize / 2,
+                    y - params.skeletonSize / 2,
+                    params.skeletonSize,
+                    params.skeletonSize
+                );
                 r.setStrokeWidth((float)params.skeletonSize);
                 r.setStrokeColor(skelColor);
                 data.allantoisOverlay.add(r);
             }
 
-            for(int i = 0; i < data.removedJunctions.size(); ++i) {
-                Point p = data.removedJunctions.get(i);
-                OvalRoi r = new OvalRoi(p.x, p.y, 1, 1);
+            for (int i = 0; i < data.skelResult.removedJunctions.size; i++) {
+                int idx = data.skelResult.removedJunctions.buf[i];
+                int x = data.skelResult.junctionVoxels.buf[idx];
+                int y = data.skelResult.junctionVoxels.buf[idx+1];
+
+                OvalRoi r = new OvalRoi(x, y, 1, 1);
                 r.setStrokeWidth((float)params.skeletonSize);
                 r.setStrokeColor(skelColor);
                 data.allantoisOverlay.add(r);
@@ -624,8 +619,17 @@ public class Analyzer
             uiToken.updateImageProgress("Drawing branch points...");
             Color branchColor = params.branchingPointsColor.toColor();
 
-            for(int i = 0; i < data.junctionsRoi.size(); ++i) {
-                Roi r = (Roi)data.junctionsRoi.get(i);
+            for (int i = 0; i < data.skelResult.isolatedJunctions.size; i++) {
+                int idx = data.skelResult.isolatedJunctions.buf[i];
+                int x = data.skelResult.junctionVoxels.buf[idx];
+                int y = data.skelResult.junctionVoxels.buf[idx+1];
+
+                Roi r = new OvalRoi(
+                    x - params.branchingPointsSize / 2,
+                    y - params.branchingPointsSize / 2,
+                    params.branchingPointsSize,
+                    params.branchingPointsSize
+                );
                 r.setStrokeWidth(params.branchingPointsSize);
                 r.setStrokeColor(branchColor);
                 data.allantoisOverlay.add(r);
@@ -650,11 +654,12 @@ public class Analyzer
         stats.linearScalingFactor = linearScalingFactor;
         //stats.allantoisPixelsArea = data.convexHullArea;
         stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;
-        stats.totalNJunctions = data.al2.size();
-        //stats.junctionsPerArea = (double)data.al2.size() / data.convexHullArea;
-        stats.junctionsPerScaledArea = (double)data.al2.size() / data.stats.allantoisMMArea;
+        stats.totalNJunctions = data.skelResult.isolatedJunctions.size;
+        //stats.junctionsPerArea = (double)data.skelResult.isolatedJunctions.size / data.convexHullArea;
+        stats.junctionsPerScaledArea = (double)data.skelResult.isolatedJunctions.size / stats.allantoisMMArea;
         stats.vesselMMArea = (double)data.vesselPixelArea * areaScalingFactor;
-        stats.vesselPercentageArea = data.stats.vesselMMArea * 100.0 / data.stats.allantoisMMArea;
+        stats.vesselPercentageArea = stats.vesselMMArea * 100.0 / stats.allantoisMMArea;
+        stats.averageVesselDiameter = averageVesselDiameter;
         stats.ELacunaritySlope = data.lacunarity.getEl3Slope();
         stats.ELacunarity = data.lacunarity.getMedialELacunarity();
         stats.FLacunaritySlope = data.lacunarity.getFl3Slope();
@@ -662,18 +667,21 @@ public class Analyzer
         stats.meanEl = data.lacunarity.getMeanEl();
         stats.meanFl = data.lacunarity.getMeanFl();
 
-        double[] branchLengths = data.skelResult.getAverageBranchLength();
-        int[] branchNumbers = data.skelResult.getBranches();
-        double totalLength = 0.0;
-        double averageLength = 0.0;
+        //double[] branchLengths = data.skelResult.getAverageBranchLength();
+        //int[] branchNumbers = data.skelResult.getBranches();
 
-        for (int i = 0; i < branchNumbers.length; ++i) {
-            totalLength += (double)branchNumbers[i] * branchLengths[i];
-        }
+        double totalLength = 0.0;
+        int nTrees = data.skelResult.treeCount;
+        for (int i = 0; i < nTrees; i++)
+            totalLength += (double)data.skelResult.totalBranchLengths[i];
+
+        double averageLength = 0.0;
+        if (nTrees > 0)
+            averageLength = totalLength / (double)nTrees * linearScalingFactor;
 
         stats.totalLength = totalLength * linearScalingFactor;
-        stats.averageBranchLength = totalLength / (double)branchNumbers.length * linearScalingFactor;
-        stats.totalNEndPoints = data.skelResult.getListOfEndPoints().size();
+        stats.averageBranchLength = averageLength;
+        stats.totalNEndPoints = data.skelResult.endPoints.size / 3;
 
         return stats;
     }
@@ -717,7 +725,7 @@ public class Analyzer
         return writer;
     }
 
-    static void writeResultToSheet(SpreadsheetWriter sw, Result.Stats stats) throws IOException
+    static void writeResultToSheet(SpreadsheetWriter sw, Stats stats) throws IOException
     {
         Date today = new Date();
         String dateOut = sw.dateFormatter.format(today);
@@ -751,7 +759,7 @@ public class Analyzer
             stats.meanEl
         );
     }
-    
+
     static void writeError(SpreadsheetWriter sheet, Throwable exception, File inFile) throws IOException
     {
         Throwable cause = exception.getCause();

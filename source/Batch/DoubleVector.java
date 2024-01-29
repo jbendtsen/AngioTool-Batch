@@ -4,15 +4,17 @@ public class DoubleVector {
     public double[] buf;
     public int size;
 
-    public IntVector(int initialCap) {
-        this.buf = new int[initialCap];
+    public DoubleVector(int initialCap) {
+        this.buf = new double[initialCap];
         this.size = 0;
     }
-    public IntVector() {
+    public DoubleVector() {
         this(8);
     }
 
-    public void resize(int newSize) {
+    public int resize(int newSize) {
+        int oldSize = size;
+
         int oldCap = buf != null ? buf.length : 0;
         int newCap = Math.max(oldCap, 8);
         while (newSize > newCap)
@@ -26,6 +28,7 @@ public class DoubleVector {
         }
 
         size = newSize;
+        return oldSize;
     }
 
     public int add(double v) {
@@ -65,11 +68,11 @@ public class DoubleVector {
         return pos;
     }
 
-    public int popOr(double defaultValue) {
+    public double popOr(double defaultValue) {
         return size > 0 ? buf[--size] : defaultValue;
     }
 
-    public int lastOr(double defaultValue) {
+    public double lastOr(double defaultValue) {
         return size > 0 ? buf[size-1] : defaultValue;
     }
 

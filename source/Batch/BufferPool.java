@@ -31,7 +31,7 @@ public class BufferPool {
             int idx = findQueueNumber(minSize);
             byte[] buffer;
             do {
-                buffer = queue[idx].poll();
+                buffer = ((ConcurrentLinkedQueue<byte[]>)queues[idx]).poll();
                 if (buffer == null)
                     return new byte[minSize];
             }
@@ -47,7 +47,7 @@ public class BufferPool {
         }
         public byte[] release(byte[] buffer) {
             if (buffer != null)
-                queue[findQueueNumber(buffer.length)].add(buffer);
+                queues[findQueueNumber(buffer.length)].add(buffer);
             return null;
         }
     }
@@ -65,7 +65,7 @@ public class BufferPool {
             int idx = findQueueNumber(minSize);
             int[] buffer;
             do {
-                buffer = queue[idx].poll();
+                buffer = ((ConcurrentLinkedQueue<int[]>)queues[idx]).poll();
                 if (buffer == null)
                     return new int[minSize];
             }
@@ -81,7 +81,7 @@ public class BufferPool {
         }
         public int[] release(int[] buffer) {
             if (buffer != null)
-                queue[findQueueNumber(buffer.length)].add(buffer);
+                queues[findQueueNumber(buffer.length)].add(buffer);
             return null;
         }
     }
@@ -99,7 +99,7 @@ public class BufferPool {
             int idx = findQueueNumber(minSize);
             double[] buffer;
             do {
-                buffer = queue[idx].poll();
+                buffer = ((ConcurrentLinkedQueue<double[]>)queues[idx]).poll();
                 if (buffer == null)
                     return new double[minSize];
             }
@@ -115,7 +115,7 @@ public class BufferPool {
         }
         public double[] release(double[] buffer) {
             if (buffer != null)
-                queue[findQueueNumber(buffer.length)].add(buffer);
+                queues[findQueueNumber(buffer.length)].add(buffer);
             return null;
         }
     }

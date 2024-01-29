@@ -8,7 +8,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class Lee94 {
     static final int IN_PLACE_THRESHOLD = 250;
-    static final int BLOCK_SIZE = 64; // for optimal cache utilization
     static final int MAX_BREADTH = 8;
 
     static final byte[] simplePointsLut = loadSimplePointsLut();
@@ -44,31 +43,42 @@ public class Lee94 {
     };
 
     public static class Scratch {
-        
+        public IntVector offsetLengthPairs = new IntVector();
+        public Params params = new Params();
     }
 
     public static class Params implements ISliceCompute {
         public final IntVector finalSimplePoints;
-        public final IntVector[] points3d;
+        public final RefVector<IntVector> points3d;
         public final int[] offs;
-        public final byte[] planes;
-        public final int width;
-        public final int height;
-        public final int breadth;
 
-        public Params(int nSlices, byte[] planes, int width, int height, int breadth) {
+        public byte[] planes;
+        public int width;
+        public int height;
+        public int breadth;
+
+        public Params() {
+            this.finalSimplePoints = new IntVector();
+            this.points3d = new RefVector<IntVector>(IntVector.class);
+            this.offs = new int[3];
+        }
+
+        public void setup(int nSlices, byte[] planes, int width, int height, int breadth) {
             this.planes = planes;
             this.width = width;
             this.height = height;
             this.breadth = breadth;
-            this.offs = new int[3];
 
             int reservedCap = Math.max(width * height / 32, 384);
-            this.finalSimplePoints = new IntVector(reservedCap);
+            if (finalSimplePoints.buf == null)
+                finalSimplePoints.buf = new int[reservedCap];
 
-            this.points3d = new IntVector[nSlices];
-            for (int i = 0; i < nSlices; i++)
-                points3d[i] = new IntVector(reservedCap / nSlices);
+            points3d.resize(nSlices);
+            for (int i = 0; i < nSlices; i++) {
+                if (points3d.buf[i] == null)
+                    points3d.buf[i] = new IntVector(reservedCap / nSlices);
+                points3d.buf[i].size = 0;
+            }
         }
 
         public void setBorder(int border) {
@@ -86,7 +96,7 @@ public class Lee94 {
 
         @Override
         public Object computeSlice(int sliceIdx, int start, int length) {
-            IntVector vertices = points3d[sliceIdx];
+            IntVector vertices = points3d.buf[sliceIdx];
             vertices.size = 0;
 
             for (int y = 0; y < height; y++) {
@@ -121,23 +131,23 @@ public class Lee94 {
 
         @Override
         public void finishSlice(ISliceCompute.Result result) {
-            IntVector vec = points3d[result.idx];
+            IntVector vec = points3d.buf[result.idx];
             finalSimplePoints.add(vec.buf, 0, vec.size);
         }
     }
 
-    public static void skeletonize(ThreadPoolExecutor threadPool, int maxWorkers, ImagePlus image) {
+    public static void skeletonize(Scratch data, byte[] planes, ThreadPoolExecutor threadPool, int maxWorkers, ImagePlus image) {
         if (image.getStackSize() == 1) {
-            skeletonize(threadPool, maxWorkers, image.getProcessor());
+            skeletonize(data, planes, threadPool, maxWorkers, image.getProcessor());
         }
         else {
             ImageStack stack = image.getStack();
-            skeletonize(threadPool, maxWorkers, stack);
+            skeletonize(data, planes, threadPool, maxWorkers, stack);
             stack.update(image.getProcessor());
         }
     }
 
-    public static void skeletonize(ThreadPoolExecutor threadPool, int maxWorkers, ImageStack stack) {
+    public static void skeletonize(Scratch data, byte[] planes, ThreadPoolExecutor threadPool, int maxWorkers, ImageStack stack) {
         int width = stack.getWidth();
         int height = stack.getHeight();
         int breadth = Math.min(stack.getSize(), MAX_BREADTH);
@@ -147,10 +157,10 @@ public class Lee94 {
         for (int i = 0; i < breadth; i++)
             layers[i] = stack.getPixels(i + 1);
 
-        skeletonize(threadPool, maxWorkers, layers, width, height, bitDepth);
+        skeletonize(data, planes, threadPool, maxWorkers, layers, width, height, bitDepth);
     }
 
-    public static void skeletonize(ThreadPoolExecutor threadPool, int maxWorkers, ImageProcessor ip) {
+    public static void skeletonize(Scratch data, byte[] planes, ThreadPoolExecutor threadPool, int maxWorkers, ImageProcessor ip) {
         int width = ip.getWidth();
         int height = ip.getHeight();
         int bitDepth = ip.getBitDepth();
@@ -158,10 +168,12 @@ public class Lee94 {
         Object[] layers = new Object[1];
         layers[0] = ip.getPixels();
 
-        skeletonize(threadPool, maxWorkers, layers, width, height, bitDepth);
+        skeletonize(data, planes, threadPool, maxWorkers, layers, width, height, bitDepth);
     }
 
     public static void skeletonize(
+        Scratch data,
+        byte[] planes,
         ThreadPoolExecutor threadPool,
         int maxWorkers,
         Object[] layersObj,
@@ -176,21 +188,18 @@ public class Lee94 {
         int[][]   layersInt   = null;
         float[][] layersFloat = null;
 
-        // since we have to reduce each pixel to a single bit anyway,
-        // we might as well combine each channel/layer into a single buffer to improve memory locality
-        byte[] planes = new byte[width * height];
         switch (bitDepth) {
             case 8:
-                layersByte = getPlanes8(planes, layersObj);
+                layersByte = Planes.combine8(planes, width, height, layersObj);
                 break;
             case 16:
-                layersShort = getPlanes16(planes, layersObj);
+                layersShort = Planes.combine16(planes, width, height, layersObj);
                 break;
             case 24:
-                layersInt = getPlanesRgb(planes, layersObj);
+                layersInt = Planes.combineRgb(planes, width, height, layersObj);
                 break;
             case 32:
-                layersFloat = getPlanes32(planes, layersObj);
+                layersFloat = Planes.combine32(planes, width, height, layersObj);
                 break;
             default:
                 throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
@@ -198,34 +207,38 @@ public class Lee94 {
 
         //writePgm(layersByte[0], width, height, "before.pgm");
 
-        IntVector offsetLengthPairs = ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1);
-        Params params = new Params(offsetLengthPairs.size / 2, planes, width, height, breadth);
+        data.offsetLengthPairs.size = 0;
+        ParallelUtils.makeBinaryTreeOfSlices(data.offsetLengthPairs, 0, width, IN_PLACE_THRESHOLD - 1);
+
+        data.params.setup(data.offsetLengthPairs.size / 2, planes, width, height, breadth);
 
         boolean anyChanged;
         do {
             anyChanged = false;
             for (int border = 1; border <= 6; border++) {
-                boolean wasThinned = thin(threadPool, maxWorkers, offsetLengthPairs, params, border);
+                boolean wasThinned = thin(data, planes, threadPool, maxWorkers, border);
                 anyChanged = anyChanged || wasThinned;
             }
         } while (anyChanged);
 
+        /*
         switch (bitDepth) {
             case 8:
-                setPlanes8(layersByte, planes);
+                Planes.split8(layersByte, width, height, planes);
                 break;
             case 16:
-                setPlanes16(layersShort, planes);
+                Planes.split16(layersShort, width, height, planes);
                 break;
             case 24:
-                setPlanesRgb(layersInt, planes);
+                Planes.splitRgb(layersInt, width, height, planes);
                 break;
             case 32:
-                setPlanes32(layersFloat, planes, new float[2]);
+                Planes.split32(layersFloat, width, height, planes, new float[2]);
                 break;
             default:
                 throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
         }
+        */
 
         //writePgm(layersByte[0], width, height, "after.pgm");
     }
@@ -250,39 +263,43 @@ public class Lee94 {
     }
 
     static boolean thin(
+        Scratch data,
+        byte[] planes,
         ThreadPoolExecutor threadPool,
         int maxWorkers,
-        IntVector offsetLengthPairs,
-        Params params,
         int border
     ) {
-        params.setBorder(border);
-        params.finalSimplePoints.size = 0;
+        data.params.setBorder(border);
+        data.params.finalSimplePoints.size = 0;
+        data.params.planes = planes;
 
         ParallelUtils.computeSlicesInParallel(
             threadPool,
             maxWorkers,
-            offsetLengthPairs,
-            params
+            data.offsetLengthPairs,
+            data.params
         );
 
-        boolean anyChange = false;
-        for (int i = 0; i < params.finalSimplePoints.size; i += 3) {
-            int x = params.finalSimplePoints.buf[i];
-            int y = params.finalSimplePoints.buf[i+1];
-            int z = params.finalSimplePoints.buf[i+2];
-            int pos = x + y*params.width;
-            boolean isSimple = isSimplePoint(AnalyzeSkeleton2.getBooleanNeighborBits(params.planes, params.width, params.height, params.breadth, x, y, z));
+        data.params.planes = null;
 
-            params.planes[pos] = (byte)((params.planes[pos] & ~(1 << z)) | (isSimple ? 0 : (1 << z)));
+        final IntVector results = data.params.finalSimplePoints;
+        final int width = data.params.width;
+        final int height = data.params.height;
+        final int breadth = data.params.breadth;
+
+        boolean anyChange = false;
+        for (int i = 0; i < results.size; i += 3) {
+            int x = results.buf[i];
+            int y = results.buf[i+1];
+            int z = results.buf[i+2];
+            int pos = x + y*width;
+            boolean isSimple = isSimplePoint(AnalyzeSkeleton2.getBooleanNeighborBits(planes, width, height, breadth, x, y, z));
+
+            planes[pos] = (byte)((planes[pos] & ~(1 << z)) | (isSimple ? 0 : (1 << z)));
             anyChange = anyChange || isSimple;
         }
 
         return anyChange;
-    }
-
-    static boolean isSimplePoint(int neighborBits) {
-        return ((simplePointsLut[neighborBits >> 3] >> (7 - (neighborBits & 7))) & 1) == 1;
     }
 
     static boolean isEulerInvariant(int neighborBits) {
@@ -297,6 +314,10 @@ public class Lee94 {
         }
 
         return euler == 0;
+    }
+
+    static boolean isSimplePoint(int neighborBits) {
+        return ((simplePointsLut[neighborBits >> 3] >> (7 - (neighborBits & 7))) & 1) == 1;
     }
 
     static byte[] loadSimplePointsLut() {
@@ -318,115 +339,5 @@ public class Lee94 {
             throw new RuntimeException(ex);
         }
         return buffer;
-    }
-
-    static byte[][] getPlanes8(byte[] output, Object[] slicesObj) {
-        byte[][] slices = new byte[slicesObj.length][];
-        for (int i = 0; i < slicesObj.length; i++)
-            slices[i] = (byte[])slicesObj[i];
-
-        for (int i = 0; i < output.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
-            for (int j = 0; j < slices.length; j++) {
-                for (int k = 0; k < block; k++)
-                    output[i+k] |= (slices[j][i+k] >>> 31 | -slices[j][i+k] >>> 31) << j;
-            }
-        }
-
-        return slices;
-    }
-
-    static short[][] getPlanes16(byte[] output, Object[] slicesObj) {
-        short[][] slices = new short[slicesObj.length][];
-        for (int i = 0; i < slicesObj.length; i++)
-            slices[i] = (short[])slicesObj[i];
-
-        for (int i = 0; i < output.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
-            for (int j = 0; j < slices.length; j++) {
-                for (int k = 0; k < block; k++)
-                    output[i+k] |= (slices[j][i+k] >>> 31 | -slices[j][i+k] >>> 31) << j;
-            }
-        }
-
-        return slices;
-    }
-
-    static int[][] getPlanesRgb(byte[] output, Object[] slicesObj) {
-        int[][] slices = new int[slicesObj.length][];
-        for (int i = 0; i < slicesObj.length; i++)
-            slices[i] = (int[])slicesObj[i];
-
-        for (int i = 0; i < output.length; i++) {
-            int rgb = slices[0][i];
-            output[i] = (byte)(
-                ((rgb & 0xff0000) >>> 31 | -(rgb & 0xff0000) >>> 31) |
-                ((rgb &   0xff00) >>> 31 | -(rgb &   0xff00) >>> 31) << 1 |
-                ((rgb &     0xff) >>> 31 | -(rgb &     0xff) >>> 31) << 2
-            );
-        }
-
-        return slices;
-    }
-
-    static float[][] getPlanes32(byte[] output, Object[] slicesObj) {
-        float[][] slices = new float[slicesObj.length][];
-        for (int i = 0; i < slicesObj.length; i++)
-            slices[i] = (float[])slicesObj[i];
-
-        for (int i = 0; i < output.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, output.length - i);
-            for (int j = 0; j < slices.length; j++) {
-                for (int k = 0; k < block; k++) {
-                    int exp = (Float.floatToRawIntBits(slices[j][i+k]) >> 23) & 0xff;
-                    output[i+k] |= (-(exp - 0x76) >>> 31) << j;
-                }
-            }
-        }
-
-        return slices;
-    }
-
-    static void setPlanes8(byte[][] output, byte[] planes) {
-        for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, planes.length - i);
-            for (int j = 0; j < output.length; j++) {
-                for (int k = 0; k < block; k++)
-                    output[j][i+k] = (byte)-((planes[i+k] >>> j) & 1);
-            }
-        }
-    }
-
-    static void setPlanes16(short[][] output, byte[] planes) {
-        for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, planes.length - i);
-            for (int j = 0; j < output.length; j++) {
-                for (int k = 0; k < block; k++)
-                    output[j][i+k] = (short)-((planes[i+k] >>> j) & 1);
-            }
-        }
-    }
-
-    static void setPlanesRgb(int[][] output, byte[] planes) {
-        for (int i = 0; i < planes.length; i++) {;
-            int r = -(planes[i] & 1) & 0xff;
-            int g = -((planes[i] >>> 1) & 1) & 0xff;
-            int b = -((planes[i] >>> 2) & 1) & 0xff;
-            output[0][i] = (r << 16) | (g << 8) | b;
-        }
-    }
-
-    // using the lookup table "float[] {0.0f, 255.0f}" is 5x faster than using a ternary (ie. bit == 1 ? 255.0f : 0.0f)
-    // see FloatManipBenchmark.java
-    static void setPlanes32(float[][] output, byte[] planes, float[] lut) {
-        lut[0] = 0.0f;
-        lut[1] = 255.0f;
-        for (int i = 0; i < planes.length; i += BLOCK_SIZE) {
-            int block = Math.min(BLOCK_SIZE, planes.length - i);
-            for (int j = 0; j < output.length; j++) {
-                for (int k = 0; k < block; k++)
-                    output[j][i+k] = lut[(planes[i+k] >>> j) & 1];
-            }
-        }
     }
 }

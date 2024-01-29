@@ -27,7 +27,7 @@ public class Zha84
 
     public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, ImagePlus inputImage)
     {
-        ImageProcessor ip = image.getProcessor();
+        ImageProcessor ip = inputImage.getProcessor();
         if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
             throw new RuntimeException("SkeletonizeZha84: Image was not single-channel 8-bit");
 

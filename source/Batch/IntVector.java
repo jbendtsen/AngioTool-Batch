@@ -12,7 +12,9 @@ public class IntVector {
         this(8);
     }
 
-    public void resize(int newSize) {
+    public int resize(int newSize) {
+        int oldSize = size;
+
         int oldCap = buf != null ? buf.length : 0;
         int newCap = Math.max(oldCap, 8);
         while (newSize > newCap)
@@ -26,6 +28,7 @@ public class IntVector {
         }
 
         size = newSize;
+        return oldSize;
     }
 
     public int add(int v) {
