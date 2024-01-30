@@ -21,6 +21,7 @@ import Batch.AnalyzeSkeleton2;
 import Batch.BatchAnalysisUi;
 import Batch.ComputeShapeRoiSplines;
 import Batch.Lee94;
+import Batch.PixelCalibration;
 import Batch.Rgb;
 import Batch.SkeletonResult2;
 import Lacunarity.Lacunarity;
@@ -34,6 +35,7 @@ import ij.gui.Overlay;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
 import ij.gui.ShapeRoi;
+import ij.measure.Calibration;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 import java.awt.Color;
@@ -1396,27 +1398,28 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.results.AreaScalingFactor = areaScalingFactor;
       this.results.allantoisPixelsArea = this.convexHullArea;
       this.results.allantoisMMArea = this.convexHullArea * areaScalingFactor;
-      this.results.totalNJunctions = this.al2.size();
-      this.results.JunctionsPerArea = (double)this.al2.size() / this.convexHullArea;
-      this.results.JunctionsPerScaledArea = (double)this.al2.size() / this.results.allantoisMMArea;
+      this.results.totalNJunctions = this.skelResult.isolatedJunctions.size;
+      this.results.JunctionsPerArea = (double)this.skelResult.isolatedJunctions.size / this.convexHullArea;
+      this.results.JunctionsPerScaledArea = (double)this.skelResult.isolatedJunctions.size / this.results.allantoisMMArea;
       this.results.vesselMMArea = (double)this.results.vesselPixelArea * areaScalingFactor;
       this.results.vesselPercentageArea = this.results.vesselMMArea * 100.0 / this.results.allantoisMMArea;
       if (params.shouldComputeThickness) {
-         this.results.averageVesselDiameter = Utils.computeMedianThickness(this.graph, this.imageThickness) * params.linearScalingFactor;
+         this.results.averageVesselDiameter = Utils.computeMedianThickness(this.skelResult.slabList, this.imageThickness) * params.linearScalingFactor;
       }
 
-      double[] branchLengths = this.skelResult.getAverageBranchLength();
-      int[] branchNumbers = this.skelResult.getBranches();
       double totalLength = 0.0;
-      double averageLength = 0.0;
+      int nTrees = this.skelResult.treeCount;
+      for (int i = 0; i < nTrees; i++)
+         totalLength += (double)this.skelResult.totalBranchLengths[i];
 
-      for(int i = 0; i < branchNumbers.length; ++i) {
-         totalLength += (double)branchNumbers[i] * branchLengths[i];
-      }
+      double averageLength = 0.0;
+      if (nTrees > 0)
+         averageLength = totalLength / (double)nTrees * params.linearScalingFactor;
 
       this.results.totalLength = totalLength * params.linearScalingFactor;
-      this.results.averageBranchLength = totalLength / (double)branchNumbers.length * params.linearScalingFactor;
-      this.results.totalNEndPoints = this.skelResult.getListOfEndPoints().size();
+      this.results.averageBranchLength = averageLength;
+      this.results.totalNEndPoints = this.skelResult.endPoints.size / 3;
+
       String name = this.imageFile.getName();
       int fileExtensionLength = Utils.getExtension(this.imageFile).length() + 1;
       this.ste.setFileName(name.substring(0, name.length() - fileExtensionLength));
@@ -1458,9 +1461,9 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
                this.allantoisOverlay.add(this.outlineRoi);
             }
 
-            if (this.graph != null) {
+            if (this.skelResult != null) {
                params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
-               this.skeletonRoi = this.computeSkeletonRoi(params.skeletonColor, (int)params.skeletonSize);
+               this.skeletonRoi = this.computeSkeletonRoi((int)params.skeletonSize);
             }
 
             if (this.skeletonRoi != null && params.shouldDrawSkeleton) {
@@ -1474,17 +1477,19 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
                   this.allantoisOverlay.add(r);
                }
 
-               for(int i = 0; i < this.removedJunctions.size(); ++i) {
-                  AnalyzeSkeleton.Point p = this.removedJunctions.get(i);
-                  OvalRoi r = new OvalRoi(p.x, p.y, 1, 1);
+               for(int i = 0; i < this.skelResult.removedJunctions.size; ++i) {
+                  int idx = this.skelResult.removedJunctions.buf[i];
+                  int x = this.skelResult.junctionVoxels.buf[idx];
+                  int y = this.skelResult.junctionVoxels.buf[idx+1];
+                  OvalRoi r = new OvalRoi(x, y, 1, 1);
                   r.setStrokeWidth((float)params.skeletonSize);
                   r.setStrokeColor(skelColor);
                   this.allantoisOverlay.add(r);
                }
             }
 
-            if (this.al2 != null) {
-               this.junctionsRoi = this.computeJunctionsRoi(this.al2, this.branchingPointsRoundedPanel.getBackground(), getSpinnerValueInt(this.branchingPointsSpinner));
+            if (this.skelResult != null) {
+               this.junctionsRoi = this.computeJunctionsRoi(getSpinnerValueInt(this.branchingPointsSpinner));
             }
 
             if (this.junctionsRoi != null && params.shouldDrawBranchPoints) {
@@ -1686,9 +1691,9 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<Roi> computeSkeletonRoi(int size) {
       ArrayList<Roi> list = new ArrayList<>();
 
-      for (int i = 0; i < skelResult.slabList.size; i += 3) {
-         int x = skelResult.slabList.buf[i];
-         int y = skelResult.slabList.buf[i+1];
+      for (int i = 0; i < this.skelResult.slabList.size; i += 3) {
+         int x = this.skelResult.slabList.buf[i];
+         int y = this.skelResult.slabList.buf[i+1];
 
          OvalRoi r = new OvalRoi(
             x - size / 2,
@@ -1705,10 +1710,10 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<Roi> computeJunctionsRoi(int size) {
       ArrayList<Roi> list = new ArrayList<>();
 
-      for (int i = 0; i < data.skelResult.isolatedJunctions.size; i++) {
-         int idx = data.skelResult.isolatedJunctions.buf[i];
-         int x = data.skelResult.junctionVoxels.buf[idx];
-         int y = data.skelResult.junctionVoxels.buf[idx+1];
+      for (int i = 0; i < this.skelResult.isolatedJunctions.size; i++) {
+         int idx = this.skelResult.isolatedJunctions.buf[i];
+         int x = this.skelResult.junctionVoxels.buf[idx];
+         int y = this.skelResult.junctionVoxels.buf[idx+1];
 
          Roi r = new OvalRoi(
             x - size / 2,
@@ -1966,95 +1971,105 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private String doSingleAnalysis() {
-        int progress = 0;
-        progressBar.setMinimum(0);
-        progressBar.setMaximum(100);
-        progressBar.setStringPainted(true);
-        updateStatus(progress, "");
-        this.updateOutline(null);
-        int splineIterations = 0;
-        int fraction = 1;
+      int progress = 0;
+      progressBar.setMinimum(0);
+      progressBar.setMaximum(100);
+      progressBar.setStringPainted(true);
+      updateStatus(progress, "");
+      this.updateOutline(null);
+      int splineIterations = 0;
+      int fraction = 1;
 
-        for(int i = 0; i < splineIterations; ++i) {
-            this.smoothROIs(fraction);
-            progress += 11;
-            updateStatus(progress, "smooth ROIs");
-        }
+      for(int i = 0; i < splineIterations; ++i) {
+         this.smoothROIs(fraction);
+         progress += 11;
+         updateStatus(progress, "smooth ROIs");
+      }
 
-        this.results.vesselPixelArea = Utils.thresholdedPixelArea(this.imageThresholded.getProcessor());
-        if (params.shouldComputeLacunarity) {
-            updateStatus(progress, "Computing lacunarity...");
-            ImageProcessor ipTemp = this.imageThresholded.getProcessor().duplicate();
-            ImagePlus iplusTemp = new ImagePlus("iplusTemp", ipTemp);
-            if (!Utils.isReleaseVersion) {
-                IJ.saveAs(iplusTemp, "tiff", this.imageFile.getAbsolutePath() + " lacunarity.tif");
+      this.results.vesselPixelArea = Utils.thresholdedPixelArea(this.imageThresholded.getProcessor());
+      if (params.shouldComputeLacunarity) {
+         updateStatus(progress, "Computing lacunarity...");
+         ImageProcessor ipTemp = this.imageThresholded.getProcessor().duplicate();
+         ImagePlus iplusTemp = new ImagePlus("iplusTemp", ipTemp);
+         if (!Utils.isReleaseVersion) {
+            IJ.saveAs(iplusTemp, "tiff", this.imageFile.getAbsolutePath() + " lacunarity.tif");
+         }
+
+         this.computeLacunarity(iplusTemp, 10, 10, 5);
+         this.results.ELacunaritySlope = this.ElSlope;
+         this.results.ELacunarity = this.medialELacunarity;
+         this.results.FLacunaritySlope = this.FlSlope;
+         this.results.FLacuanrity = this.medialFLacunarity;
+         this.results.meanEl = this.meanEl;
+         this.results.meanFl = this.meanFl;
+         if (!Utils.isReleaseVersion) {
+            for(int i = 0; i < this.lacunarityBoxes.length; ++i) {
+               System.out.println(this.lacunarityBoxes[i] + "\t" + this.Elamdas.get(i) + "\t" + this.Flamdas.get(i));
             }
 
-            this.computeLacunarity(iplusTemp, 10, 10, 5);
-            this.results.ELacunaritySlope = this.ElSlope;
-            this.results.ELacunarity = this.medialELacunarity;
-            this.results.FLacunaritySlope = this.FlSlope;
-            this.results.FLacuanrity = this.medialFLacunarity;
-            this.results.meanEl = this.meanEl;
-            this.results.meanFl = this.meanFl;
-            if (!Utils.isReleaseVersion) {
-                for(int i = 0; i < this.lacunarityBoxes.length; ++i) {
-                    System.out.println(this.lacunarityBoxes[i] + "\t" + this.Elamdas.get(i) + "\t" + this.Flamdas.get(i));
-                }
+            System.out.println(
+               "ElSlope =  "
+               + this.ElSlope
+               + "\tFlSlope = "
+               + this.FlSlope
+               + "\tmedialELacuanrity = "
+               + this.medialELacunarity
+               + "\tmeanEl= "
+               + this.meanEl
+               + "\tmeanFl= "
+               + this.meanFl
+            );
+         }
+      }
 
-                System.out.println(
-                    "ElSlope =  "
-                    + this.ElSlope
-                    + "\tFlSlope = "
-                    + this.FlSlope
-                    + "\tmedialELacuanrity = "
-                    + this.medialELacunarity
-                    + "\tmeanEl= "
-                    + this.meanEl
-                    + "\tmeanFl= "
-                    + this.meanFl
-                );
-            }
-        }
+      //this.computeThickness = !Utils.isReleaseVersion;
+      if (params.shouldComputeThickness) {
+         updateStatus(progress, "vessel thickness");
+         EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
+         ed.setup(null, this.imageThresholded);
+         ed.run(this.imageThresholded.getProcessor());
+         this.imageThickness = ed.getImageResult();
+         if (!Utils.isReleaseVersion) {
+            IJ.saveAs(this.imageThickness, "tif", this.imageFile.getAbsolutePath() + " thickness.tif");
+         }
+      }
 
-        //this.computeThickness = !Utils.isReleaseVersion;
-        if (params.shouldComputeThickness) {
-            updateStatus(progress, "vessel thickness");
-            EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
-            ed.setup(null, this.imageThresholded);
-            ed.run(this.imageThresholded.getProcessor());
-            this.imageThickness = ed.getImageResult();
-            if (!Utils.isReleaseVersion) {
-                IJ.saveAs(this.imageThickness, "tif", this.imageFile.getAbsolutePath() + " thickness.tif");
-            }
-        }
+      this.convexHull = Utils.computeConvexHull(this.imageThresholded.getProcessor());
+      this.convexHullArea = this.convexHull.area();
+      this.convexHullRoi = new PolygonRoi(this.convexHull.polygon(), 2);
 
-        this.convexHull = Utils.computeConvexHull(this.imageThresholded.getProcessor());
-        this.convexHullArea = this.convexHull.area();
-        this.convexHullRoi = new PolygonRoi(this.convexHull.polygon(), 2);
+      progress += 5;
+      updateStatus(progress, "Analyzing skeleton... ");
+      updateStatus(progress, "Skeletonize");
 
-        progress += 5;
-        updateStatus(progress, "Analyzing skeleton... ");
-        updateStatus(progress, "Skeletonize");
+      this.ipThresholded = this.imageThresholded.getProcessor();
+      ImagePlus iplusSkeleton = this.imageThresholded.duplicate();
+      iplusSkeleton.setTitle("iplusSkeleton");
 
-        this.ipThresholded = this.imageThresholded.getProcessor();
-        ImagePlus iplusSkeleton = this.imageThresholded.duplicate();
-        iplusSkeleton.setTitle("iplusSkeleton");
-        Lee94.skeletonize(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, iplusSkeleton);
-        progress += 33;
-        updateStatus(progress, "Computing convex hull... ");
-        AnalyzeSkeleton.AnalyzeSkeleton skelAnalyzer = new AnalyzeSkeleton.AnalyzeSkeleton();
-        skelAnalyzer.setup("", iplusSkeleton);
-        this.skelResult = skelAnalyzer.run(0, false, false, iplusSkeleton, false, false);
-        this.graph = skelAnalyzer.getGraphs();
-        this.skeletonRoi = this.computeSkeletonRoi(new Rgb(this.skeletonColorRoundedPanel.getBackground()), getSpinnerValueInt(this.skeletonSpinner));
-        this.al2 = this.skelResult.getListOfJunctionVoxels();
-        this.removedJunctions = Utils.computeActualJunctions(this.al2);
-        this.junctionsRoi = this.computeJunctionsRoi(this.al2, this.branchingPointsRoundedPanel.getBackground(), getSpinnerValueInt(this.branchingPointsSpinner));
-        this.updateOverlay();
-        updateStatus(95, " Saving result image... ");
-        updateStatus(100, "Done... ");
-        return "Good";
+      int skelWidth = iplusSkeleton.getWidth();
+      int skelHeight = iplusSkeleton.getHeight();
+      byte[] skelImage = new byte[skelWidth * skelHeight];
+      Lee94.skeletonize(new Lee94.Scratch(), skelImage, AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, iplusSkeleton);
+
+      progress += 33;
+      updateStatus(progress, "Computing convex hull... ");
+      this.skelResult = new SkeletonResult2();
+      AnalyzeSkeleton2.analyze(this.skelResult, getCalibration(iplusSkeleton), skelImage, skelWidth, skelHeight, 1);
+      this.skeletonRoi = this.computeSkeletonRoi(getSpinnerValueInt(this.skeletonSpinner));
+      this.junctionsRoi = this.computeJunctionsRoi(getSpinnerValueInt(this.branchingPointsSpinner));
+      this.updateOverlay();
+      updateStatus(95, " Saving result image... ");
+      updateStatus(100, "Done... ");
+      return "Good";
+   }
+
+   private PixelCalibration getCalibration(ImagePlus image) {
+      PixelCalibration calibration = new PixelCalibration();
+      Calibration c = image.getCalibration();
+      calibration.widthUnits = c.pixelWidth;
+      calibration.heightUnits = c.pixelHeight;
+      calibration.breadthUnits = c.pixelDepth;
+      return calibration;
    }
 
    class AngioToolWorker extends SwingWorker<Object, Object> {

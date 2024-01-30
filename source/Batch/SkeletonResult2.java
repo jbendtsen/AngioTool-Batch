@@ -1,36 +1,36 @@
 package Batch;
 
 public class SkeletonResult2 {
-    int imageBreadth;
+    public int imageBreadth;
 
-    IntVector[] pointVectors;
+    public IntVector[] pointVectors;
 
-    IntVector endPoints;
-    IntVector junctionVoxels;
-    IntVector singleJunctions;
-    IntVector slabVoxels;
-    IntVector startingSlabVoxels;
-    IntVector toRevisit;
+    public IntVector endPoints;
+    public IntVector junctionVoxels;
+    public IntVector singleJunctions;
+    public IntVector slabVoxels;
+    public IntVector startingSlabVoxels;
+    public IntVector toRevisit;
 
-    IntVector isolatedJunctions;
-    IntVector removedJunctions;
-    IntVector slabList;
-    IntVector edgesTrees;
-    IntVector edgesVerts;
-    IntVector edgesPoints;
-    DoubleVector edgesLengths;
+    public IntVector isolatedJunctions;
+    public IntVector removedJunctions;
+    public IntVector slabList;
+    public IntVector edgesTrees;
+    public IntVector edgesVerts;
+    public IntVector edgesPoints;
+    public DoubleVector edgesLengths;
 
-    int[][] markedImages;
-    int[][] endPointVertexMap;
-    int[][] junctionVertexMap;
+    public int[][] markedImages;
+    public int[][] endPointVertexMap;
+    public int[][] junctionVertexMap;
 
-    int treeCount;
-    int[] triplePointCounts;
-    int[] quadruplePointCounts;
-    double[] totalBranchLengths;
-    double[] maximumBranchLengths;
-    int[] numberOfBranches;
-    int[] numberOfSlabs;
+    public int treeCount;
+    public int[] triplePointCounts;
+    public int[] quadruplePointCounts;
+    public double[] totalBranchLengths;
+    public double[] maximumBranchLengths;
+    public int[] numberOfBranches;
+    public int[] numberOfSlabs;
 
     /*
     public int numOfTrees;

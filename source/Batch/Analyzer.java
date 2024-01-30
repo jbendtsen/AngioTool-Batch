@@ -558,26 +558,7 @@ public class Analyzer
             ed.run(data.imageThresholded.getProcessor());
             data.imageThickness = ed.getImageResult();
 
-            int nPoints = data.skelResult.slabList.size / 3;
-            double[] vesselThickness = BufferPool.doublePool.acquireAsIs(nPoints);
-            ImageProcessor distanceMapProcessor = data.imageThickness.getProcessor();
-
-            for (int i = 0; i < data.skelResult.slabList.size; i += 3) {
-                int x = data.skelResult.slabList.buf[i];
-                int y = data.skelResult.slabList.buf[i+1];
-                vesselThickness[i/3] = distanceMapProcessor.getPixelValue(x, y) * 2.0F;
-            }
-
-            Arrays.sort(vesselThickness, 0, nPoints);
-            int middle = nPoints / 2;
-
-            double thickness = nPoints % 2 == 1 ?
-                vesselThickness[middle] :
-                (vesselThickness[middle - 1] + vesselThickness[middle]) / 2.0;
-
-            averageVesselDiameter = thickness * linearScalingFactor;
-
-            BufferPool.doublePool.release(vesselThickness);
+            averageVesselDiameter = Utils.computeMedianThickness(data.skelResult.slabList, data.imageThickness) * linearScalingFactor;
         }
 
         //uiToken.updateImageProgress("Generating skeleton points...");

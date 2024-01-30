@@ -3,6 +3,7 @@ package Utils;
 import AngioTool.AngioTool;
 import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
+import Batch.BufferPool;
 import Batch.ISliceCompute;
 import Batch.IntVector;
 import features.Tubeness;
@@ -24,6 +25,7 @@ import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.text.NumberFormat;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -74,6 +76,28 @@ public class Utils {
    public static final String bmp = "bmp";
    public static final String xls = "xls";
    public static final String xlsx = "xlsx";
+
+   public static double computeMedianThickness(IntVector slabList, ImagePlus distanceMap) {
+      int nPoints = slabList.size / 3;
+      double[] vesselThickness = BufferPool.doublePool.acquireAsIs(nPoints);
+      ImageProcessor distanceMapProcessor = distanceMap.getProcessor();
+
+      for (int i = 0; i < slabList.size; i += 3) {
+         int x = slabList.buf[i];
+         int y = slabList.buf[i+1];
+         vesselThickness[i/3] = distanceMapProcessor.getPixelValue(x, y) * 2.0F;
+      }
+
+      Arrays.sort(vesselThickness, 0, nPoints);
+      int middle = nPoints / 2;
+
+      double thickness = nPoints % 2 == 1 ?
+         vesselThickness[middle] :
+         (vesselThickness[middle - 1] + vesselThickness[middle]) / 2.0;
+
+      BufferPool.doublePool.release(vesselThickness);
+      return thickness;
+   }
 
    /*
    public static double computeMedianThickness(Graph[] graph, ImagePlus distanceMap) {

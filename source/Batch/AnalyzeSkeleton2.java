@@ -101,18 +101,20 @@ public class AnalyzeSkeleton2
                             getBooleanNeighborBits(skeletonImages, width, height, breadth, x, y, z)
                         );
 
-                        if (numOfNeighbors < 2)
+                        if (numOfNeighbors < 2) {
                             type = END_POINT;
-                        else if (numOfNeighbors > 2)
-                            type = JUNCTION;
-                        else
-                            type = SLAB;
-
-                        int pos = result.pointVectors[type-1].addThree(x, y, z);
-                        if (type == END_POINT)
+                            int pos = result.pointVectors[type-1].addThree(x, y, z);
                             result.endPointVertexMap[z][idx] = pos;
-                        else if (type == JUNCTION)
+                        }
+                        else if (numOfNeighbors > 2) {
+                            type = JUNCTION;
+                            int pos = result.pointVectors[type-1].addThree(x, y, z);
                             junctionMap2d[idx] = pos + 1;
+                        }
+                        else {
+                            type = SLAB;
+                            result.pointVectors[type-1].addThree(x, y, z);
+                        }
                     }
                     value = (value << 2) | type;
                 }
