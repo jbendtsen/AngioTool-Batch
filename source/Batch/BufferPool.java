@@ -28,10 +28,10 @@ public class BufferPool {
         public byte[] acquireAsIs(int minSize) {
             if (minSize <= 0)
                 return null;
-            int idx = findQueueNumber(minSize);
+            ConcurrentLinkedQueue<byte[]> q = (ConcurrentLinkedQueue<byte[]>)queues[findQueueNumber(minSize)];
             byte[] buffer;
             do {
-                buffer = ((ConcurrentLinkedQueue<byte[]>)queues[idx]).poll();
+                buffer = q.poll();
                 if (buffer == null)
                     return new byte[minSize];
             }
@@ -62,10 +62,10 @@ public class BufferPool {
         public int[] acquireAsIs(int minSize) {
             if (minSize <= 0)
                 return null;
-            int idx = findQueueNumber(minSize);
+            ConcurrentLinkedQueue<int[]> q = (ConcurrentLinkedQueue<int[]>)queues[findQueueNumber(minSize)];
             int[] buffer;
             do {
-                buffer = ((ConcurrentLinkedQueue<int[]>)queues[idx]).poll();
+                buffer = q.poll();
                 if (buffer == null)
                     return new int[minSize];
             }
@@ -96,10 +96,10 @@ public class BufferPool {
         public double[] acquireAsIs(int minSize) {
             if (minSize <= 0)
                 return null;
-            int idx = findQueueNumber(minSize);
+            ConcurrentLinkedQueue<double[]> q = (ConcurrentLinkedQueue<double[]>)queues[findQueueNumber(minSize)];
             double[] buffer;
             do {
-                buffer = ((ConcurrentLinkedQueue<double[]>)queues[idx]).poll();
+                buffer = q.poll();
                 if (buffer == null)
                     return new double[minSize];
             }

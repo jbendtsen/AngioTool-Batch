@@ -66,7 +66,9 @@ public class AnalyzeSkeleton2
 
         groupJunctions(result, skeletonImages, width, height, breadth, imageInfo, nTrees);
 
+        result.totalBranchLengths = BufferPool.doublePool.acquireZeroed(nTrees);
         result.maximumBranchLengths = BufferPool.doublePool.acquireZeroed(nTrees);
+        result.numberOfBranches = BufferPool.intPool.acquireZeroed(nTrees);
         result.numberOfSlabs = BufferPool.intPool.acquireZeroed(nTrees);
 
         buildSkeletonGraphs(result, calibration, skeletonImages, width, height, breadth, imageInfo, nTrees);
@@ -310,15 +312,16 @@ public class AnalyzeSkeleton2
         int junctionStart = 0;
         int startingSlabStart = 0;
 
-        for (int t = 0; t < nTrees; t++) {
-            result.totalBranchLengths[t] = 0.0;
-            result.maximumBranchLengths[t] = 0.0;
+        //for (int t = 0; t < nTrees; t++) {
+            //result.totalBranchLengths[t] = 0.0;
+            //result.maximumBranchLengths[t] = 0.0;
 
             for (int i = endPointStart; i < result.endPoints.size; i += 3) {
                 int x = result.endPoints.buf[i];
                 int y = result.endPoints.buf[i+1];
                 int z = result.endPoints.buf[i+2];
-                if (result.markedImages[z][x + width * y] != t + 1) {
+                int t = result.markedImages[z][x + width * y] - 1;
+                if (false) { //result.markedImages[z][x + width * y] != t + 1)
                     endPointStart = i;
                     break;
                 }
@@ -338,7 +341,8 @@ public class AnalyzeSkeleton2
                 int x = result.singleJunctions.buf[i];
                 int y = result.singleJunctions.buf[i+1];
                 int z = result.singleJunctions.buf[i+2];
-                if (result.markedImages[z][x + width * y] != t + 1) {
+                int t = result.markedImages[z][x + width * y] - 1;
+                if (false) { //result.markedImages[z][x + width * y] != t + 1)
                     junctionStart = i;
                     break;
                 }
@@ -347,73 +351,72 @@ public class AnalyzeSkeleton2
                 imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
                 int vertexIdx = result.junctionVertexMap[z][x + width * y] - 1;
 
-                boolean didFindPoint;
-                do {
-                    didFindPoint = false;
-                    for (int j = 0; j < 27; j++) {
-                        if (j == 13)
+                for (int j = 0; j < 27; j++) {
+                    if (j == 13)
+                        continue;
+
+                    int xx = x + (j / 9) - 1;
+                    int yy = y + ((j / 3) % 3) - 1;
+                    int zz = z + (j % 3) - 1;
+                    if (xx < 0 || xx >= width || yy < 0 || yy >= height || zz < 0 || zz >= breadth)
+                        continue;
+
+                    if (
+                        ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
+                        ((imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
+                    ) {
+                        //didFindPoint = true;
+                        if (((imageInfo[xx + width * yy] >>> (zz << 1)) & 3) == JUNCTION) {
+                            imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
                             continue;
-
-                        int xx = x + (j / 9) - 1;
-                        int yy = y + ((j / 3) % 3) - 1;
-                        int zz = z + (j % 3) - 1;
-                        if (xx < 0 || xx >= width || yy < 0 || yy >= height || zz < 0 || zz >= breadth)
-                            continue;
-
-                        if (
-                            ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
-                            ((imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
-                        ) {
-                            didFindPoint = true;
-                            if (((imageInfo[xx + width * yy] >>> (zz << 1)) & 3) == JUNCTION) {
-                                imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
-                                break;
-                            }
-
-                            double initialLength = calculateDistance(x, y, z, xx, yy, zz, calibration);
-                            int slabListIdx = result.slabList.addThree(xx, yy, zz);
-
-                            visitBranch(
-                                result, calibration, skeletonImages, width, height, breadth, imageInfo, t,
-                                JUNCTION, vertexIdx, slabListIdx, initialLength, xx, yy, zz
-                            );
                         }
+
+                        double initialLength = calculateDistance(x, y, z, xx, yy, zz, calibration);
+                        int slabListIdx = result.slabList.addThree(xx, yy, zz);
+
+                        visitBranch(
+                            result, calibration, skeletonImages, width, height, breadth, imageInfo, t,
+                            JUNCTION, vertexIdx, slabListIdx, initialLength, xx, yy, zz
+                        );
                     }
                 }
-                while (didFindPoint);
             }
 
             if (startingSlabStart + 2 < result.startingSlabVoxels.size) {
-                boolean isSingle = true;
                 int s = startingSlabStart;
+                int x = result.startingSlabVoxels.buf[s];
+                int y = result.startingSlabVoxels.buf[s+1];
+                int z = result.startingSlabVoxels.buf[s+2];
+                int t = result.markedImages[z][x + width * y] - 1;
 
-                startingSlabStart += 3;
-                while (startingSlabStart + 2 < result.startingSlabVoxels.size) {
-                    int xx = result.startingSlabVoxels.buf[startingSlabStart];
-                    int yy = result.startingSlabVoxels.buf[startingSlabStart+1];
-                    int zz = result.startingSlabVoxels.buf[startingSlabStart+2];
-                    if (result.markedImages[zz][xx + width * yy] != t + 1)
-                        break;
-
-                    isSingle = false;
+                /*if (result.markedImages[z][x + width * y] == t + 1)*/ {
+                    boolean isSingle = true;
                     startingSlabStart += 3;
-                }
 
-                if (isSingle) {
-                    int x = result.startingSlabVoxels.buf[s];
-                    int y = result.startingSlabVoxels.buf[s+1];
-                    int z = result.startingSlabVoxels.buf[s+2];
+                    while (startingSlabStart + 2 < result.startingSlabVoxels.size) {
+                        int xx = result.startingSlabVoxels.buf[startingSlabStart];
+                        int yy = result.startingSlabVoxels.buf[startingSlabStart+1];
+                        int zz = result.startingSlabVoxels.buf[startingSlabStart+2];
+                        if (result.markedImages[zz][xx + width * yy] != t + 1)
+                            break;
 
-                    result.numberOfSlabs[t]++;
-                    int slabListIdx = result.slabList.addThree(x, y, z);
+                        isSingle = false;
+                        startingSlabStart += 3;
+                    }
 
-                    visitBranch(
-                        result, calibration, skeletonImages, width, height, breadth, imageInfo, t,
-                        SLAB, s, slabListIdx, 0.0, x, y, z
-                    );
+                    if (isSingle) {
+                        System.out.println("slab visit on tree " + (t+1) + " / " + nTrees);
+                        result.numberOfSlabs[t]++;
+                        int slabListIdx = result.slabList.addThree(x, y, z);
+
+                        visitBranch(
+                            result, calibration, skeletonImages, width, height, breadth, imageInfo, t,
+                            SLAB, s, slabListIdx, 0.0, x, y, z
+                        );
+                    }
                 }
             }
-        }
+        //}
     }
 
     static void visitBranch(
@@ -439,6 +442,8 @@ public class AnalyzeSkeleton2
         int x = xStart;
         int y = yStart;
         int z = zStart;
+
+        imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
 
         boolean didFindSlabPoint;
         do {

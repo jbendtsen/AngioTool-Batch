@@ -89,6 +89,11 @@ public class Analyzer
         public byte[] zha84ScratchImage;
         public Lee94.Scratch lee94Scratch;
 
+        public Scratch() {
+            skelResult = new SkeletonResult2();
+            lee94Scratch = new Lee94.Scratch();
+        }
+
         public void reset()
         {
             allantoisOverlay = null;
