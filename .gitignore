@@ -1,5 +1,7 @@
 build/
 source/sources.txt
+source/Batch/*Vector.java
+source/Batch/*BufferPool.java
 lee94-simple-points.bin
 AngioTool-Batch.jar
 AngioTool-Batch.exe
