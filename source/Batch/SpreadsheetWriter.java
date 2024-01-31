@@ -39,6 +39,10 @@ public class SpreadsheetWriter {
     public int currentSheetIdx = 0;
     public boolean shouldSaveAfterEveryRow = true;
 
+    public SpreadsheetWriter(File absPath) {
+        this(absPath.getParentFile(), absPath.getName());
+    }
+
     public SpreadsheetWriter(File parentFolder, String name) {
         this.parentFolder = parentFolder;
         this.fileName = name;
@@ -49,6 +53,13 @@ public class SpreadsheetWriter {
         this.totalStringCount = 0;
         this.sheets = new RefVector<>(Sheet.class);
         this.currentSheetIdx = 0;
+    }
+
+    public static SpreadsheetWriter fromExistingXlsx(String path) throws IOException {
+        ArrayList<XlsxReader.SheetCells> existingSheets = XlsxReader.loadXlsxFromFile(path);
+        SpreadsheetWriter writer = new SpreadsheetWriter(new File(path));
+        writer.addSheets(existingSheets);
+        return writer;
     }
 
     public void addSheets(ArrayList<XlsxReader.SheetCells> existingSheets) throws IOException {

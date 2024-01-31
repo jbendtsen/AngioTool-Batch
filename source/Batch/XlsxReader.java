@@ -38,7 +38,6 @@ public class XlsxReader {
         }
     }
 
-    // returns false if the xlsx should be backed up
     public static ArrayList<SheetCells> loadXlsxFromFile(String fname) throws IOException {
         ZipFile zipFile = new ZipFile(fname);
         Enumeration<? extends ZipEntry> entries = zipFile.entries();
@@ -59,7 +58,6 @@ public class XlsxReader {
         return readSheetsFromXmlFiles(xmlFiles);
     }
 
-    // returns false if the xlsx should be backed up
     public static ArrayList<SheetCells> loadXlsxFromBuffer(byte[] buf, int off, int len) throws IOException {
         ZipInputStream zipStream = new ZipInputStream(new ByteArrayInputStream(buf, off, len));
 

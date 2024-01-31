@@ -14,7 +14,7 @@ import AngioTool.MemoryMonitor;
 import AngioTool.PolygonPlus;
 import AngioTool.RGBStackSplitter;
 import AngioTool.Results;
-import AngioTool.SaveToExcel;
+//import AngioTool.SaveToExcel;
 import Batch.Analyzer;
 import Batch.AnalyzerParameters;
 import Batch.AnalyzeSkeleton2;
@@ -24,6 +24,7 @@ import Batch.Lee94;
 import Batch.PixelCalibration;
 import Batch.Rgb;
 import Batch.SkeletonResult2;
+import Batch.SpreadsheetWriter;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
 //import com.jidesoft.swing.RangeSlider;
@@ -55,10 +56,12 @@ import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Hashtable;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.GroupLayout;
@@ -103,7 +106,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    private AnalyzerParameters params;
 
-   private SaveToExcel ste;
+   //private SaveToExcel ste;
+   private String excelPath;
    private File currentDir;
    private Icon lockedIcon;
    private Icon unlockedIcon;
@@ -277,7 +281,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.initComponents();
       MemoryMonitor mm = new MemoryMonitor(1000, this.memTransparentTextField);
       mm.start();
-      this.ste = new SaveToExcel();
+      //this.ste = new SaveToExcel();
       this.aboutBox = new AngioToolAboutBox(this, false);
       this.addKeyListener(this);
       this.addMouseListener(this);
@@ -1173,7 +1177,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             System.out.println("getPath= " + resultsFile.getPath());
          }
 
-         this.ste = new SaveToExcel(resultsFile.getPath(), true);
+         this.excelPath = resultsFile.getPath();
+         //this.ste = new SaveToExcel(resultsFile.getPath(), true);
       }
    }
 
@@ -1420,14 +1425,83 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.results.averageBranchLength = averageLength;
       this.results.totalNEndPoints = this.skelResult.endPoints.size / 3;
 
-      String name = this.imageFile.getName();
-      int fileExtensionLength = Utils.getExtension(this.imageFile).length() + 1;
-      this.ste.setFileName(name.substring(0, name.length() - fileExtensionLength));
-      this.ste.writeResultsToExcel(this.results);
+      //String name = this.imageFile.getName();
+      //int fileExtensionLength = Utils.getExtension(this.imageFile).length() + 1;
+      //this.ste.setFileName(name.substring(0, name.length() - fileExtensionLength));
+      //this.ste.writeResultsToExcel(this.results);
+      try {
+         this.writeResultsToExcel(this.excelPath, this.results);
+      }
+      catch (Exception ex) {
+         // ...
+      }
+
       if (this.saveResultImageCheckBox.isSelected()) {
          ImagePlus imageResultFlattenen = this.imageResult.flatten();
          IJ.saveAs(imageResultFlattenen, "jpg", this.imageFile.getAbsolutePath() + " result.jpg");
       }
+   }
+
+   private void writeResultsToExcel(String path, Results res) throws Exception {
+      Locale locale = new Locale("en", "US");
+      Date today = new Date();
+      SpreadsheetWriter writer = SpreadsheetWriter.fromExistingXlsx(path);
+      writer.writeRow(
+         "Image Name",
+         "Date",
+         "Time",
+         "Image Location",
+         "Low Threshold",
+         "High Threshold",
+         "Vessel Thickness",
+         "Small Particles",
+         "Fill Holes",
+         "Scaling factor",
+         "",
+         "Explant area",
+         "Vessels area",
+         "Vessels percentage area",
+         "Total Number of Junctions",
+         "Junctions density",
+         "Total Vessels Length",
+         "Average Vessels Length",
+         "Total Number of End Points",
+         "Average Vessel diameter",
+         "Elacunarity",
+         "Elacunarity Slope",
+         "Flacunarity",
+         "Flacunarity Slope",
+         "Mean F Lacunarity",
+         "Mean E Lacunarity"
+      );
+      writer.writeRow(
+         results.image.getName(),
+         DateFormat.getDateInstance(2, locale).format(today),
+         DateFormat.getTimeInstance(2, locale).format(today),
+         results.image.getAbsolutePath(),
+         results.thresholdLow,
+         results.thresholdHigh,
+         results.getSigmas(),
+         results.removeSmallParticles,
+         results.fillHoles,
+         results.LinearScalingFactor,
+         "",
+         results.allantoisMMArea,
+         results.vesselMMArea,
+         results.vesselPercentageArea,
+         results.totalNJunctions,
+         results.JunctionsPerScaledArea,
+         results.totalLength,
+         results.averageBranchLength,
+         results.totalNEndPoints,
+         results.averageVesselDiameter,
+         results.ELacunarity,
+         results.ELacunaritySlope,
+         results.FLacuanrity,
+         results.FLacunaritySlope,
+         results.meanFl,
+         results.meanEl
+      );
    }
 
    public static void updateStatus(final int i, final String s) {
