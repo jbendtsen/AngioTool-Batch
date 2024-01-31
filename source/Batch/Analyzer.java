@@ -6,20 +6,7 @@ import java.io.File;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.ArrayList;
-import ij.IJ;
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.gui.OvalRoi;
-import ij.gui.Overlay;
-import ij.gui.PolygonRoi;
-import ij.gui.Roi;
-import ij.gui.ShapeRoi;
-import ij.measure.Calibration;
-import ij.process.ByteProcessor;
-import ij.process.ImageProcessor;
 import AngioTool.AngioToolMain;
-import AngioTool.RGBStackSplitter;
-import AngioTool.PolygonPlus;
 import features.TubenessProcessor;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
@@ -59,7 +46,6 @@ public class Analyzer
     public static class Scratch
     {
         public Overlay allantoisOverlay;
-        public PolygonPlus convexHull;
         public double convexHullArea;
         public PolygonRoi convexHullRoi;
         public ArrayList<Double> currentSigmas;
@@ -143,18 +129,18 @@ public class Analyzer
     }
 
     static int calculateUpdateCountPerImage(AnalyzerParameters params) {
-        int count = 6;
-        if (params.shouldDrawOutline)
+        int count = 5;
+        if (params.shouldDrawOutline && params.shouldSaveResultImages)
             count++;
         if (params.shouldComputeLacunarity)
             count++;
-        if (params.shouldDrawConvexHull)
+        if (params.shouldDrawConvexHull && params.shouldSaveResultImages)
             count++;
         if (params.shouldComputeThickness)
             count++;
-        if (params.shouldDrawSkeleton)
+        if (params.shouldDrawSkeleton && params.shouldSaveResultImages)
             count++;
-        if (params.shouldDrawBranchPoints)
+        if (params.shouldDrawBranchPoints && params.shouldSaveResultImages)
             count++;
         if (params.shouldSaveResultImages)
             count++;
@@ -202,14 +188,16 @@ public class Analyzer
             if (uiToken.isClosed.get())
                 return;
 
-            ImagePlus image = null;
-            try { image = IJ.openImage(inFile.getAbsolutePath()); }
+            Image inputImage = null;
+            try { inputImage = ImageUtils.openAndAcquireImage(inFile.getAbsolutePath(), params.resizingFactor); }
             catch (Throwable ignored) {}
 
-            if (image == null || image.getWidth() == 0 || image.getHeight() == 0) {
+            if (inputImage == null) {
                 uiToken.notifyImageWasInvalid();
                 continue;
             }
+
+            Image outputImage = params.shouldSaveResultImages ? new Image() : null;
 
             uiToken.onStartImage(inFile.getAbsolutePath());
             startedAnyImages = true;
@@ -218,7 +206,7 @@ public class Analyzer
             Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
-                result = analyze(data, inFile, image, params, linearScalingFactor, uiToken);
+                result = analyze(data, inFile, inputImage, outputImage, params, linearScalingFactor, uiToken);
                 analyzeSucceeded = true;
                 uiToken.updateImageProgress("Saving image stats to Excel");
                 writeResultToSheet(writer, result);
@@ -238,7 +226,8 @@ public class Analyzer
                             inFile.getAbsolutePath();
                         String format = resolveImageFormat(params.resultImageFormat);
 
-                        IJ.saveAs(data.imageResult.flatten(), format, basePath + " data." + format);
+                        // data.imageResult.flatten()
+                        ImageUtils.saveImage(outputImage, 0, format, basePath + " data." + format);
                     }
                     catch (Throwable ex) {
                         exception = ex;
@@ -251,6 +240,9 @@ public class Analyzer
                 }
                 catch (Exception ignored) {}
             }
+
+            ImageUtils.releaseImage(inputImage);
+            ImageUtils.releaseImage(outputImage);
 
             if (exception != null)
                 Utils.showExceptionInDialogBox(exception);
@@ -376,18 +368,20 @@ public class Analyzer
     static Stats analyze(
         Scratch data,
         File inFile,
-        ImagePlus inputImage,
+        Image inputImage,
+        Image outputImage,
         AnalyzerParameters params,
         double linearScalingFactor,
         BatchAnalysisUi uiToken
     ) {
+        /*
         uiToken.updateImageProgress("Loading image...");
 
         data.allantoisOverlay = new Overlay();
         data.imageThresholded = new ImagePlus();
         data.imageResult = inputImage;
 
-        if (data.imageResult.getType() == 4)
+        if (data.imageResult.getType() == ImagePlus.COLOR_RGB)
             data.imageResult = RGBStackSplitter.split(data.imageResult, "green");
 
         if (params.shouldResizeImage) {
@@ -396,6 +390,7 @@ public class Analyzer
         }
 
         data.ipOriginal = data.imageResult.getProcessor().convertToByte(false);
+        */
 
         uiToken.updateImageProgress("Calculating tubeness...");
 
@@ -550,14 +545,6 @@ public class Analyzer
                 skelHeight,
                 bitDepth
             );
-        }
-
-        PixelCalibration calibration = new PixelCalibration();
-        {
-            Calibration c = data.iplusSkeleton.getCalibration();
-            calibration.widthUnits = c.pixelWidth;
-            calibration.heightUnits = c.pixelHeight;
-            calibration.breadthUnits = c.pixelDepth;
         }
 
         /*
