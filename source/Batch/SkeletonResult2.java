@@ -84,17 +84,17 @@ public class SkeletonResult2 {
         edgesLengths = resetDoubleVector(edgesLengths);
 
         treeCount = 0;
-        triplePointCounts = BufferPool.intPool.release(triplePointCounts);
-        quadruplePointCounts = BufferPool.intPool.release(quadruplePointCounts);
-        totalBranchLengths = BufferPool.doublePool.release(totalBranchLengths);
-        maximumBranchLengths = BufferPool.doublePool.release(maximumBranchLengths);
-        numberOfBranches = BufferPool.intPool.release(numberOfBranches);
-        numberOfSlabs = BufferPool.intPool.release(numberOfSlabs);
+        triplePointCounts = IntBufferPool.release(triplePointCounts);
+        quadruplePointCounts = IntBufferPool.release(quadruplePointCounts);
+        totalBranchLengths = DoubleBufferPool.release(totalBranchLengths);
+        maximumBranchLengths = DoubleBufferPool.release(maximumBranchLengths);
+        numberOfBranches = IntBufferPool.release(numberOfBranches);
+        numberOfSlabs = IntBufferPool.release(numberOfSlabs);
 
         for (int i = 0; i < imageBreadth; i++) {
-            markedImages[i] = BufferPool.intPool.release(markedImages[i]);
-            endPointVertexMap[i] = BufferPool.intPool.release(endPointVertexMap[i]);
-            junctionVertexMap[i] = BufferPool.intPool.release(junctionVertexMap[i]);
+            markedImages[i] = IntBufferPool.release(markedImages[i]);
+            endPointVertexMap[i] = IntBufferPool.release(endPointVertexMap[i]);
+            junctionVertexMap[i] = IntBufferPool.release(junctionVertexMap[i]);
         }
 
         if (newBreadth > imageBreadth) {

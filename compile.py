@@ -40,6 +40,34 @@ if not simple_points_lut:
     print("Could not read lookup tables (ie. lee94-simple-points.bin)")
     sys.exit(1)
 
+batch_sources = os.listdir("source/Batch")
+for fname in batch_sources:
+    if not fname.endswith(".tj"):
+        continue
+    with open("source/Batch/" + fname) as f:
+        lines = f.read().splitlines()
+    params = []
+    makelist = []
+    content = ""
+    for line in lines:
+        l = line.strip()
+        if l.startswith("~param"):
+            params.append(" ".join(l.split(" ")[1:]))
+        elif l.startswith("~make"):
+            p = " ".join(l.split(" ")[1:])
+            makelist.append(p.split(","))
+        else:
+            content += line + "\n"
+    for instance in makelist:
+        text = content
+        outname = instance[0]
+        idx = 0
+        while idx < len(params):
+            text = text.replace("<" + params[idx] + ">", instance[idx+1])
+            idx += 1
+        with open("source/Batch/" + outname, "w") as f:
+            f.write(text)
+
 sep = ";" if os.name == "nt" else ":"
 libs = os.listdir("source/lib")
 libs_arg = "." + sep + sep.join(["lib/" + f for f in libs])

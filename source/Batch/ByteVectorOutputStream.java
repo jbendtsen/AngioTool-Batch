@@ -2,15 +2,15 @@ package Batch;
 
 import java.io.OutputStream;
 
-public class ByteVector extends OutputStream {
+public class ByteVectorOutputStream extends OutputStream {
     public byte[] buf;
     public int size;
 
-    public ByteVector(int initialCap) {
+    public ByteVectorOutputStream(int initialCap) {
         this.buf = new byte[initialCap];
         this.size = 0;
     }
-    public ByteVector() {
+    public ByteVectorOutputStream() {
         this(32);
     }
 

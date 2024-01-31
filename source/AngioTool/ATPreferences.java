@@ -1,7 +1,7 @@
 package AngioTool;
 
 import Batch.AnalyzerParameters;
-import Batch.ByteVector;
+import Batch.ByteVectorOutputStream;
 import Batch.Rgb;
 import Utils.Utils;
 import java.io.File;
@@ -173,12 +173,12 @@ public class ATPreferences {
     }
 
     public static String getStringOfArrayOrObject(Object obj) {
-        ByteVector bv = new ByteVector();
+        ByteVectorOutputStream bv = new ByteVectorOutputStream();
         writeArrayToString(bv, obj);
         return bv.toString();
     }
 
-    public static void writeArrayToString(ByteVector bv, Object obj) {
+    public static void writeArrayToString(ByteVectorOutputStream bv, Object obj) {
         if (obj instanceof String) {
             bv.add((String)obj);
         }

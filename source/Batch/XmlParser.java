@@ -327,7 +327,7 @@ public class XmlParser {
         }
     }
 
-    public static void printXml(ByteVector sb, Node node, byte[] originalBuf, int levels) {
+    public static void printXml(ByteVectorOutputStream sb, Node node, byte[] originalBuf, int levels) {
         sb.addMany('\t', levels);
         sb.add('<');
         sb.add(originalBuf, node.nameStart, node.nameLen);
@@ -371,7 +371,7 @@ public class XmlParser {
         sb.add('\n');
     }
 
-    public static void printXml(ByteVector sb, FlatNode[] flatNodes, byte[] originalBuf) {
+    public static void printXml(ByteVectorOutputStream sb, FlatNode[] flatNodes, byte[] originalBuf) {
         IntVector parents = new IntVector();
 
         for (int i = 0; i < flatNodes.length; i++) {

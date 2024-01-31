@@ -1,14 +1,19 @@
+~param bigtype
+~param type
+~make IntVector.java,Int,int
+~make DoubleVector.java,Double,double
+~make FloatVector.java,Float,float
 package Batch;
 
-public class IntVector {
-    public int[] buf;
+public class <bigtype>Vector {
+    public <type>[] buf;
     public int size;
 
-    public IntVector(int initialCap) {
-        this.buf = new int[initialCap];
+    public <bigtype>Vector(int initialCap) {
+        this.buf = new <type>[initialCap];
         this.size = 0;
     }
-    public IntVector() {
+    public <bigtype>Vector() {
         this(8);
     }
 
@@ -21,7 +26,7 @@ public class IntVector {
             newCap = (int)((float)newCap * 1.7f) + 1;
 
         if (newCap > oldCap) {
-            int[] newBuf = new int[newCap];
+            <type>[] newBuf = new <type>[newCap];
             if (buf != null && oldCap > 0)
                 System.arraycopy(buf, 0, newBuf, 0, oldCap);
             buf = newBuf;
@@ -31,18 +36,18 @@ public class IntVector {
         return oldSize;
     }
 
-    public int add(int v) {
+    public int add(<type> v) {
         int pos = size;
         resize(pos + 1);
         buf[pos] = v;
         return pos;
     }
 
-    public int add(int[] data) {
+    public int add(<type>[] data) {
         return add(data, 0, data.length);
     }
 
-    public int add(int[] data, int off, int len) {
+    public int add(<type>[] data, int off, int len) {
         int pos = this.size;
         if (off >= 0 && len > 0 && off+len <= data.length) {
             resize(pos + len);
@@ -51,7 +56,7 @@ public class IntVector {
         return pos;
     }
 
-    public int addTwo(int a, int b) {
+    public int addTwo(<type> a, <type> b) {
         int pos = size;
         resize(pos + 2);
         buf[pos] = a;
@@ -59,7 +64,7 @@ public class IntVector {
         return pos;
     }
 
-    public int addThree(int a, int b, int c) {
+    public int addThree(<type> a, <type> b, <type> c) {
         int pos = size;
         resize(pos + 3);
         buf[pos] = a;
@@ -68,16 +73,16 @@ public class IntVector {
         return pos;
     }
 
-    public int popOr(int defaultValue) {
+    public <type> popOr(int defaultValue) {
         return size > 0 ? buf[--size] : defaultValue;
     }
 
-    public int lastOr(int defaultValue) {
+    public <type> lastOr(int defaultValue) {
         return size > 0 ? buf[size-1] : defaultValue;
     }
 
-    public int[] copy() {
-        int[] array = new int[size];
+    public <type>[] copy() {
+        <type>[] array = new <type>[size];
         if (size > 0)
             System.arraycopy(this.buf, 0, array, 0, size);
         return array;

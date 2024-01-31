@@ -1,9 +1,5 @@
 package Batch;
 
-import ij.ImagePlus;
-import ij.process.ByteProcessor;
-import ij.process.ImageProcessor;
-
 public class Zha84
 {
     static final byte[] lut = stringToLut(
@@ -25,6 +21,7 @@ public class Zha84
         return out;
     }
 
+    /*
     public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, ImagePlus inputImage)
     {
         ImageProcessor ip = inputImage.getProcessor();
@@ -37,6 +34,7 @@ public class Zha84
 
         skeletonize(outSkeletonImage, scratchSkeletonImage, pixels, width, height);
     }
+    */
 
     public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, byte[] inputImage, int width, int height)
     {

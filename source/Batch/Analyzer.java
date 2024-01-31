@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.gui.OvalRoi;
 import ij.gui.Overlay;
 import ij.gui.PolygonRoi;
@@ -133,8 +134,8 @@ public class Analyzer
                 skelResult = null;
             }
 
-            skeletonImagePlanes = BufferPool.bytePool.release(skeletonImagePlanes);
-            zha84ScratchImage = BufferPool.bytePool.release(zha84ScratchImage);
+            skeletonImagePlanes = ByteBufferPool.release(skeletonImagePlanes);
+            zha84ScratchImage = ByteBufferPool.release(zha84ScratchImage);
             lee94Scratch = null;
 
             reset();
@@ -257,6 +258,9 @@ public class Analyzer
             data.reset();
 
             uiToken.onImageDone(exception);
+
+            if (exception != null)
+                break;
         }
 
         data.close();
@@ -510,21 +514,41 @@ public class Analyzer
         int skelHeight = data.iplusSkeleton.getHeight();
         int skelBreadth = data.iplusSkeleton.getStackSize();
 
-        //BufferPool.bytePool.release(data.skeletonImagePlanes);
-        data.skeletonImagePlanes = BufferPool.bytePool.acquireAsIs(skelWidth * skelHeight);
+        data.skeletonImagePlanes = ByteBufferPool.acquireAsIs(skelWidth * skelHeight);
 
         if (params.shouldUseFastSkeletonizer) {
-            data.zha84ScratchImage = BufferPool.bytePool.acquireAsIs(skelWidth * skelHeight);
-            Zha84.skeletonize(data.skeletonImagePlanes, data.zha84ScratchImage, data.iplusSkeleton);
-            data.zha84ScratchImage = BufferPool.bytePool.release(data.zha84ScratchImage);
+            byte[] pixels = (byte[])data.iplusSkeleton.getProcessor().getPixels();
+
+            data.zha84ScratchImage = ByteBufferPool.acquireAsIs(skelWidth * skelHeight);
+            Zha84.skeletonize(data.skeletonImagePlanes, data.zha84ScratchImage, pixels, skelWidth, skelHeight);
+            data.zha84ScratchImage = ByteBufferPool.release(data.zha84ScratchImage);
         }
         else {
+            int bitDepth = data.iplusSkeleton.getBitDepth();
+            Object[] layers;
+
+            if (skelBreadth > 1) {
+                ImageStack stack = data.iplusSkeleton.getStack();
+                skelBreadth = Math.min(skelBreadth, Lee94.MAX_BREADTH);
+
+                layers = new Object[skelBreadth];
+                for (int i = 0; i < skelBreadth; i++)
+                    layers[i] = stack.getPixels(i + 1);
+            }
+            else {
+                layers = new Object[1];
+                layers[0] = data.iplusSkeleton.getProcessor().getPixels();
+            }
+
             Lee94.skeletonize(
                 data.lee94Scratch,
                 data.skeletonImagePlanes,
                 AngioToolMain.threadPool,
                 AngioToolMain.MAX_WORKERS,
-                data.iplusSkeleton
+                layers,
+                skelWidth,
+                skelHeight,
+                bitDepth
             );
         }
 
@@ -551,7 +575,7 @@ public class Analyzer
             skelBreadth
         );
 
-        data.skeletonImagePlanes = BufferPool.bytePool.release(data.skeletonImagePlanes);
+        data.skeletonImagePlanes = ByteBufferPool.release(data.skeletonImagePlanes);
 
         double averageVesselDiameter = 0.0;
 

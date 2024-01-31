@@ -2123,7 +2123,19 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       int skelWidth = iplusSkeleton.getWidth();
       int skelHeight = iplusSkeleton.getHeight();
       byte[] skelImage = new byte[skelWidth * skelHeight];
-      Lee94.skeletonize(new Lee94.Scratch(), skelImage, AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, iplusSkeleton);
+      Object[] skelLayers = new Object[1];
+      skelLayers[0] = iplusSkeleton.getProcessor().getPixels();
+
+      Lee94.skeletonize(
+         new Lee94.Scratch(),
+         skelImage,
+         AngioToolMain.threadPool,
+         AngioToolMain.MAX_WORKERS,
+         skelLayers,
+         skelWidth,
+         skelHeight,
+         iplusSkeleton.getBitDepth()
+      );
 
       progress += 33;
       updateStatus(progress, "Computing convex hull... ");

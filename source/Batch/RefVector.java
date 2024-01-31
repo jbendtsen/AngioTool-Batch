@@ -78,7 +78,7 @@ public class RefVector<T> implements Iterable<T> {
     }
 
     public String makeJoinedString(String delim) {
-        ByteVector sb = new ByteVector();
+        ByteVectorOutputStream sb = new ByteVectorOutputStream();
         for (int i = 0; i < size; i++) {
             if (i > 0)
                 sb.add(delim);
@@ -89,7 +89,7 @@ public class RefVector<T> implements Iterable<T> {
 
     @Override
     public String toString() {
-        ByteVector sb = new ByteVector();
+        ByteVectorOutputStream sb = new ByteVectorOutputStream();
         sb.add("RefVector<");
         sb.add(type.getSimpleName());
         sb.add(">: [");

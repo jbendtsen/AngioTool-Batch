@@ -3,7 +3,7 @@ package Utils;
 import AngioTool.AngioTool;
 import AngioTool.PolygonPlus;
 import AngioTool.ThresholdToSelection;
-import Batch.BufferPool;
+import Batch.DoubleBufferPool;
 import Batch.ISliceCompute;
 import Batch.IntVector;
 import features.Tubeness;
@@ -79,7 +79,7 @@ public class Utils {
 
    public static double computeMedianThickness(IntVector slabList, ImagePlus distanceMap) {
       int nPoints = slabList.size / 3;
-      double[] vesselThickness = BufferPool.doublePool.acquireAsIs(nPoints);
+      double[] vesselThickness = DoubleBufferPool.acquireAsIs(nPoints);
       ImageProcessor distanceMapProcessor = distanceMap.getProcessor();
 
       for (int i = 0; i < slabList.size; i += 3) {
@@ -95,7 +95,7 @@ public class Utils {
          vesselThickness[middle] :
          (vesselThickness[middle - 1] + vesselThickness[middle]) / 2.0;
 
-      BufferPool.doublePool.release(vesselThickness);
+      DoubleBufferPool.release(vesselThickness);
       return thickness;
    }
 

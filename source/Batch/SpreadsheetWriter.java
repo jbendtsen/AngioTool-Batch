@@ -130,7 +130,7 @@ public class SpreadsheetWriter {
 
         int rowNumber = s.formattedRows.size + 1;
 
-        ByteVector sb = new ByteVector();
+        ByteVectorOutputStream sb = new ByteVectorOutputStream();
         sb.add("<row r=\"");
         sb.add("" + rowNumber);
         sb.add("\">");
@@ -178,7 +178,7 @@ public class SpreadsheetWriter {
     }
 
     public void save() throws IOException {
-        ByteVector vector = new ByteVector();
+        ByteVectorOutputStream vector = new ByteVectorOutputStream();
         ZipOutputStream zip = new ZipOutputStream(vector);
 
         String dateStr = LocalDateTime.now().atZone(ZoneId.of("GMT")).format(DateTimeFormatter.ISO_INSTANT);
@@ -224,7 +224,7 @@ public class SpreadsheetWriter {
     }
 
     static String escapeXmlString(String input) {
-        ByteVector sb = new ByteVector();
+        ByteVectorOutputStream sb = new ByteVectorOutputStream();
 
         byte[] bytes = input.getBytes();
         int start = 0;

@@ -1,0 +1,58 @@
+~param bigtype
+~param type
+~param zero
+~make ByteBufferPool.java,Byte,byte,(byte)0
+~make IntBufferPool.java,Int,int,0
+~make DoubleBufferPool.java,Double,double,0.0
+package Batch;
+
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+public class <bigtype>BufferPool {
+    public static final int N_QUEUES = 4;
+
+    static final ConcurrentLinkedQueue[] queues = new ConcurrentLinkedQueue[N_QUEUES];
+
+    static {
+        for (int i = 0; i < N_QUEUES; i++)
+            queues[i] = new ConcurrentLinkedQueue<<type>[]>();
+    }
+
+    public static int findQueueNumber(int allocSize) {
+        int leadingZeros = Integer.numberOfLeadingZeros(allocSize);
+        return Math.min((32 - leadingZeros) / 6, N_QUEUES - 1);
+    }
+
+    public static <type>[] acquireAsIs(int minSize) {
+        if (minSize <= 0)
+            return null;
+
+        ConcurrentLinkedQueue<<type>[]> q =
+            (ConcurrentLinkedQueue<<type>[]>)queues[findQueueNumber(minSize)];
+
+        <type>[] buffer;
+        do {
+            buffer = q.poll();
+            if (buffer == null)
+                return new <type>[minSize];
+        }
+        while (buffer.length < minSize);
+
+        return buffer;
+    }
+
+    public static <type>[] acquireZeroed(int minSize) {
+        if (minSize <= 0)
+            return null;
+        <type>[] buffer = acquireAsIs(minSize);
+        Arrays.fill(buffer, 0, minSize, <zero>);
+        return buffer;
+    }
+
+    public static <type>[] release(<type>[] buffer) {
+        if (buffer != null)
+            queues[findQueueNumber(buffer.length)].add(buffer);
+        return null;
+    }
+}

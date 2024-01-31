@@ -42,41 +42,41 @@ public class AnalyzeSkeleton2
         breadth = Math.min(Math.max(1, breadth), MAX_BREADTH);
         result.reset(breadth);
 
-        int[] imageInfo = BufferPool.intPool.acquireAsIs(width * height);
-        int[] junctionMap2d = BufferPool.intPool.acquireZeroed(width * height);
+        int[] imageInfo = IntBufferPool.acquireAsIs(width * height);
+        int[] junctionMap2d = IntBufferPool.acquireZeroed(width * height);
 
         for (int z = 0; z < breadth; z++)
-            result.endPointVertexMap[z] = BufferPool.intPool.acquireZeroed(width * height);
+            result.endPointVertexMap[z] = IntBufferPool.acquireZeroed(width * height);
 
         tagImages(result, skeletonImages, width, height, breadth, imageInfo, junctionMap2d);
 
         for (int z = 0; z < breadth; z++)
-            result.markedImages[z] = BufferPool.intPool.acquireZeroed(width * height);
+            result.markedImages[z] = IntBufferPool.acquireZeroed(width * height);
 
         int nTrees = markTreesOnImages(result, skeletonImages, width, height, breadth, imageInfo);
         if (nTrees <= 0)
             nTrees = 1;
 
         result.treeCount = nTrees;
-        result.triplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
-        result.quadruplePointCounts = BufferPool.intPool.acquireZeroed(nTrees);
+        result.triplePointCounts = IntBufferPool.acquireZeroed(nTrees);
+        result.quadruplePointCounts = IntBufferPool.acquireZeroed(nTrees);
 
         for (int z = 0; z < breadth; z++)
-            result.junctionVertexMap[z] = BufferPool.intPool.acquireZeroed(width * height);
+            result.junctionVertexMap[z] = IntBufferPool.acquireZeroed(width * height);
 
         groupJunctions(result, skeletonImages, width, height, breadth, imageInfo, nTrees);
 
-        result.totalBranchLengths = BufferPool.doublePool.acquireZeroed(nTrees);
-        result.maximumBranchLengths = BufferPool.doublePool.acquireZeroed(nTrees);
-        result.numberOfBranches = BufferPool.intPool.acquireZeroed(nTrees);
-        result.numberOfSlabs = BufferPool.intPool.acquireZeroed(nTrees);
+        result.totalBranchLengths = DoubleBufferPool.acquireZeroed(nTrees);
+        result.maximumBranchLengths = DoubleBufferPool.acquireZeroed(nTrees);
+        result.numberOfBranches = IntBufferPool.acquireZeroed(nTrees);
+        result.numberOfSlabs = IntBufferPool.acquireZeroed(nTrees);
 
         buildSkeletonGraphs(result, calibration, skeletonImages, width, height, breadth, imageInfo, nTrees);
 
         isolateDominantJunctions(result, width, height, junctionMap2d);
 
-        BufferPool.intPool.release(imageInfo);
-        BufferPool.intPool.release(junctionMap2d);
+        IntBufferPool.release(imageInfo);
+        IntBufferPool.release(junctionMap2d);
     }
 
     static void tagImages(

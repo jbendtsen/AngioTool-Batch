@@ -1,14 +1,12 @@
 package Batch;
 
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.process.ImageProcessor;
 import java.io.InputStream;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Lee94 {
+    public static final int MAX_BREADTH = 8;
+
     static final int IN_PLACE_THRESHOLD = 250;
-    static final int MAX_BREADTH = 8;
 
     static final byte[] simplePointsLut = loadSimplePointsLut();
 
@@ -136,6 +134,7 @@ public class Lee94 {
         }
     }
 
+    /*
     public static void skeletonize(Scratch data, byte[] planes, ThreadPoolExecutor threadPool, int maxWorkers, ImagePlus image) {
         if (image.getStackSize() == 1) {
             skeletonize(data, planes, threadPool, maxWorkers, image.getProcessor());
@@ -170,6 +169,7 @@ public class Lee94 {
 
         skeletonize(data, planes, threadPool, maxWorkers, layers, width, height, bitDepth);
     }
+    */
 
     public static void skeletonize(
         Scratch data,
@@ -245,7 +245,7 @@ public class Lee94 {
 
     static void writePgm(byte[] pixels, int width, int height, String title) {
         byte[] header = ("P5\n" + width + " " + height + "\n255\n").getBytes();
-        ByteVector out = new ByteVector(header.length + pixels.length);
+        ByteVectorOutputStream out = new ByteVectorOutputStream(header.length + pixels.length);
         out.add(header);
         out.add(pixels);
         try {
