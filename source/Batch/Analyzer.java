@@ -6,7 +6,9 @@ import java.io.File;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.ArrayList;
-import features.TubenessProcessor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.LinkedBlockingQueue;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
 import vesselThickness.EDT_S1D;
@@ -58,7 +60,6 @@ public class Analyzer
         public double convexHullArea;
         public PolygonRoi convexHullRoi;
         public ArrayList<Double> currentSigmas;
-        public TubenessProcessor tubenessProcessor;
         public ImagePlus imageCopy;
         public ImagePlus imageResult;
         public ImagePlus imageThickness;
@@ -197,7 +198,7 @@ public class Analyzer
             if (uiToken.isClosed.get())
                 return;
 
-            Image inputImage = null;
+            Bitmap inputImage = null;
             try { inputImage = ImageUtils.openAndAcquireImage(inFile.getAbsolutePath(), params.resizingFactor); }
             catch (Throwable ignored) {}
 
@@ -206,7 +207,7 @@ public class Analyzer
                 continue;
             }
 
-            Image outputImage = params.shouldSaveResultImages ? new Image() : null;
+            Bitmap outputImage = params.shouldSaveResultImages ? new Bitmap() : null;
 
             uiToken.onStartImage(inFile.getAbsolutePath());
             startedAnyImages = true;
@@ -377,8 +378,8 @@ public class Analyzer
     static Stats analyze(
         Scratch data,
         File inFile,
-        Image inputImage,
-        Image outputImage,
+        Bitmap inputImage,
+        Bitmap outputImage,
         AnalyzerParameters params,
         double linearScalingFactor,
         BatchAnalysisUi uiToken
@@ -467,10 +468,10 @@ public class Analyzer
             data.imageThresholded.getProcessor().dilate();
         */
 
-        FilterImage.filter(MAX); // erode
-        FilterImage.filter(MAX); // erode
-        FilterImage.filter(MIN); // dilate
-        FilterImage.filter(MIN); // dilate
+        Filters.filterMax(); // erode
+        Filters.filterMax(); // erode
+        Filters.filterMin(); // dilate
+        Filters.filterMin(); // dilate
 
         if (params.shouldRemoveSmallParticles)
             Utils.fillHoles(data.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);

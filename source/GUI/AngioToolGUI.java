@@ -8,7 +8,6 @@ import AnalyzeSkeleton.Point;
 import AnalyzeSkeleton.SkeletonResult;
 */
 import AngioTool.AngioTool;
-import AngioTool.AngioToolMain;
 import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
 import AngioTool.PolygonPlus;
@@ -28,7 +27,7 @@ import Batch.SpreadsheetWriter;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
 //import com.jidesoft.swing.RangeSlider;
-import features.Tubeness;
+//import features.Tubeness;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.OvalRoi;
@@ -1276,7 +1275,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       this.setVisible(false);
       this.exit();
-      AngioToolMain.cleanup();
       System.exit(0);
    }
 
@@ -1737,7 +1735,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    private void smoothROIs(int fraction) {
       ShapeRoi sr = (ShapeRoi)Utils.thresholdToSelection(this.imageThresholded);
-      ShapeRoi tempSr = ComputeShapeRoiSplines.computeSplines(AngioToolMain.threadPool, 8, sr, 5);
+      ShapeRoi tempSr = ComputeShapeRoiSplines.computeSplines(Analyzer.threadPool, 8, sr, 5);
       this.imageThresholded.getProcessor().setColor(Color.black);
       this.imageThresholded.getProcessor().fill();
       Utils.selectionToThreshold(tempSr, this.imageThresholded);
@@ -2099,7 +2097,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       //this.computeThickness = !Utils.isReleaseVersion;
       if (params.shouldComputeThickness) {
          updateStatus(progress, "vessel thickness");
-         EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
+         EDT_S1D ed = new EDT_S1D(Analyzer.threadPool);
          ed.setup(null, this.imageThresholded);
          ed.run(this.imageThresholded.getProcessor());
          this.imageThickness = ed.getImageResult();
@@ -2129,8 +2127,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       Lee94.skeletonize(
          new Lee94.Scratch(),
          skelImage,
-         AngioToolMain.threadPool,
-         AngioToolMain.MAX_WORKERS,
+         Analyzer.threadPool,
+         Analyzer.MAX_WORKERS,
          skelLayers,
          skelWidth,
          skelHeight,

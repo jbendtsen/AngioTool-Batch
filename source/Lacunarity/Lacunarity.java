@@ -437,17 +437,14 @@ public class Lacunarity {
       for (int i=0; i<numPoints; i++) {
          double x = xData[i];
          double y = yData[i];
-         sumX += x*w;
-         sumX2 += x*x*w;
-         sumXY += x*y*w;
-         sumY2 += y*y*w;
-         sumY += y*w;
+         sumX += x;
+         sumX2 += x*x;
+         sumXY += x*y;
+         sumY2 += y*y;
+         sumY += y;
       }
 
       final double sumWeights = (double)numPoints;
-
-      double factor = 0; // factor or slope
-      double sumResidualsSqr = 0;
 
       // full linear regression or offset only. Slope is named 'factor' here
       double factor = (sumXY-sumX*sumY/sumWeights)/(sumX2-sumX*sumX/sumWeights);

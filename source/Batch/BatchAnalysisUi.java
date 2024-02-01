@@ -1,7 +1,6 @@
 package Batch;
 
 import AngioTool.AngioTool;
-import AngioTool.AngioToolMain;
 import AngioTool.ATPreferences;
 import GUI.RoundedPanel;
 import Utils.Utils;
@@ -633,7 +632,7 @@ public class BatchAnalysisUi
 
         ATPreferences.savePreferences(params, AngioTool.BATCH_TXT);
 
-        analysisTaskFuture = (Future<Void>)AngioToolMain.threadPool.submit(
+        analysisTaskFuture = (Future<Void>)Analyzer.threadPool.submit(
             () -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this, originalSheets)
         );
     }
@@ -787,7 +786,7 @@ public class BatchAnalysisUi
             updateDialogSize(jdialog);
 
             final File xlsxFile = new File(sw.parentFolder, sw.fileName);
-            AngioToolMain.threadPool.submit(() -> {
+            Analyzer.threadPool.submit(() -> {
                 try { Desktop.getDesktop().open(xlsxFile); }
                 catch (IOException ex) { ex.printStackTrace(); }
             });

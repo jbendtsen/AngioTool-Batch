@@ -6,9 +6,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.JOptionPane;
 import Utils.Utils;
 
@@ -47,7 +44,6 @@ public class AngioToolMain {
       catch (Throwable t) {
          t.printStackTrace();
          Utils.showExceptionInDialogBox(t.getCause());
-         cleanup();
          return;
       }
 
