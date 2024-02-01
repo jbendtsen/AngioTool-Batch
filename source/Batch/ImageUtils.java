@@ -9,7 +9,7 @@ import ij.process.ColorProcessor;
 
 public class ImageUtils
 {
-    public static Image openAndAcquireImage(String absPath, double resizeFactor, Image outCombinedCopy, boolean outUseSingleChannel)
+    public static Bitmap openAndAcquireImage(String absPath, double resizeFactor, Bitmap outCombinedCopy, boolean outUseSingleChannel)
     {
         ImagePlus iplus = IJ.openImage(absPath);
         if (iplus == null)
@@ -50,7 +50,7 @@ public class ImageUtils
             blue[i] = (byte)b;
         }
 
-        Image.SplitLayer layer = new Image.SplitLayer();
+        Bitmap.SplitLayer layer = new Bitmap.SplitLayer();
         layer.red = red;
         layer.green = green;
         layer.blue = blue;
@@ -75,7 +75,7 @@ public class ImageUtils
                 System.arraycopy(pixels, 0, rgb, 0, area);
             }
 
-            Image.CombinedLayer outLayer = new Image.CombinedLayer();
+            Bitmap.CombinedLayer outLayer = new Bitmap.CombinedLayer();
             outLayer.rgb = rgb;
 
             outCombinedCopy.layers.add(outLayer);
@@ -93,7 +93,7 @@ public class ImageUtils
         calibration = null;
         iplus = null;
 
-        Image image = new Image();
+        Bitmap image = new Bitmap();
         image.layers.add(layer);
         image.width = width;
         image.height = height;
@@ -103,9 +103,9 @@ public class ImageUtils
         return image;
     }
 
-    public static void saveImage(Image image, int layerIdx, String format, String absPath)
+    public static void saveImage(Bitmap image, int layerIdx, String format, String absPath)
     {
-        Image.Layer layer = image.layers.buf[layerIdx];
+        Bitmap.Layer layer = image.layers.buf[layerIdx];
         int[] rgbCopy = null;
         int[] rgbOriginal = layer.getRgb();
 
@@ -119,7 +119,7 @@ public class ImageUtils
         IntBufferPool.release(rgbCopy);
     }
 
-    public static Image releaseImage(Image image)
+    public static Bitmap releaseImage(Bitmap image)
     {
         for (int i = 0; i < image.layers.size; i++)
             image.layers.buf[i].releaseBuffers();

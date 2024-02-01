@@ -21,16 +21,6 @@ public class AngioToolMain {
    private static final Date today = new Date();
    */
 
-   public static final int MAX_WORKERS = 24;
-
-   public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
-      2, /* corePoolSize */
-      MAX_WORKERS + 4, /* maximumPoolSize */
-      30, /* keepAliveTime */
-      TimeUnit.SECONDS, /* unit */
-      new LinkedBlockingQueue<>() /* workQueue */
-   );
-
    public static void main(String[] args) {
       /*
       try {
@@ -67,9 +57,5 @@ public class AngioToolMain {
             new AngioTool();
          }
       });
-   }
-
-   public static void cleanup() {
-      threadPool.shutdownNow();
    }
 }

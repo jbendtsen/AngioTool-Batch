@@ -6,7 +6,6 @@ import java.io.File;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.ArrayList;
-import AngioTool.AngioToolMain;
 import features.TubenessProcessor;
 import Lacunarity.Lacunarity;
 import Utils.Utils;
@@ -14,6 +13,16 @@ import vesselThickness.EDT_S1D;
 
 public class Analyzer
 {
+    public static final int MAX_WORKERS = 24;
+
+    public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
+        2, /* corePoolSize */
+        MAX_WORKERS + 4, /* maximumPoolSize */
+        30, /* keepAliveTime */
+        TimeUnit.SECONDS, /* unit */
+        new LinkedBlockingQueue<>() /* workQueue */
+    );
+
     static class Stats
     {
         public String imageFileName;
@@ -396,8 +405,7 @@ public class Analyzer
 
         //for (Integer s : params.sigmasMarks)
 
-        double[] sigmasDouble = new double[] {(double)params.sigmas[0]};
-        data.tubenessProcessor = new TubenessProcessor(100, sigmasDouble);
+        data.tubenessProcessor = new TubenessProcessor(100, sigmas);
         data.imageCopy = new ImagePlus("imageTubeness", data.ipOriginal);
         data.imageTubeness = data.tubenessProcessor.generateImage(data.imageCopy);
         data.tubenessIp = data.imageTubeness.getProcessor();
@@ -449,6 +457,7 @@ public class Analyzer
         data.imageThresholded.setProcessor(data.tempProcessor1);
         data.tempProcessor1.setThreshold(255.0, 255.0, 2);
 
+        /*
         int iterations = 2;
 
         for (int i = 0; i < iterations; ++i)
@@ -456,6 +465,12 @@ public class Analyzer
 
         for (int i = 0; i < iterations; ++i)
             data.imageThresholded.getProcessor().dilate();
+        */
+
+        FilterImage.filter(MAX); // erode
+        FilterImage.filter(MAX); // erode
+        FilterImage.filter(MIN); // dilate
+        FilterImage.filter(MIN); // dilate
 
         if (params.shouldRemoveSmallParticles)
             Utils.fillHoles(data.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
@@ -538,8 +553,8 @@ public class Analyzer
             Lee94.skeletonize(
                 data.lee94Scratch,
                 data.skeletonImagePlanes,
-                AngioToolMain.threadPool,
-                AngioToolMain.MAX_WORKERS,
+                threadPool,
+                MAX_WORKERS,
                 layers,
                 skelWidth,
                 skelHeight,
@@ -569,7 +584,7 @@ public class Analyzer
         if (params.shouldComputeThickness) {
             uiToken.updateImageProgress("Computing thickness...");
 
-            EDT_S1D ed = new EDT_S1D(AngioToolMain.threadPool);
+            EDT_S1D ed = new EDT_S1D(threadPool);
             ed.setup(null, data.imageThresholded);
             ed.run(data.imageThresholded.getProcessor());
             data.imageThickness = ed.getImageResult();

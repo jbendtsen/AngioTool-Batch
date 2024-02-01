@@ -1,6 +1,6 @@
 package Batch;
 
-public class Image
+public class Bitmap
 {
     public static final int LAYER_NONE = 0;
     public static final int LAYER_SPLIT = 1;
@@ -8,6 +8,7 @@ public class Image
 
     public interface Layer
     {
+        int getLayerType();
         byte[] getSelectedChannel();
         int[] getRgb();
         int[] acquireRgbCopy(int width, int height);
@@ -20,6 +21,12 @@ public class Image
         public byte[] green;
         public byte[] blue;
         public int selectedChannelIdx;
+
+        @Override
+        public int getLayerType()
+        {
+            return LAYER_SPLIT;
+        }
 
         @Override
         public byte[] getSelectedChannel()
@@ -65,6 +72,12 @@ public class Image
     public static class CombinedLayer implements Layer
     {
         public int[] rgb;
+
+        @Override
+        public int getLayerType()
+        {
+            return LAYER_COMBINED;
+        }
 
         @Override
         public byte[] getSelectedChannel()

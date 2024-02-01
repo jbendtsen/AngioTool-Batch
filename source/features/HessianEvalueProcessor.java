@@ -1,6 +1,6 @@
 package features;
 
-import AngioTool.AngioToolMain;
+import Batch.Analyzer;
 import Batch.ComputeEigenValuesAtPoint2D;
 import Utils.Utils;
 import ij.ImagePlus;
@@ -73,7 +73,7 @@ public abstract class HessianEvalueProcessor implements GaussianGenerationCallba
                 //ForkEigenValuesAtPoint2D fe = new ForkEigenValuesAtPoint2D();
                 //float[] slice2 = fe.computeEigenvalues(fa2dIP, this.sigma[s], this.threshold);
             */
-            float[] slice2 = ComputeEigenValuesAtPoint2D.computeEigenvalues(AngioToolMain.threadPool, AngioToolMain.MAX_WORKERS, fa2dIP, this.sigma[s], this.threshold);
+            float[] slice2 = ComputeEigenValuesAtPoint2D.computeEigenvalues(Analyzer.threadPool, Analyzer.MAX_WORKERS, fa2dIP, this.sigma[s], this.threshold);
 
             for(int i = 0; i < slice.length; ++i) {
                if (slice2[i] > slice[i]) {

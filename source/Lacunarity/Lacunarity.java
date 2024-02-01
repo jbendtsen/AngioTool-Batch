@@ -2,7 +2,6 @@ package Lacunarity;
 
 import Utils.Utils;
 import ij.ImagePlus;
-import ij.measure.CurveFitter;
 import ij.process.ImageProcessor;
 import java.awt.Point;
 import java.awt.Rectangle;
