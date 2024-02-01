@@ -46,7 +46,7 @@ public class Utils {
    public static String javaVersion;
    public static String javaVmVersion;
    public static String javaVmName;
-   public static String ijVersion;
+   //public static String ijVersion;
    public static String javamailVersion;
    public static String poiVersion;
    public static final String LOOKANDFEEL = "System";
@@ -444,6 +444,7 @@ public class Utils {
       return true;
    }
 
+   /*
    public static boolean checkImageJVersion(int Major, int minor, String character) {
       String version = IJ.getVersion();
       int M = Integer.parseInt(version.substring(0, 1));
@@ -468,6 +469,7 @@ public class Utils {
 
       return true;
    }
+   */
 
    public static long thresholdedPixelArea(ImageProcessor ip) {
       if (!ip.isBinary()) {

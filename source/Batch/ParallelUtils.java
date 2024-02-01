@@ -25,12 +25,17 @@ public class ParallelUtils {
         }
     }
 
-    public static boolean computeSlicesInParallel(
+    public static void computeSlicesInParallel(
         ThreadPoolExecutor threadPool,
         int maxWorkers,
         IntVector offsetLengthPairs,
         ISliceCompute params
-    ) {
+    ) throws Throwable {
+        if (maxWorkers <= 0) {
+            computeSlicesInSeries(offsetLengthPairs, params);
+            return;
+        }
+
         final int nSlices = offsetLengthPairs.size / 2;
         ArrayBlockingQueue<ISliceCompute.Result> resultQueue = new ArrayBlockingQueue<>(nSlices);
 
@@ -77,21 +82,28 @@ public class ParallelUtils {
             }
         }
 
+        for (int i = 0; i < nSlices; i++) {
+            ISliceCompute.Result res = resultQueue.take();
+            if (res.ex != null)
+                throw res.ex;
+            params.finishSlice(res);
+        }
+    }
+
+    public static void computeSlicesInSeries(IntVector offsetLengthPairs, ISliceCompute params) throws Throwable
+    {
         boolean wasInterrupted = false;
         boolean anyFailures = false;
 
-        for (int i = 0; i < nSlices; i++) {
-            try {
-                ISliceCompute.Result res = resultQueue.take();
-                anyFailures = anyFailures || res.ex != null;
-                params.finishSlice(res);
-            }
-            catch (InterruptedException ex) {
-                wasInterrupted = true;
-                break;
-            }
-        }
+        final int nSlices = offsetLengthPairs.size / 2;
+        ISliceCompute.Result res = new ISliceCompute.Result();
 
-        return !anyFailures && !wasInterrupted;
+        for (int i = 0; i < nSlices; i++) {
+            int offset = offsetLengthPairs.buf[2*i];
+            int length = offsetLengthPairs.buf[2*i+1];
+            res.result = params.computeSlice(i, offset, length);
+            res.idx = i;
+            params.finishSlice(res);
+        }
     }
 }

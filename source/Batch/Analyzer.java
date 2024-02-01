@@ -404,69 +404,23 @@ public class Analyzer
 
         uiToken.updateImageProgress("Calculating tubeness...");
 
-        //for (Integer s : params.sigmasMarks)
+        byte[] tubenessImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
-        data.tubenessProcessor = new TubenessProcessor(100, sigmas);
-        data.imageCopy = new ImagePlus("imageTubeness", data.ipOriginal);
-        data.imageTubeness = data.tubenessProcessor.generateImage(data.imageCopy);
-        data.tubenessIp = data.imageTubeness.getProcessor();
-        //data.sI.add(new AngioToolGUI.sigmaImages(sigma, data.imageTubeness.getProcessor()));
-        /*
-        this.sI.add(new AngioToolGUI.sigmaImages(sigmas[0], this.tubenessIp));
-        this.sigmasMarkSlider.addMark((int)sigmas[0]);
-        this.allSigmas.add(sigmas[0]);
-        this.currentSigmas.add(sigmas[0]);
-        */
-        data.ipThresholded = data.tubenessIp.duplicate().convertToByte(false);
-        data.imageThresholded.setProcessor(data.ipThresholded);
-        Utils.thresholdFlexible(data.ipThresholded, params.thresholdLow, params.thresholdHigh);
-        data.ipThresholded.setThreshold(255.0, 255.0, 2);
-        /*
-        this.sigmaIsChanged = false;
-        this.fillHolesIsChanged = false;
-        this.smallParticlesIsChanged = false;
-        */
-        // load ImagePlus and ImageProcessor for this image
-
-        /*
-        boolean sigmaIsChanged = false;
-        if (sigmaIsChanged) {
-            ImageProcessor ip = new ByteProcessor(data.tubenessIp.getWidth(), data.tubenessIp.getHeight());
-
-            for(int i = 0; i < data.currentSigmas.size(); ++i) {
-                double s = data.currentSigmas.get(i);
-
-                for(int si = 0; si < data.sI.size(); ++si) {
-                    AngioToolGUI.sigmaImages siTemp = data.sI.get(si);
-                    if (siTemp.sigma == s) {
-                        ImageProcessor tempIp = siTemp.tubenessImage.duplicate();
-                        tempIp.copyBits(ip, 0, 0, 13);
-                        ip = tempIp;
-                        break;
-                    }
-                }
-            }
-
-            data.tubenessIp = ip.duplicate();
-        }
-        */
+        Tubeness.computeTubenessImage(
+            tubenessImage,
+            inputImage.getDefaultChannel(),
+            inputImage.width,
+            inputImage.height,
+            inputImage.pixelWidth,
+            inputImage.pixelHeight,
+            params.sigmas,
+            params.sigmas.length
+        );
 
         uiToken.updateImageProgress("Filtering image...");
 
-        data.tempProcessor1 = data.tubenessIp.duplicate().convertToByte(true);
-        Utils.thresholdFlexible(data.tempProcessor1, params.thresholdLow, params.thresholdHigh);
-        data.imageThresholded.setProcessor(data.tempProcessor1);
-        data.tempProcessor1.setThreshold(255.0, 255.0, 2);
-
-        /*
-        int iterations = 2;
-
-        for (int i = 0; i < iterations; ++i)
-            data.imageThresholded.getProcessor().erode();
-
-        for (int i = 0; i < iterations; ++i)
-            data.imageThresholded.getProcessor().dilate();
-        */
+        Utils.thresholdFlexible(tubenessImage, params.thresholdLow, params.thresholdHigh);
+        data.tempProcessor1.setThreshold(255.0, 255.0, 2); // tubenessImage
 
         Filters.filterMax(); // erode
         Filters.filterMax(); // erode

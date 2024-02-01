@@ -3,6 +3,7 @@
 ~param zero
 ~make ByteBufferPool.java,Byte,byte,(byte)0
 ~make IntBufferPool.java,Int,int,0
+~make FloatBufferPool.java,Float,float,0.0f
 ~make DoubleBufferPool.java,Double,double,0.0
 package Batch;
 

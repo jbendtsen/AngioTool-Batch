@@ -1,40 +1,31 @@
 package Batch;
 
-import ij.ImagePlus;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
 import java.util.concurrent.ThreadPoolExecutor;
 
-public class ComputeEigenValuesAtPoint2D {
-
+public class ComputeEigenValuesAtPoint2D
+{
     public static final int IN_PLACE_THRESHOLD = 5;
 
-    public static float[] computeEigenvalues(
+    public static void computeEigenvalues(
         ThreadPoolExecutor threadPool,
         int maxWorkers,
-        ImagePlus original,
+        float[] output,
+        float[] input,
+        int width,
+        int height,
         double sigma,
         int threshold
     ) {
-        int width = original.getWidth();
-        int height = original.getHeight();
-
-        ImageProcessor originalIp = original.getProcessor();
-        FloatProcessor ip = originalIp instanceof FloatProcessor ? (FloatProcessor)originalIp : originalIp.convertToFloatProcessor();
-        float[] data2D = (float[])ip.getPixels();
-        float[] sliceFinal = new float[data2D.length];
-
         ParallelUtils.computeSlicesInParallel(
             threadPool,
             maxWorkers,
             ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1),
-            new Params(data2D, width, height, sigma, threshold > 0 ? threshold : 3, sliceFinal)
+            new Params(input, width, height, sigma, threshold > 0 ? threshold : 3, output)
         );
-
-        return sliceFinal;
     }
 
-    static float findSecondHessianEigenvalueAtPoint2D(float[] data, int width, int x, int y, double sigma) {
+    static float findSecondHessianEigenvalueAtPoint2D(float[] data, int width, int x, int y, double sigma)
+    {
         double s2 = sigma * sigma;
         int pos = x + width*y;
         float dblCenter = 2.0F * data[pos];
@@ -68,7 +59,8 @@ public class ComputeEigenValuesAtPoint2D {
         return Math.abs(e0) <= Math.abs(e1) ? e1 : e0;
     }
 
-    static class Params implements ISliceCompute {
+    static class Params implements ISliceCompute
+    {
         public final float[] data;
         public final int width;
         public final int height;
@@ -76,7 +68,8 @@ public class ComputeEigenValuesAtPoint2D {
         public final float threshold;
         public final float[] output;
 
-        public Params(float[] data, int width, int height, double sigma, float threshold, float[] output) {
+        public Params(float[] data, int width, int height, double sigma, float threshold, float[] output)
+        {
             this.data = data;
             this.width = width;
             this.height = height;
@@ -86,11 +79,8 @@ public class ComputeEigenValuesAtPoint2D {
         }
 
         @Override
-        public Object computeSlice(int sliceIdx, int start, int length) {
-            //long count = 0L;
-            //long total = (long)(this.height * this.width);
-            //ImageProcessor fp = this.original.getProcessor();
-
+        public Object computeSlice(int sliceIdx, int start, int length)
+        {
             int end = start + length;
             if (start <= 0)
                 start = 1;

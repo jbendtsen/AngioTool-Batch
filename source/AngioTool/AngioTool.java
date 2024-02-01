@@ -3,7 +3,6 @@ package AngioTool;
 import Batch.AnalyzerParameters;
 import GUI.AngioToolGUI;
 import Utils.Utils;
-import ij.IJ;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.Toolkit;
@@ -58,7 +57,7 @@ public class AngioTool {
       }
       */
 
-      Utils.ijVersion = IJ.getVersion();
+      //Utils.ijVersion = IJ.getVersion();
       Utils.screenDim = Toolkit.getDefaultToolkit().getScreenSize();
 
       Class at = this.getClass();
