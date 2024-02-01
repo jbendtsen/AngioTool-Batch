@@ -360,10 +360,7 @@ public class Lacunarity {
          boxes[i] = Math.log((double)_boxes[i]);
       }
 
-      CurveFitter cf = new CurveFitter(boxes, el);
-      cf.doFit(0);
-      double[] p = cf.getParams();
-      return p[1];
+      return findLinearRegressionFactor(boxes, el);
    }
 
    public double getFl3Slope() {
@@ -377,10 +374,7 @@ public class Lacunarity {
          boxes[i] = Math.log((double)_boxes[i]);
       }
 
-      CurveFitter cf = new CurveFitter(boxes, fl);
-      cf.doFit(0);
-      double[] p = cf.getParams();
-      return p[1];
+      return findLinearRegressionFactor(boxes, fl);
    }
 
    public double getMeanEl() {
@@ -423,6 +417,57 @@ public class Lacunarity {
       }
 
       return this.getEl3().get(medialBox);
+   }
+
+   static double findLinearRegressionFactor(double[] xData, double[] yData) {
+      double[] params = new double[3];
+      doLinearFit(xData, yData, params);
+      return params[1];
+   }
+
+   /** Determine sum of squared residuals with linear regression.
+   * The sum of squared residuals is written to the array element with index 'numParams',
+   * the offset and factor params (if any) are written to their proper positions in the
+   * params array */
+   static void doLinearFit(double[] xData, double[] yData, double[] params) {
+      double sumX=0, sumX2=0, sumXY=0; // sums for regression; here 'x' are function values
+      double sumY=0, sumY2=0;          // only calculated for 'slope', otherwise we use the values calculated already
+      final int numPoints = xData.length;
+
+      for (int i=0; i<numPoints; i++) {
+         double x = xData[i];
+         double y = yData[i];
+         sumX += x*w;
+         sumX2 += x*x*w;
+         sumXY += x*y*w;
+         sumY2 += y*y*w;
+         sumY += y*w;
+      }
+
+      final double sumWeights = (double)numPoints;
+
+      double factor = 0; // factor or slope
+      double sumResidualsSqr = 0;
+
+      // full linear regression or offset only. Slope is named 'factor' here
+      double factor = (sumXY-sumX*sumY/sumWeights)/(sumX2-sumX*sumX/sumWeights);
+      if (Double.isNaN(factor) || Double.isInfinite(factor))
+         factor = 0; // all 'x' values are equal, any factor (slope) will fit
+
+      double offset = (sumY-factor*sumX)/sumWeights;
+
+      double factorSqrSumX2 = factor*factor*sumX2;
+      double offsetSqrSumWeights = sumWeights*offset*offset;
+      double sumResidualsSqr = factorSqrSumX2 + offsetSqrSumWeights + sumY2 + 2*factor*offset*sumX - 2*factor*sumXY - 2*offset*sumY;
+
+      // check for accuracy problem: large difference of small numbers?
+      // Don't report unrealistic or even negative values, otherwise minimization could lead
+      // into parameters where we have a numeric problem
+      sumResidualsSqr = Math.max(sumResidualsSqr, 2e-15*(factorSqrSumX2 + offsetSqrSumWeights + sumY2));
+
+      params[0] = offset;
+      params[1] = factor;
+      params[2] = sumResidualsSqr;
    }
 
    public class PointCompareX implements Comparator<Point> {
