@@ -77,15 +77,14 @@ public class Utils {
    public static final String xls = "xls";
    public static final String xlsx = "xlsx";
 
-   public static double computeMedianThickness(IntVector slabList, ImagePlus distanceMap) {
+   public static double computeMedianThickness(IntVector slabList, byte[] distanceMap, int width, int height) {
       int nPoints = slabList.size / 3;
       double[] vesselThickness = DoubleBufferPool.acquireAsIs(nPoints);
-      ImageProcessor distanceMapProcessor = distanceMap.getProcessor();
 
       for (int i = 0; i < slabList.size; i += 3) {
          int x = slabList.buf[i];
          int y = slabList.buf[i+1];
-         vesselThickness[i/3] = distanceMapProcessor.getPixelValue(x, y) * 2.0F;
+         vesselThickness[i/3] = (double)(distanceMap[x + width * y] & 0xff) * 2.0;
       }
 
       Arrays.sort(vesselThickness, 0, nPoints);
