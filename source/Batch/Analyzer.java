@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.LinkedBlockingQueue;
-import Lacunarity.Lacunarity;
 import Utils.Utils;
 import vesselThickness.EDT_S1D;
 
@@ -44,10 +43,10 @@ public class Analyzer
         public double averageBranchLength;
         public int totalNEndPoints;
         public double averageVesselDiameter;
-        public double ELacunarity;
-        public double ELacunaritySlope;
-        public double FLacuanrity;
-        public double FLacunaritySlope;
+        public double ELacunarityMedial;
+        public double ELacunarityCurve;
+        public double FLacuanrityMedial;
+        public double FLacunarityCurve;
         public double meanFl;
         public double meanEl;
 
@@ -74,7 +73,7 @@ public class Analyzer
         public ImageProcessor tempProcessor1;
         public ImageProcessor tempProcessor2;
         public ImageProcessor tempProcessor3;
-        public Lacunarity lacunarity;
+        public Lacunarity2.Statistics lacunarity;
         public Roi outlineRoi;
         //public ArrayList<AngioToolGUI.sigmaImages> sI;
         public ImageProcessor tubenessIp;
@@ -89,38 +88,7 @@ public class Analyzer
         public Scratch() {
             skelResult = new SkeletonResult2();
             lee94Scratch = new Lee94.Scratch();
-        }
-
-        public void reset()
-        {
-            allantoisOverlay = null;
-            convexHull = null;
-            convexHullRoi = null;
-            currentSigmas = null;
-            tubenessProcessor = null;
-            imageCopy = null;
-            imageResult = null;
-            imageThickness = null;
-            imageThresholded = null;
-            imageTubeness = null;
-            iplus = null;
-            iplusTemp = null;
-            iplusSkeleton = null;
-            ipOriginal = null;
-            ipThresholded = null;
-            ipSkeleton = null;
-            tempProcessor1 = null;
-            tempProcessor2 = null;
-            tempProcessor3 = null;
-            //skeleton = null;
-            lacunarity = null;
-            outlineRoi = null;
-            //skelResult = null;
-            tubenessIp = null;
-            //stats.sigmas = null;
-            //stats = null;
-
-            System.gc();
+            lacunarity = new Lacunarity2.Statistics();
         }
 
         public void close()
@@ -256,8 +224,6 @@ public class Analyzer
 
             if (exception != null)
                 Utils.showExceptionInDialogBox(exception);
-
-            data.reset();
 
             uiToken.onImageDone(exception);
 
@@ -420,7 +386,7 @@ public class Analyzer
         uiToken.updateImageProgress("Filtering image...");
 
         Utils.thresholdFlexible(tubenessImage, params.thresholdLow, params.thresholdHigh);
-        data.tempProcessor1.setThreshold(255.0, 255.0, 2); // tubenessImage
+        imageThresholded = tubenessImage.setThreshold(255.0, 255.0, 2);
 
         Filters.filterMax(); // erode
         Filters.filterMax(); // erode
@@ -452,9 +418,7 @@ public class Analyzer
 
         if (params.shouldComputeLacunarity) {
             uiToken.updateImageProgress("Computing lacunarity...");
-            data.tempProcessor3 = data.imageThresholded.getProcessor().duplicate();
-            data.iplusTemp = new ImagePlus("iplusTemp", data.tempProcessor3);
-            data.lacunarity = new Lacunarity(data.iplusTemp, 10, 10, 5, true);
+            Lacunarity2.computeLacunarity(data.lacunarity, tubenessImage, inputImage.width, inputImage.height, 10, 10, 5);
         }
 
         uiToken.updateImageProgress("Computing convex hull...");
@@ -627,12 +591,12 @@ public class Analyzer
         stats.vesselMMArea = (double)data.vesselPixelArea * areaScalingFactor;
         stats.vesselPercentageArea = stats.vesselMMArea * 100.0 / stats.allantoisMMArea;
         stats.averageVesselDiameter = averageVesselDiameter;
-        stats.ELacunaritySlope = data.lacunarity.getEl3Slope();
-        stats.ELacunarity = data.lacunarity.getMedialELacunarity();
-        stats.FLacunaritySlope = data.lacunarity.getFl3Slope();
-        stats.FLacuanrity = data.lacunarity.getMedialFLacunarity();
-        stats.meanEl = data.lacunarity.getMeanEl();
-        stats.meanFl = data.lacunarity.getMeanFl();
+        stats.ELacunarityCurve = data.lacunarity.elCurve;
+        stats.ELacunarityMedial = data.lacunarity.elMedial;
+        stats.FLacunarityCurve = data.lacunarity.flCurve;
+        stats.FLacuanrityMedial = data.lacunarity.flMedial;
+        stats.meanEl = data.lacunarity.elMean;
+        stats.meanFl = data.lacunarity.flMean;
 
         //double[] branchLengths = data.skelResult.getAverageBranchLength();
         //int[] branchNumbers = data.skelResult.getBranches();
@@ -681,10 +645,10 @@ public class Analyzer
             "Average Vessels Length",
             "Total Number of End Points",
             "Average Vessel Diameter",
-            "E Lacunarity",
-            "E Lacunarity Slope",
-            "F Lacunarity",
-            "F Lacunarity Slope",
+            "Medial E Lacunarity",
+            "E Lacunarity Curve",
+            "Medial F Lacunarity",
+            "F Lacunarity Curve",
             "Mean F Lacunarity",
             "Mean E Lacunarity"
         );
@@ -718,10 +682,10 @@ public class Analyzer
             stats.averageBranchLength,
             stats.totalNEndPoints,
             stats.averageVesselDiameter,
-            stats.ELacunarity,
-            stats.ELacunaritySlope,
-            stats.FLacuanrity,
-            stats.FLacunaritySlope,
+            stats.ELacunarityMedial,
+            stats.ELacunarityCurve,
+            stats.FLacuanrityMedial,
+            stats.FLacunarityCurve,
             stats.meanFl,
             stats.meanEl
         );

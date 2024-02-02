@@ -35,6 +35,7 @@ public class Lacunarity {
    private boolean whiteForeground = true;
    private int[] boxS;
 
+   // 10, 10, 5, true
    public Lacunarity(ImagePlus imp, int numberOfBins, int minSize, int boxmov, boolean whiteForeGround) {
       this.imp = imp;
       this.ip = imp.getProcessor();
