@@ -62,12 +62,14 @@ public class Analyzer
         public SkeletonResult2 skelResult;
         public Lee94.Scratch lee94Scratch;
         public Lacunarity2.Statistics lacunarity;
+        public Outline.Scratch outlineScratch;
         public IntVector convexHull;
 
         public Scratch() {
             skelResult = new SkeletonResult2();
             lee94Scratch = new Lee94.Scratch();
             lacunarity = new Lacunarity2.Statistics();
+            outlineScratch = new Outline.Scratch();
             convexHull = new IntVector();
         }
 
@@ -80,6 +82,7 @@ public class Analyzer
 
             lee94Scratch = null;
             lacunarity = null;
+            outlineScratch = null;
             convexHull = null;
         }
     }
@@ -391,21 +394,20 @@ public class Analyzer
         Filters.filterMin(); // dilate
 
         if (params.shouldRemoveSmallParticles)
-            Utils.fillHoles(data.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
+            Particles.fillHoles(data.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
 
         if (params.shouldFillHoles) {
             data.imageThresholded.killRoi();
             data.tempProcessor2 = data.imageThresholded.getProcessor();
             data.tempProcessor2.invert();
-            Utils.fillHoles(data.imageThresholded, 0.0, params.fillHolesValue, 0.0, 1.0, 0);
+            Particles.fillHoles(data.imageThresholded, 0.0, params.fillHolesValue, 0.0, 1.0, 0);
             data.tempProcessor2.invert();
         }
 
         if (params.shouldDrawOutline) {
             uiToken.updateImageProgress("Drawing outltine...");
 
-            data.iplus = new ImagePlus("tubenessIp", data.imageThresholded.getProcessor());
-            Roi outlineRoi = Utils.thresholdToSelection(data.iplus);
+            Outline.findOutline(data.outlineScratch, tubenessImage, inputImage.width, inputImage.height);
             outlineRoi.setStrokeColor(params.outlineColor.toColor());
             outlineRoi.setStrokeWidth(params.outlineSize);
             data.allantoisOverlay.add(outlineRoi);

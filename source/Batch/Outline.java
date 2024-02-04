@@ -2,25 +2,21 @@ package Batch;
 
 public class Outline
 {
-    public void findOutline()
+    public static class Scratch
+    {
+        
+    }
+
+    public void findOutline(byte[] image, int width, int height)
     {
         ArrayList polygons = new ArrayList();
-      int progressInc = Math.max(this.h / 50, 1);
-      boolean[] prevRow = new boolean[this.w + 2];
-      boolean[] thisRow = new boolean[this.w + 2];
-      ThresholdToSelection.Outline[] outline = new ThresholdToSelection.Outline[this.w + 1];
 
-      for(int y = 0; y <= this.h; ++y) {
-         boolean[] b = prevRow;
-         prevRow = thisRow;
-         thisRow = b;
-
-         for(int x = 0; x <= this.w; ++x) {
-            if (y < this.h && x < this.w) {
-               thisRow[x + 1] = this.selected(x, y);
-            } else {
-               thisRow[x + 1] = false;
-            }
+      for (int y = 0; y <= height; y++) {
+         for (int x = 0; x <= width; x++) {
+            boolean aboveLeftFilled = y > 0 && y < height && x > 0 && x < width && image[x-1 + width * (y-1)] != 0;
+            boolean aboveFilled     = y > 0 && y < height &&          x < width && image[x   + width * (y-1)] != 0;
+            boolean leftFilled      = y < height && x > 0 && x < width && image[x-1 + width * y] != 0;
+            boolean currentFilled   = y < height &&          x < width && image[x   + width * y] != 0;
 
             if (thisRow[x + 1]) {
                if (!prevRow[x + 1]) {
@@ -109,9 +105,6 @@ public class Outline
                   outline[x].shift(x, y + 1);
                }
             }
-         }
-
-         if ((y & progressInc) == 0) {
          }
       }
 
