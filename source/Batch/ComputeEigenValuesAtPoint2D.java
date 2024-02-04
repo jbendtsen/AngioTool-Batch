@@ -7,7 +7,7 @@ public class ComputeEigenValuesAtPoint2D
     public static final int IN_PLACE_THRESHOLD = 5;
 
     public static void computeEigenvalues(
-        ThreadPoolExecutor threadPool,
+        ISliceRunner runner,
         int maxWorkers,
         float[] output,
         float[] input,
@@ -16,11 +16,11 @@ public class ComputeEigenValuesAtPoint2D
         double sigma,
         int threshold
     ) {
-        ParallelUtils.computeSlicesInParallel(
-            threadPool,
+        runner.runSlices(
+            new Params(input, width, height, sigma, threshold > 0 ? threshold : 3, output),
             maxWorkers,
-            ParallelUtils.makeBinaryTreeOfSlices(width, IN_PLACE_THRESHOLD - 1),
-            new Params(input, width, height, sigma, threshold > 0 ? threshold : 3, output)
+            width,
+            IN_PLACE_THRESHOLD - 1
         );
     }
 

@@ -503,12 +503,12 @@ public class Analyzer
         if (params.shouldComputeThickness) {
             uiToken.updateImageProgress("Computing thickness...");
 
-            EDT_S1D ed = new EDT_S1D(threadPool);
-            ed.setup(null, data.imageThresholded);
-            ed.run(data.imageThresholded.getProcessor());
-            data.imageThickness = ed.getImageResult();
+            float[] thicknessImage = FloatBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+            VesselThickness.computeThickness(thicknessImage, tubenessImage, inputImage.width, inputImage.height);
 
-            averageVesselDiameter = Utils.computeMedianThickness(data.skelResult.slabList, data.imageThickness) * linearScalingFactor;
+            averageVesselDiameter = Utils.computeMedianThickness(data.skelResult.slabList, thicknessImage) * linearScalingFactor;
+
+            FloatBufferPool.release(thicknessImage);
         }
 
         //uiToken.updateImageProgress("Generating skeleton points...");

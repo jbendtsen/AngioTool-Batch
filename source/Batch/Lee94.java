@@ -134,47 +134,10 @@ public class Lee94 {
         }
     }
 
-    /*
-    public static void skeletonize(Scratch data, byte[] planes, ThreadPoolExecutor threadPool, int maxWorkers, ImagePlus image) {
-        if (image.getStackSize() == 1) {
-            skeletonize(data, planes, threadPool, maxWorkers, image.getProcessor());
-        }
-        else {
-            ImageStack stack = image.getStack();
-            skeletonize(data, planes, threadPool, maxWorkers, stack);
-            stack.update(image.getProcessor());
-        }
-    }
-
-    public static void skeletonize(Scratch data, byte[] planes, ThreadPoolExecutor threadPool, int maxWorkers, ImageStack stack) {
-        int width = stack.getWidth();
-        int height = stack.getHeight();
-        int breadth = Math.min(stack.getSize(), MAX_BREADTH);
-        int bitDepth = stack.getBitDepth();
-
-        Object[] layers = new Object[breadth];
-        for (int i = 0; i < breadth; i++)
-            layers[i] = stack.getPixels(i + 1);
-
-        skeletonize(data, planes, threadPool, maxWorkers, layers, width, height, bitDepth);
-    }
-
-    public static void skeletonize(Scratch data, byte[] planes, ThreadPoolExecutor threadPool, int maxWorkers, ImageProcessor ip) {
-        int width = ip.getWidth();
-        int height = ip.getHeight();
-        int bitDepth = ip.getBitDepth();
-
-        Object[] layers = new Object[1];
-        layers[0] = ip.getPixels();
-
-        skeletonize(data, planes, threadPool, maxWorkers, layers, width, height, bitDepth);
-    }
-    */
-
     public static void skeletonize(
         Scratch data,
         byte[] planes,
-        ThreadPoolExecutor threadPool,
+        ISliceRunner runner,
         int maxWorkers,
         Object[] layersObj,
         int width,
@@ -205,42 +168,17 @@ public class Lee94 {
                 throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
         }
 
-        //writePgm(layersByte[0], width, height, "before.pgm");
-
-        data.offsetLengthPairs.size = 0;
-        ParallelUtils.makeBinaryTreeOfSlices(data.offsetLengthPairs, 0, width, IN_PLACE_THRESHOLD - 1);
-
-        data.params.setup(data.offsetLengthPairs.size / 2, planes, width, height, breadth);
+        int nSlices = runner.countSlices(maxWorkers, width, IN_PLACE_THRESHOLD - 1);
+        data.params.setup(nSlices, planes, width, height, breadth);
 
         boolean anyChanged;
         do {
             anyChanged = false;
             for (int border = 1; border <= 6; border++) {
-                boolean wasThinned = thin(data, planes, threadPool, maxWorkers, border);
+                boolean wasThinned = thin(data, planes, runner, maxWorkers, border);
                 anyChanged = anyChanged || wasThinned;
             }
         } while (anyChanged);
-
-        /*
-        switch (bitDepth) {
-            case 8:
-                Planes.split8(layersByte, width, height, planes);
-                break;
-            case 16:
-                Planes.split16(layersShort, width, height, planes);
-                break;
-            case 24:
-                Planes.splitRgb(layersInt, width, height, planes);
-                break;
-            case 32:
-                Planes.split32(layersFloat, width, height, planes, new float[2]);
-                break;
-            default:
-                throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
-        }
-        */
-
-        //writePgm(layersByte[0], width, height, "after.pgm");
     }
 
     static void writePgm(byte[] pixels, int width, int height, String title) {
@@ -265,7 +203,7 @@ public class Lee94 {
     static boolean thin(
         Scratch data,
         byte[] planes,
-        ThreadPoolExecutor threadPool,
+        ISliceRunner runner,
         int maxWorkers,
         int border
     ) {
@@ -273,11 +211,11 @@ public class Lee94 {
         data.params.finalSimplePoints.size = 0;
         data.params.planes = planes;
 
-        ParallelUtils.computeSlicesInParallel(
-            threadPool,
+        runner.runSlices(
+            data.params,
             maxWorkers,
-            data.offsetLengthPairs,
-            data.params
+            data.params.width,
+            IN_PLACE_THRESHOLD - 1
         );
 
         data.params.planes = null;
