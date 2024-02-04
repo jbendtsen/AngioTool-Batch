@@ -31,7 +31,37 @@ public class BatchUtils
         return thickness;
     }
 
-    public static int getAnInt(String str) {
+    public static void thresholdFlexible(byte[] image, int width, int height, int low, int high)
+    {
+        if (low > high) {
+            int temp = low;
+            low = high;
+            high = temp;
+        }
+
+        int area = width * height;
+        for (int i = 0; i < area; i++) {
+            int pixel = image[i];
+            // pixel > min && pixel <= max -> white
+            // pixel <= min || pixel > max -> black
+            // this should probably [min, max] not (min, max], but the original behaviour must stay the same
+            image[i] = ((pixel - (max+1)) >> 31) & ((min - pixel) >> 31);
+        }
+    }
+
+    public static long countForegroundPixels(byte[] image, int width, int height)
+    {
+        long count = 0;
+        final int area = width * height;
+        for (int i = 0; i < area; i++) {
+            long pixel = image[i];
+            count -= (image[i] ^ (image[i] + 1L)) >> 63L;
+        }
+        return count;
+    }
+
+    public static int getAnInt(String str)
+    {
         int n = 0;
         int len = str.length();
 
@@ -46,7 +76,8 @@ public class BatchUtils
         return n;
     }
 
-    public static int[] getSomeInts(String str) {
+    public static int[] getSomeInts(String str)
+    {
         IntVector numbers = new IntVector();
         boolean wasNum = false;
         boolean isNeg = false;
@@ -76,7 +107,8 @@ public class BatchUtils
         return numbers.copy();
     }
 
-    public static double[] getSomeDoubles(String str) {
+    public static double[] getSomeDoubles(String str)
+    {
         IntVector numbers = new IntVector();
         boolean wasNum = false;
         boolean isNeg = false;
@@ -149,7 +181,8 @@ public class BatchUtils
         return values;
     }
 
-    public static String formatDoubleArray(double[] array) {
+    public static String formatDoubleArray(double[] array)
+    {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < array.length; i++) {
             if (i != 0)
@@ -159,18 +192,21 @@ public class BatchUtils
         return sb.toString();
     }
 
-    public static String formatDouble(double value) {
+    public static String formatDouble(double value)
+    {
         String str = "" + value;
         if (str.endsWith(".0"))
         str = str.substring(0, str.length() - 2);
         return str;
     }
 
-    public static boolean hasAnyFileExtension(File f) {
+    public static boolean hasAnyFileExtension(File f)
+    {
         return f.getName().contains(".");
     }
 
-    public static String[] splitPaths(String blob, char charSplit, char charEscape) {
+    public static String[] splitPaths(String blob, char charSplit, char charEscape)
+    {
         ArrayList<String> paths = new ArrayList<>();
         int len = blob.length();
         int start = 0;
@@ -188,7 +224,8 @@ public class BatchUtils
         return paths.toArray(new String[0]);
     }
 
-    public static String decideBackupFileName(String absPath, String ext) {
+    public static String decideBackupFileName(String absPath, String ext)
+    {
         int lastDot = absPath.lastIndexOf('.');
         String path = (lastDot > 0 && (lastDot > absPath.lastIndexOf('/') || lastDot > absPath.lastIndexOf('\\'))) ?
             absPath.substring(0, lastDot) :
@@ -203,12 +240,14 @@ public class BatchUtils
         return newPath;
     }
 
-    public static void setNewFontSizeOn(JComponent ui, int newSize) {
+    public static void setNewFontSizeOn(JComponent ui, int newSize)
+    {
         Font font = ui.getFont();
         ui.setFont(new Font(font.getName(), font.getStyle(), newSize));
     }
 
-    public static void showDialogBox(String title, String message) {
+    public static void showDialogBox(String title, String message)
+    {
         JOptionPane.showMessageDialog(
             JOptionPane.getRootFrame(),
             message,
@@ -217,7 +256,8 @@ public class BatchUtils
         );
     }
 
-    public static void showExceptionInDialogBox(Throwable t) {
+    public static void showExceptionInDialogBox(Throwable t)
+    {
         if (t == null)
             return;
 

@@ -10,7 +10,7 @@ public class Filters
 		}
 
         int p1, p2, p3, p4, p5, p6, p7, p8, p9;
-		int sum = 0;
+		int min = 0;
 
 		for (int y = 1; y < height-1; y++) {
 			int offset = y * width;
@@ -29,17 +29,17 @@ public class Filters
 				p7 = p8; p8 = p9;
 				p9 = inputPixels[offset+width+1] & 0xff;
 
-			    sum = p5;
-			    if (p1<sum) sum = p1;
-			    if (p2<sum) sum = p2;
-			    if (p3<sum) sum = p3;
-			    if (p4<sum) sum = p4;
-			    if (p6<sum) sum = p6;
-			    if (p7<sum) sum = p7;
-			    if (p8<sum) sum = p8;
-			    if (p9<sum) sum = p9;
+			    min = p5;
+			    if (p1<min) min = p1;
+			    if (p2<min) min = p2;
+			    if (p3<min) min = p3;
+			    if (p4<min) min = p4;
+			    if (p6<min) min = p6;
+			    if (p7<min) min = p7;
+			    if (p8<min) min = p8;
+			    if (p9<min) min = p9;
 
-				outputPixels[offset+x] = (byte)sum;
+				outputPixels[offset+x] = (byte)min;
 			}
 		}
 
@@ -52,7 +52,7 @@ public class Filters
 	public static void filterEdgeMin(byte[] outputPixels, byte[] inputPixels, int width, int height, int n, int x, int y, int xinc, int yinc)
 	{
 		int p1, p2, p3, p4, p5, p6, p7, p8, p9;
-        int sum = 0;
+        int min = 0;
         int count;
 
 		for (int i=0; i<n; i++) {
@@ -71,17 +71,17 @@ public class Filters
 			p8 = inputPixels[x + width * bottom];
 			p9 = inputPixels[right + width * bottom];
 
-            sum = p5;
-            if (p1<sum) sum = p1;
-            if (p2<sum) sum = p2;
-            if (p3<sum) sum = p3;
-            if (p4<sum) sum = p4;
-            if (p6<sum) sum = p6;
-            if (p7<sum) sum = p7;
-            if (p8<sum) sum = p8;
-            if (p9<sum) sum = p9;
+            min = p5;
+            if (p1<min) min = p1;
+            if (p2<min) min = p2;
+            if (p3<min) min = p3;
+            if (p4<min) min = p4;
+            if (p6<min) min = p6;
+            if (p7<min) min = p7;
+            if (p8<min) min = p8;
+            if (p9<min) min = p9;
 
-            outputPixels[x+y*width] = (byte)sum;
+            outputPixels[x+y*width] = (byte)min;
             x += xinc;
             y += yinc;
         }
@@ -95,7 +95,7 @@ public class Filters
 		}
 
         int p1, p2, p3, p4, p5, p6, p7, p8, p9;
-		int sum = 0;
+		int max = 0;
 
 		for (int y = 1; y < height-1; y++) {
 			int offset = y * width;
@@ -114,17 +114,17 @@ public class Filters
 				p7 = p8; p8 = p9;
 				p9 = inputPixels[offset+width+1] & 0xff;
 
-				sum = p5;
-				if (p1>sum) sum = p1;
-				if (p2>sum) sum = p2;
-				if (p3>sum) sum = p3;
-				if (p4>sum) sum = p4;
-				if (p6>sum) sum = p6;
-				if (p7>sum) sum = p7;
-				if (p8>sum) sum = p8;
-				if (p9>sum) sum = p9;
+				max = p5;
+				if (p1>max) max = p1;
+				if (p2>max) max = p2;
+				if (p3>max) max = p3;
+				if (p4>max) max = p4;
+				if (p6>max) max = p6;
+				if (p7>max) max = p7;
+				if (p8>max) max = p8;
+				if (p9>max) max = p9;
 
-				outputPixels[offset+x] = (byte)sum;
+				outputPixels[offset+x] = (byte)max;
 			}
 		}
 
@@ -137,7 +137,7 @@ public class Filters
 	public static void filterEdgeMax(byte[] outputPixels, byte[] inputPixels, int width, int height, int n, int x, int y, int xinc, int yinc)
 	{
 		int p1, p2, p3, p4, p5, p6, p7, p8, p9;
-        int sum = 0;
+        int max = 0;
         int count;
 
 		for (int i=0; i<n; i++) {
@@ -156,17 +156,17 @@ public class Filters
 			p8 = inputPixels[x + width * bottom];
 			p9 = inputPixels[right + width * bottom];
 
-            sum = p5;
-            if (p1>sum) sum = p1;
-            if (p2>sum) sum = p2;
-            if (p3>sum) sum = p3;
-            if (p4>sum) sum = p4;
-            if (p6>sum) sum = p6;
-            if (p7>sum) sum = p7;
-            if (p8>sum) sum = p8;
-            if (p9>sum) sum = p9;
+            max = p5;
+            if (p1>max) max = p1;
+            if (p2>max) max = p2;
+            if (p3>max) max = p3;
+            if (p4>max) max = p4;
+            if (p6>max) max = p6;
+            if (p7>max) max = p7;
+            if (p8>max) max = p8;
+            if (p9>max) max = p9;
 
-            outputPixels[x+y*width] = (byte)sum;
+            outputPixels[x+y*width] = (byte)max;
             x += xinc;
             y += yinc;
         }

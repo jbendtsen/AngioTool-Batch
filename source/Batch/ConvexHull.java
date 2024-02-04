@@ -2,7 +2,7 @@ package Batch;
 
 public class ConvexHull
 {
-    public static double computeConvexHull(IntVector points, byte[] image, int width, int height)
+    public static double findConvexHull(IntVector points, byte[] image, int width, int height)
     {
         points.size = 0;
 
@@ -19,46 +19,6 @@ public class ConvexHull
                 }
             }
         }
-
-        // This code snippet finds the coordinate with the lowest Y coordinate and lowest X coordinate.
-        // It then swaps an entry in the table to ensure that this coordinate is first in the table.
-        // However, given that this table started with the lowest Y and X to begin with, this work is unnecessary.
-        /*
-        int n = this.counter;
-        int min = 0;
-        int ney = 0;
-        double zxmi = 0.0;
-
-        for(int i = 1; i < n; ++i) {
-            if (y[i] < y[min]) {
-                min = i;
-            }
-        }
-
-        int temp = x[0];
-        x[0] = x[min];
-        x[min] = temp;
-        temp = y[0];
-        y[0] = y[min];
-        y[min] = temp;
-        min = 0;
-
-        for(int var67 = 1; var67 < n; ++var67) {
-            if (y[var67] == y[0]) {
-                ++ney;
-                if (x[var67] < x[min]) {
-                    min = var67;
-                }
-            }
-        }
-
-        temp = x[0];
-        x[0] = x[min];
-        x[min] = temp;
-        temp = y[0];
-        y[0] = y[min];
-        y[min] = temp;
-        */
 
         final int n = points.size;
         int[] xy = points.buf;

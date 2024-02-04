@@ -375,8 +375,15 @@ public class Analyzer
 
         uiToken.updateImageProgress("Filtering image...");
 
-        Utils.thresholdFlexible(tubenessImage, params.thresholdLow, params.thresholdHigh);
-        imageThresholded = tubenessImage.setThreshold(255.0, 255.0, 2);
+        BatchUtils.thresholdFlexible(
+            tubenessImage,
+            inputImage.width,
+            inputImage.height,
+            params.thresholdLow,
+            params.thresholdHigh
+        );
+
+        //imageThresholded = tubenessImage.setThreshold(255.0, 255.0, 2);
 
         Filters.filterMax(); // erode
         Filters.filterMax(); // erode
@@ -404,7 +411,7 @@ public class Analyzer
             data.allantoisOverlay.add(outlineRoi);
         }
 
-        data.vesselPixelArea = Utils.thresholdedPixelArea(data.imageThresholded.getProcessor());
+        data.vesselPixelArea = BatchUtils.countForegroundPixels(tubenessImage, inputImage.width, inputImage.height);
 
         if (params.shouldComputeLacunarity) {
             uiToken.updateImageProgress("Computing lacunarity...");

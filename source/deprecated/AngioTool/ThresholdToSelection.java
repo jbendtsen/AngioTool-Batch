@@ -136,9 +136,6 @@ public class ThresholdToSelection {
                }
             }
          }
-
-         if ((y & progressInc) == 0) {
-         }
       }
 
       GeneralPath path = new GeneralPath(0);
