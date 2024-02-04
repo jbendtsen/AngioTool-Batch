@@ -1,6 +1,7 @@
 package AngioTool;
 
 import Batch.AnalyzerParameters;
+import Batch.BatchUtils;
 import GUI.AngioToolGUI;
 import Utils.Utils;
 import java.awt.Image;
@@ -23,7 +24,7 @@ public class AngioTool {
          initialParams = ATPreferences.load(this, PREFS_TXT);
       }
       catch (Exception ex) {
-         Utils.showExceptionInDialogBox(ex);
+         BatchUtils.showExceptionInDialogBox(ex);
          initialParams = AnalyzerParameters.defaults();
       }
 

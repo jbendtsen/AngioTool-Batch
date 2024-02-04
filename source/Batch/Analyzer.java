@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.LinkedBlockingQueue;
-import Utils.Utils;
-import vesselThickness.EDT_S1D;
 
 public class Analyzer
 {
@@ -55,35 +53,17 @@ public class Analyzer
 
     public static class Scratch
     {
-        public Overlay allantoisOverlay;
+        //public Overlay allantoisOverlay;
+
         public double convexHullArea;
-        public PolygonRoi convexHullRoi;
-        public ArrayList<Double> currentSigmas;
-        public ImagePlus imageCopy;
-        public ImagePlus imageResult;
-        public ImagePlus imageThickness;
-        public ImagePlus imageThresholded;
-        public ImagePlus imageTubeness;
-        public ImagePlus iplus;
-        public ImagePlus iplusTemp;
-        public ImagePlus iplusSkeleton;
-        public ImageProcessor ipOriginal;
-        public ImageProcessor ipThresholded;
-        public ImageProcessor ipSkeleton;
-        public ImageProcessor tempProcessor1;
-        public ImageProcessor tempProcessor2;
-        public ImageProcessor tempProcessor3;
-        public Lacunarity2.Statistics lacunarity;
-        public Roi outlineRoi;
-        //public ArrayList<AngioToolGUI.sigmaImages> sI;
-        public ImageProcessor tubenessIp;
         public long vesselPixelArea;
 
         // Recycling resources
-        public SkeletonResult2 skelResult;
         public byte[] skeletonImagePlanes;
         public byte[] zha84ScratchImage;
+        public SkeletonResult2 skelResult;
         public Lee94.Scratch lee94Scratch;
+        public Lacunarity2.Statistics lacunarity;
 
         public Scratch() {
             skelResult = new SkeletonResult2();
@@ -98,11 +78,11 @@ public class Analyzer
                 skelResult = null;
             }
 
+            lee94Scratch = null;
+            lacunarity = null;
+
             skeletonImagePlanes = ByteBufferPool.release(skeletonImagePlanes);
             zha84ScratchImage = ByteBufferPool.release(zha84ScratchImage);
-            lee94Scratch = null;
-
-            reset();
         }
     }
 
@@ -151,7 +131,7 @@ public class Analyzer
             writer = createWriterWithNewSheet(originalSheets, excelPath.getParentFile(), excelPath.getName());
         }
         catch (IOException ex) {
-            Utils.showExceptionInDialogBox(ex);
+            BatchUtils.showExceptionInDialogBox(ex);
             return;
         }
 
@@ -162,20 +142,30 @@ public class Analyzer
 
         Scratch data = new Scratch();
 
+        ISliceRunner sliceRunner = new ISliceRunner.Parallel(threadPool);
+
         for (File inFile : inputs) {
             if (uiToken.isClosed.get())
                 return;
 
+            boolean useSingleChannelInOutputImage = true; // TODO: add option in params
+            Bitmap outputImage = params.shouldSaveResultImages ? new Bitmap() : null;
             Bitmap inputImage = null;
-            try { inputImage = ImageUtils.openAndAcquireImage(inFile.getAbsolutePath(), params.resizingFactor); }
+
+            try {
+                inputImage = ImageUtils.openAndAcquireImage(
+                    inFile.getAbsolutePath(),
+                    params.resizingFactor,
+                    outputImage,
+                    useSingleChannelInOutputImage
+                );
+            }
             catch (Throwable ignored) {}
 
             if (inputImage == null) {
                 uiToken.notifyImageWasInvalid();
                 continue;
             }
-
-            Bitmap outputImage = params.shouldSaveResultImages ? new Bitmap() : null;
 
             uiToken.onStartImage(inFile.getAbsolutePath());
             startedAnyImages = true;
@@ -184,7 +174,7 @@ public class Analyzer
             Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
-                result = analyze(data, inFile, inputImage, outputImage, params, linearScalingFactor, uiToken);
+                result = analyze(data, inFile, inputImage, outputImage, params, linearScalingFactor, sliceRunner, uiToken);
                 analyzeSucceeded = true;
                 uiToken.updateImageProgress("Saving image stats to Excel");
                 writeResultToSheet(writer, result);
@@ -223,7 +213,7 @@ public class Analyzer
             ImageUtils.releaseImage(outputImage);
 
             if (exception != null)
-                Utils.showExceptionInDialogBox(exception);
+                BatchUtils.showExceptionInDialogBox(exception);
 
             uiToken.onImageDone(exception);
 
@@ -348,6 +338,7 @@ public class Analyzer
         Bitmap outputImage,
         AnalyzerParameters params,
         double linearScalingFactor,
+        ISliceRunner sliceRunner,
         BatchAnalysisUi uiToken
     ) {
         /*
@@ -373,12 +364,13 @@ public class Analyzer
         byte[] tubenessImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
         Tubeness.computeTubenessImage(
+            sliceRunner,
             tubenessImage,
             inputImage.getDefaultChannel(),
             inputImage.width,
             inputImage.height,
-            inputImage.pixelWidth,
-            inputImage.pixelHeight,
+            (float)inputImage.pixelWidth,
+            (float)inputImage.pixelHeight,
             params.sigmas,
             params.sigmas.length
         );
@@ -408,10 +400,10 @@ public class Analyzer
             uiToken.updateImageProgress("Drawing outltine...");
 
             data.iplus = new ImagePlus("tubenessIp", data.imageThresholded.getProcessor());
-            data.outlineRoi = Utils.thresholdToSelection(data.iplus);
-            data.outlineRoi.setStrokeColor(params.outlineColor.toColor());
-            data.outlineRoi.setStrokeWidth(params.outlineSize);
-            data.allantoisOverlay.add(data.outlineRoi);
+            Roi outlineRoi = Utils.thresholdToSelection(data.iplus);
+            outlineRoi.setStrokeColor(params.outlineColor.toColor());
+            outlineRoi.setStrokeWidth(params.outlineSize);
+            data.allantoisOverlay.add(outlineRoi);
         }
 
         data.vesselPixelArea = Utils.thresholdedPixelArea(data.imageThresholded.getProcessor());
@@ -425,13 +417,13 @@ public class Analyzer
 
         data.convexHull = Utils.computeConvexHull(data.imageThresholded.getProcessor());
         data.convexHullArea = data.convexHull.area();
-        data.convexHullRoi = new PolygonRoi(data.convexHull.polygon(), 2);
 
         if (params.shouldDrawConvexHull) {
             uiToken.updateImageProgress("Drawing convex hull...");
-            data.convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
-            data.convexHullRoi.setStrokeWidth(params.convexHullSize);
-            data.allantoisOverlay.add(data.convexHullRoi);
+            PolygonRoi convexHullRoi = new PolygonRoi(data.convexHull.polygon(), 2);
+            convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
+            convexHullRoi.setStrokeWidth(params.convexHullSize);
+            data.allantoisOverlay.add(convexHullRoi);
         }
 
         uiToken.updateImageProgress("Computing skeleton...");
@@ -472,7 +464,7 @@ public class Analyzer
             Lee94.skeletonize(
                 data.lee94Scratch,
                 data.skeletonImagePlanes,
-                threadPool,
+                sliceRunner,
                 MAX_WORKERS,
                 layers,
                 skelWidth,
@@ -504,9 +496,9 @@ public class Analyzer
             uiToken.updateImageProgress("Computing thickness...");
 
             float[] thicknessImage = FloatBufferPool.acquireAsIs(inputImage.width * inputImage.height);
-            VesselThickness.computeThickness(thicknessImage, tubenessImage, inputImage.width, inputImage.height);
+            VesselThickness.computeThickness(sliceRunner, MAX_WORKERS, thicknessImage, tubenessImage, inputImage.width, inputImage.height);
 
-            averageVesselDiameter = Utils.computeMedianThickness(data.skelResult.slabList, thicknessImage) * linearScalingFactor;
+            averageVesselDiameter = BatchUtils.computeMedianThickness(data.skelResult.slabList, thicknessImage) * linearScalingFactor;
 
             FloatBufferPool.release(thicknessImage);
         }
@@ -669,7 +661,7 @@ public class Analyzer
             stats.imageAbsolutePath,
             stats.thresholdLow,
             stats.thresholdHigh,
-            Utils.formatDoubleArray(stats.sigmas),
+            BatchUtils.formatDoubleArray(stats.sigmas),
             stats.removeSmallParticlesThreshold,
             stats.fillHolesValue,
             stats.linearScalingFactor,

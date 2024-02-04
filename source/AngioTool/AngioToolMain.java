@@ -7,7 +7,7 @@ import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
-import Utils.Utils;
+import Batch.BatchUtils;
 
 public class AngioToolMain {
    /*
@@ -43,7 +43,7 @@ public class AngioToolMain {
       }
       catch (Throwable t) {
          t.printStackTrace();
-         Utils.showExceptionInDialogBox(t.getCause());
+         BatchUtils.showExceptionInDialogBox(t.getCause());
          return;
       }
 

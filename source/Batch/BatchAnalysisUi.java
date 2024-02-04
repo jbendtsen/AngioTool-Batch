@@ -95,7 +95,7 @@ public class BatchAnalysisUi
         defaultPath = params.defaultPath;
 
         labelData.setText("Data");
-        Utils.setNewFontSizeOn(labelData, 20);
+        BatchUtils.setNewFontSizeOn(labelData, 20);
 
         labelInputFolders.setText("Select input folders:");
 
@@ -135,7 +135,7 @@ public class BatchAnalysisUi
         textResultsImageFormat.setText(params.resultImageFormat);
 
         labelAnalysis.setText("Analysis");
-        Utils.setNewFontSizeOn(labelAnalysis, 20);
+        BatchUtils.setNewFontSizeOn(labelAnalysis, 20);
 
         labelSkeletonizer.setText("Skeletonizer:");
 
@@ -169,7 +169,7 @@ public class BatchAnalysisUi
 
         labelSigmas.setText("Vessel Diameters list");
 
-        textSigmas.setText(Utils.formatDoubleArray(params.sigmas));
+        textSigmas.setText(BatchUtils.formatDoubleArray(params.sigmas));
         textSigmas.setToolTipText("List of sigmas (numbers)");
 
         labelIntensity.setText("Vessel Intensity range");
@@ -178,7 +178,7 @@ public class BatchAnalysisUi
         textMaxIntensity.setText("" + params.thresholdHigh);
 
         labelOverlay.setText("Overlay");
-        Utils.setNewFontSizeOn(labelOverlay, 20);
+        BatchUtils.setNewFontSizeOn(labelOverlay, 20);
 
         elemOutline = new ColorSizeEntry("Outline:", params.shouldDrawOutline, params.outlineSize, params.outlineColor);
         elemBranches = new ColorSizeEntry("Branches:", params.shouldDrawBranchPoints, params.branchingPointsSize, params.branchingPointsColor);
@@ -188,7 +188,7 @@ public class BatchAnalysisUi
         //sepProgress
 
         labelProgress.setText("Progress");
-        Utils.setNewFontSizeOn(labelProgress, 20);
+        BatchUtils.setNewFontSizeOn(labelProgress, 20);
 
         //overallLabel
         overallProgress.setValue(0);
@@ -492,7 +492,7 @@ public class BatchAnalysisUi
         defaultPath = fc.getCurrentDirectory().getAbsolutePath();
 
         File xlsxFile = fc.getSelectedFile();
-        if (!Utils.hasAnyFileExtension(xlsxFile))
+        if (!BatchUtils.hasAnyFileExtension(xlsxFile))
             xlsxFile = new File(xlsxFile.getAbsolutePath() + ".xlsx");
 
         String xlsxPath = xlsxFile.getAbsolutePath();
@@ -506,7 +506,7 @@ public class BatchAnalysisUi
                 try {
                     Files.copy(
                         xlsxFile.toPath(),
-                        new File(Utils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
+                        new File(BatchUtils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
                         StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.COPY_ATTRIBUTES
                     );
@@ -559,7 +559,7 @@ public class BatchAnalysisUi
 
         return new AnalyzerParameters(
             defaultPath,
-            Utils.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
+            BatchUtils.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
             textExcel.getText(),
             shouldSaveImages,
             shouldUseSpecificOutputFolder,
@@ -571,7 +571,7 @@ public class BatchAnalysisUi
             elemRemoveParticles.getValue(),
             elemFillHoles.cb.isSelected(),
             elemFillHoles.getValue(),
-            Utils.getSomeDoubles(textSigmas.getText()),
+            BatchUtils.getSomeDoubles(textSigmas.getText()),
             Integer.parseInt(textMaxIntensity.getText()),
             Integer.parseInt(textMinIntensity.getText()),
             shouldUseFastSkel,
@@ -599,7 +599,7 @@ public class BatchAnalysisUi
     public void startAnalysis()
     {
         if (analysisTaskFuture != null && !analysisTaskFuture.isDone()) {
-            Utils.showDialogBox(
+            BatchUtils.showDialogBox(
                 "Analysis Still in Progress",
                 "A batch analysis is still running. Either cancel it or wait for it to complete."
             );
@@ -613,7 +613,7 @@ public class BatchAnalysisUi
             params = buildNewParamsFromUi();
         }
         catch (Throwable t) {
-            Utils.showDialogBox("Parsing Error", "Invalid data in the form (" + t.getClass().getSimpleName() + ")");
+            BatchUtils.showDialogBox("Parsing Error", "Invalid data in the form (" + t.getClass().getSimpleName() + ")");
             return;
         }
 
@@ -621,7 +621,7 @@ public class BatchAnalysisUi
         if (errors != null && errors.size > 0) {
             int nErrors = errors.size;
             String header = nErrors > 1 ? ("There were " + nErrors + " errors:\n") : "";
-            Utils.showDialogBox(
+            BatchUtils.showDialogBox(
                 "Validation Error" + (nErrors > 1 ? "s" : ""),
                 header + errors.makeJoinedString("\n")
             );
@@ -822,7 +822,7 @@ public class BatchAnalysisUi
             units = new JLabel(unitsStr, SwingConstants.RIGHT);
 
             tf = new JTextField();
-            tf.setText(Utils.formatDouble(value));
+            tf.setText(BatchUtils.formatDouble(value));
             tf.setEnabled(enabled);
 
             cb.setSelected(enabled);
@@ -850,7 +850,7 @@ public class BatchAnalysisUi
         {
             boolean enabled = cb.isSelected();
             double value = getValue();
-            tf.setText(Utils.formatDouble(value));
+            tf.setText(BatchUtils.formatDouble(value));
             tf.setEnabled(enabled);
         }
     }

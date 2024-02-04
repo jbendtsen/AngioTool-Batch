@@ -1,6 +1,6 @@
 package AngioTool;
 
-import Utils.Utils;
+import Batch.BatchUtils;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -57,7 +57,7 @@ public class Results {
    }
 
    public String getSigmas() {
-      return Utils.formatDoubleArray(sigmas);
+      return BatchUtils.formatDoubleArray(sigmas);
    }
 
    public String getImageFilePath() {

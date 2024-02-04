@@ -3,6 +3,7 @@ package Batch;
 public class Tubeness
 {
     public static void computeTubenessImage(
+        ISliceRunner sliceRunner,
         byte[] output,
         byte[] input,
         int width,
@@ -36,7 +37,7 @@ public class Tubeness
 
             final int threshold = -1;
             ComputeEigenValuesAtPoint2D.computeEigenvalues(
-                Analyzer.threadPool,
+                sliceRunner,
                 Analyzer.MAX_WORKERS,
                 eigenOutput,
                 image,

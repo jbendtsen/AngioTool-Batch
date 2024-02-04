@@ -1,6 +1,7 @@
 package AngioTool;
 
 import Batch.AnalyzerParameters;
+import Batch.BatchUtils;
 import Batch.ByteVectorOutputStream;
 import Batch.Rgb;
 import Utils.Utils;
@@ -42,7 +43,7 @@ public class ATPreferences {
             }
         }
         catch (IllegalAccessException ex) {
-            Utils.showExceptionInDialogBox(ex);
+            BatchUtils.showExceptionInDialogBox(ex);
             return;
         }
 
@@ -53,7 +54,7 @@ public class ATPreferences {
             out.close();
         }
         catch (IOException ex) {
-            Utils.showExceptionInDialogBox(ex);
+            BatchUtils.showExceptionInDialogBox(ex);
         }
     }
 
@@ -220,7 +221,7 @@ public class ATPreferences {
     public static Object parseArray(String value, String type) throws Exception {
         Object array;
         if (type.equals("double[]")) {
-            array = Utils.getSomeDoubles(value);
+            array = BatchUtils.getSomeDoubles(value);
         }
         else {
             throw new Exception("ATPreferences.parseArray() only works with \"double[]\", not \"" + type + "\"");

@@ -3,12 +3,12 @@ package Batch;
 public class VesselThickness
 {
     public static void computeThickness(
+        ISliceRunner runner,
+        int maxWorkers,
         float[] output,
         byte[] input,
         int width,
-        int height,
-        ISliceRunner runner,
-        int maxWorkers
+        int height
     ) {
         final int thresh = 200;
 
