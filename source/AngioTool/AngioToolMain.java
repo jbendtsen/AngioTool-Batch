@@ -37,7 +37,8 @@ public class AngioToolMain {
          System.exit(0);
       }
       */
-      
+
+      // Load Lee94 lookup table on program start
       try {
          Class.forName("Batch.Lee94");
       }

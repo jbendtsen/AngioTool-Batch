@@ -59,16 +59,16 @@ public class Analyzer
         public long vesselPixelArea;
 
         // Recycling resources
-        public byte[] skeletonImagePlanes;
-        public byte[] zha84ScratchImage;
         public SkeletonResult2 skelResult;
         public Lee94.Scratch lee94Scratch;
         public Lacunarity2.Statistics lacunarity;
+        public IntVector convexHull;
 
         public Scratch() {
             skelResult = new SkeletonResult2();
             lee94Scratch = new Lee94.Scratch();
             lacunarity = new Lacunarity2.Statistics();
+            convexHull = new IntVector();
         }
 
         public void close()
@@ -80,9 +80,7 @@ public class Analyzer
 
             lee94Scratch = null;
             lacunarity = null;
-
-            skeletonImagePlanes = ByteBufferPool.release(skeletonImagePlanes);
-            zha84ScratchImage = ByteBufferPool.release(zha84ScratchImage);
+            convexHull = null;
         }
     }
 
@@ -415,8 +413,7 @@ public class Analyzer
 
         uiToken.updateImageProgress("Computing convex hull...");
 
-        data.convexHull = Utils.computeConvexHull(data.imageThresholded.getProcessor());
-        data.convexHullArea = data.convexHull.area();
+        data.convexHullArea = ConvexHull.computeConvexHull(data.convexHull, tubenessImage, inputImage.width, inputImage.height);
 
         if (params.shouldDrawConvexHull) {
             uiToken.updateImageProgress("Drawing convex hull...");
