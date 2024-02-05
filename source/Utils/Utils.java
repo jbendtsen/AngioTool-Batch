@@ -1,12 +1,10 @@
 package Utils;
 
 import AngioTool.AngioTool;
-import AngioTool.PolygonPlus;
-import AngioTool.ThresholdToSelection;
 import Batch.DoubleBufferPool;
 import Batch.ISliceCompute;
 import Batch.IntVector;
-import features.Tubeness;
+/*
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.PolygonRoi;
@@ -17,6 +15,7 @@ import ij.measure.ResultsTable;
 import ij.plugin.filter.ParticleAnalyzer;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
+*/
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
