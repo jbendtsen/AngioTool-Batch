@@ -60,6 +60,16 @@ public class BatchUtils
         return count;
     }
 
+    public static int roundIntegerToNearestUpperTenth(int a)
+    {
+        int remainder = a % 10;
+
+        while(remainder != 0)
+            remainder = ++a % 10;
+
+        return a;
+    }
+
     public static int getAnInt(String str)
     {
         int n = 0;
@@ -203,6 +213,18 @@ public class BatchUtils
     public static boolean hasAnyFileExtension(File f)
     {
         return f.getName().contains(".");
+    }
+
+    public static String getExtension(File f)
+    {
+        String ext = null;
+        String s = f.getName();
+        int i = s.lastIndexOf('.');
+        if (i > 0 && i < s.length() - 1) {
+            ext = s.substring(i + 1).toLowerCase();
+        }
+
+        return ext;
     }
 
     public static String[] splitPaths(String blob, char charSplit, char charEscape)

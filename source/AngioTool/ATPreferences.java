@@ -4,7 +4,6 @@ import Batch.AnalyzerParameters;
 import Batch.BatchUtils;
 import Batch.ByteVectorOutputStream;
 import Batch.Rgb;
-import Utils.Utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -48,7 +47,7 @@ public class ATPreferences {
         }
 
         try {
-            File path = new File(Utils.prefsDir, fileName);
+            File path = new File(AngioTool.prefsDir, fileName);
             FileOutputStream out = new FileOutputStream(path);
             out.write(sb.toString().getBytes());
             out.close();
@@ -60,8 +59,8 @@ public class ATPreferences {
 
     public static AnalyzerParameters load(Object at, String fileName) throws IOException {
         InputStream f = at.getClass().getResourceAsStream("/" + fileName);
-        if (Utils.ATDir == null)
-            Utils.ATDir = System.getProperty("user.dir");
+        if (AngioTool.ATDir == null)
+            AngioTool.ATDir = System.getProperty("user.dir");
 
         String userHome = System.getProperty("user.home");
         File atFolder = new File(userHome, "AngioTool-Batch");
@@ -70,22 +69,22 @@ public class ATPreferences {
 
         /*
         if (Utils.osName.indexOf("Windows", 0) > -1) {
-            Utils.prefsDir = Utils.ATDir;
+            AngioTool.prefsDir = AngioTool.ATDir;
         } else {
-            Utils.prefsDir = userHome;
+            AngioTool.prefsDir = userHome;
             if (IJ.isMacOSX()) {
-                Utils.prefsDir = Utils.prefsDir + "/Library/Preferences";
+                AngioTool.prefsDir = AngioTool.prefsDir + "/Library/Preferences";
             }
         }
         */
 
-        Utils.prefsDir = atFolder.getAbsolutePath();
+        AngioTool.prefsDir = atFolder.getAbsolutePath();
 
         File prefsPath = new File(atFolder, fileName);
         f = new FileInputStream(prefsPath);
 
         //if (f == null)
-            //return "AT_Prefs.txt not found in AngioTool.jar or in " + Utils.prefsDir;
+            //return "AT_Prefs.txt not found in AngioTool.jar or in " + AngioTool.prefsDir;
 
         StringBuilder sb = new StringBuilder();
         byte[] buf = new byte[512];
@@ -237,7 +236,7 @@ public class ATPreferences {
     }
 
     public static String getHomeDir() {
-        return Utils.ATDir;
+        return AngioTool.ATDir;
     }
 
     public static String getFileSeparator() {

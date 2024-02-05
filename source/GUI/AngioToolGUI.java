@@ -3,19 +3,18 @@ package GUI;
 import AngioTool.AngioTool;
 import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
-import AngioTool.PolygonPlus;
-import AngioTool.RGBStackSplitter;
 import AngioTool.Results;
 //import AngioTool.SaveToExcel;
 import Batch.Analyzer;
 import Batch.AnalyzerParameters;
 import Batch.AnalyzeSkeleton2;
 import Batch.BatchAnalysisUi;
+import Batch.BatchUtils;
+import Batch.IntVector;
 import Batch.Lee94;
 import Batch.Rgb;
 import Batch.SkeletonResult2;
 import Batch.SpreadsheetWriter;
-import Utils.Utils;
 //import com.jidesoft.swing.RangeSlider;
 //import features.Tubeness;
 import ij.IJ;
@@ -120,7 +119,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    //private ArrayList<AnalyzeSkeleton.Point> al2;
    //private ArrayList<AnalyzeSkeleton.Point> removedJunctions;
    //private ArrayList<AnalyzeSkeleton.Point> endPoints;
-   private PolygonPlus convexHull;
+   private IntVector convexHull;
    private double convexHullArea;
    private Overlay allantoisOverlay;
    private Roi outlineRoi;
@@ -263,7 +262,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       //Utils.checkJavaVersion(1, 7, 0);
       //Utils.checkImageJVersion(1, 47, "s");
-      this.setIconImage(Utils.ATIcon.getImage());
+      this.setIconImage(AngioTool.ATIcon.getImage());
       //ATAboutBoxLoc =  (java.awt.Point)ATPreferences.settings.atHelpLoc;
       this.currentDir = new File(params.defaultPath);
       this.initComponents();
@@ -407,7 +406,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.getContentPane().setLayout(new AbsoluteLayout());
       Font buttonFont = new Font("Tahoma", 1, 11);
       this.openImageButton.setFont(buttonFont);
-      this.openImageButton.setIcon(Utils.ATOpenImage);
+      this.openImageButton.setIcon(AngioTool.ATOpenImage);
       this.openImageButton.setText("Open Image");
       this.openImageButton.setToolTipText("Open Image");
       this.openImageButton.setHorizontalTextPosition(0);
@@ -420,7 +419,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       });
       this.getContentPane().add(this.openImageButton, new AbsoluteConstraints(10, 10, 105, 100));
       this.AnalyzeButton.setFont(buttonFont);
-      this.AnalyzeButton.setIcon(Utils.ATRunAnalysis);
+      this.AnalyzeButton.setIcon(AngioTool.ATRunAnalysis);
       this.AnalyzeButton.setText("Run Analysis");
       this.AnalyzeButton.setToolTipText("Run analysis");
       this.AnalyzeButton.setEnabled(false);
@@ -434,7 +433,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       });
       this.getContentPane().add(this.AnalyzeButton, new AbsoluteConstraints(130, 10, 105, 100));
       this.BatchButton.setFont(buttonFont);
-      this.BatchButton.setIcon(Utils.ATBatch);
+      this.BatchButton.setIcon(AngioTool.ATBatch);
       this.BatchButton.setText("Batch");
       this.BatchButton.setToolTipText("For every image in a folder (recursively), run analysis");
       this.BatchButton.setHorizontalTextPosition(0);
@@ -870,7 +869,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.savingPreferencesPanel.setBorder(BorderFactory.createTitledBorder(null, "Saving Preferences", 0, 0, new Font("Tahoma", 1, 14)));
       this.savingPreferencesPanel.setLayout(new AbsoluteLayout());
       this.saveResultsToButton.setFont(buttonFont);
-      this.saveResultsToButton.setIcon(Utils.ATExcel);
+      this.saveResultsToButton.setIcon(AngioTool.ATExcel);
       this.saveResultsToButton.setText("Save To");
       this.saveResultsToButton.setToolTipText("Save To");
       this.saveResultsToButton.setHorizontalTextPosition(0);
@@ -908,7 +907,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.getContentPane().add(this.ExitButton, new AbsoluteConstraints(370, 10, 105, 100));
       */
       this.helpButton.setFont(buttonFont);
-      this.helpButton.setIcon(Utils.ATHelp);
+      this.helpButton.setIcon(AngioTool.ATHelp);
       this.helpButton.setText("Help");
       this.helpButton.setHorizontalTextPosition(0);
       this.helpButton.setVerticalTextPosition(3);
@@ -945,10 +944,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             this.imageOriginal = IJ.openImage(this.imageFile.getAbsolutePath());
             if (this.imageOriginal != null) {
                if (this.imageOriginal.getType() == 4) {
-                  if (!Utils.isReleaseVersion) {
-                     System.out.println("Running convertRGBtoIndexedColor..." + this.imageOriginal.getBitDepth() + "\t" + (this.imageOriginal.getType() == 4));
-                  }
-
                   this.imageOriginal = RGBStackSplitter.split(this.imageOriginal, "green");
                }
 
@@ -1150,7 +1145,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (returnVal == 0) {
          File resultsFile = fc.getSelectedFile();
          String extension = null;
-         extension = Utils.getExtension(resultsFile);
+         extension = BatchUtils.getExtension(resultsFile);
          if (extension != null) {
             if (!extension.equals("xls") && !extension.equals("xlsx")) {
                this.saveResultsToTextField.setText(resultsFile.getPath() + ".xls");
@@ -1159,10 +1154,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             }
          } else {
             this.saveResultsToTextField.setText(resultsFile.getPath() + ".xls");
-         }
-
-         if (!Utils.isReleaseVersion) {
-            System.out.println("getPath= " + resultsFile.getPath());
          }
 
          this.excelPath = resultsFile.getPath();
@@ -1396,7 +1387,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.results.vesselMMArea = (double)this.results.vesselPixelArea * areaScalingFactor;
       this.results.vesselPercentageArea = this.results.vesselMMArea * 100.0 / this.results.allantoisMMArea;
       if (params.shouldComputeThickness) {
-         this.results.averageVesselDiameter = Utils.computeMedianThickness(this.skelResult.slabList, this.imageThickness) * params.linearScalingFactor;
+         this.results.averageVesselDiameter = BatchUtils.computeMedianThickness(this.skelResult.slabList, this.imageThickness) * params.linearScalingFactor;
       }
 
       double totalLength = 0.0;
@@ -1412,10 +1403,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.results.averageBranchLength = averageLength;
       this.results.totalNEndPoints = this.skelResult.endPoints.size / 3;
 
-      //String name = this.imageFile.getName();
-      //int fileExtensionLength = Utils.getExtension(this.imageFile).length() + 1;
-      //this.ste.setFileName(name.substring(0, name.length() - fileExtensionLength));
-      //this.ste.writeResultsToExcel(this.results);
       try {
          this.writeResultsToExcel(this.excelPath, this.results);
       }
@@ -1577,28 +1564,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       }
    }
 
-   /*
-   private void updatePreferences() {
-      ATPreferences.settings.showOverlay = this.showOverlay;
-      ATPreferences.settings.showOutline = this.showOutline;
-      ATPreferences.settings.showSkeleton = this.showSkeleton;
-      ATPreferences.settings.showBranchingPoints = this.showBranchingPoints;
-      ATPreferences.settings.showConvexHull = this.showConvexHull;
-      ATPreferences.settings.OutlineStrokeWidth = this.OutlineStrokeWidth;
-      ATPreferences.settings.SkeletonStrokeWidth = this.SkeletonStrokeWidth;
-      ATPreferences.settings.BranchingPointsStrokeWidth = this.BranchingPointsStrokeWidth;
-      ATPreferences.settings.ConvexHullStrokeWidth = this.ConvexHullStrokeWidth;
-      ATPreferences.settings.OutlineColor = Utils.Color2Hex(this.OutlineColor);
-      ATPreferences.settings.SkeletonColor = Utils.Color2Hex(this.SkeletonColor);
-      ATPreferences.settings.BranchingPointsColor = Utils.Color2Hex(this.BranchingPointColor);
-      ATPreferences.settings.ConvexHullColor = Utils.Color2Hex(this.ConvexHullColor);showOverlay
-      ATPreferences.settings.currentDir = this.currentDir.getAbsolutePath();
-      ATPreferences.settings.imageResultFormat = this.imageResultFormat;
-      ATPreferences.settings.computeLacunarity = this.computeLacunarity;
-      ATPreferences.settings.computeThickness = this.computeThickness;
-   }
-   */
-
    private void updateOutline(double[] sigmas) {
       if (this.tubenessIp == null)
          return;
@@ -1625,14 +1590,11 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       ImageProcessor temp = this.tubenessIp.duplicate();
       temp = temp.convertToByte(true);
-      Utils.thresholdFlexible(temp, this.thresholdRangeSliderLow.getValue(), this.thresholdRangeSliderHigh.getValue());
+      BatchUtils.thresholdFlexible(temp, this.thresholdRangeSliderLow.getValue(), this.thresholdRangeSliderHigh.getValue());
       this.imageThresholded.setProcessor(temp);
       temp.setThreshold(255.0, 255.0, 2);
       ImageProcessor check = this.imageThresholded.getProcessor().duplicate();
-      int iterations = 2;
-      if (!Utils.isReleaseVersion) {
-         System.out.println("Closing with " + iterations + " iterations");
-      }
+      final int iterations = 2;
 
       for(int i = 0; i < iterations; ++i) {
          this.imageThresholded.getProcessor().erode();
@@ -1643,17 +1605,29 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       }
 
       if (this.smallParticlesCheckBox.isSelected()) {
-         Utils.fillHoles(this.imageThresholded, 0, (int)this.smallParticlesRangeSlider2.getValue(), 0.0, 1.0, 0);
+         Particles.fillHoles(this.imageThresholded, 0, (int)this.smallParticlesRangeSlider2.getValue(), 0.0, 1.0, 0);
       }
 
       if (this.fillHolesCheckBox.isSelected()) {
          this.imageThresholded.killRoi();
          ImageProcessor temp1 = this.imageThresholded.getProcessor();
          temp1.invert();
-         Utils.fillHoles(this.imageThresholded, 0, (int)this.fillHolesRangeSlider2.getValue(), 0.0, 1.0, 0);
+         Particles.fillHoles(this.imageThresholded, 0, (int)this.fillHolesRangeSlider2.getValue(), 0.0, 1.0, 0);
          temp1.invert();
       }
 
+      Outline.drawOutline(
+         overlay,
+         this.outlineRoundedPanel.getBackground(),
+         getSpinnerValueDouble(this.outlineSpinner),
+         this.imageThresholded.getProcessor(),
+         this.imageThresholded.getWidth(),
+         this.imageThresholded.getHeight()
+      );
+
+      this.imageResult.setOverlay(overlay);
+
+      /*
       ImagePlus iplus = new ImagePlus("tubenessIp", this.imageThresholded.getProcessor());
       this.outlineRoi = Utils.thresholdToSelection(iplus);
       this.outlineRoi.setStrokeWidth((float)getSpinnerValueDouble(this.outlineSpinner));
@@ -1661,6 +1635,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.allantoisOverlay.add(this.outlineRoi);
       this.allantoisOverlay.setStrokeColor(this.outlineRoundedPanel.getBackground());
       this.imageResult.setOverlay(this.allantoisOverlay);
+      */
    }
 
    private void initVariables() {
@@ -1720,8 +1695,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       }
    }
 
-        
-
+   /*
    private void smoothROIs(int fraction) {
       ShapeRoi sr = (ShapeRoi)Utils.thresholdToSelection(this.imageThresholded);
       ShapeRoi tempSr = ComputeShapeRoiSplines.computeSplines(Analyzer.threadPool, 8, sr, 5);
@@ -1735,6 +1709,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.imageThresholded.setOverlay(this.allantoisOverlay);
       this.imageResult.setOverlay(this.allantoisOverlay);
    }
+   */
 
    public void computeLacunarity(ImagePlus iplus, int numBoxes, int minBoxSize, int slideXY) {
       Lacunarity l = new Lacunarity(iplus, numBoxes, minBoxSize, slideXY, true);
@@ -1876,7 +1851,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          int height = this.ipOriginal.getHeight();
          this.minSigma = 1;
          this.maxSigma = (int)Math.sqrt((double)(width * width + height * height)) / 70;
-         this.maxSigma = Utils.roundIntegerToNearestUpperTenth(this.maxSigma);
+         this.maxSigma = BatchUtils.roundIntegerToNearestUpperTenth(this.maxSigma);
       }
       else {
          this.minSigma = 1;
@@ -1928,7 +1903,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.ipThresholded = this.tubenessIp.duplicate();
       this.ipThresholded = this.ipThresholded.convertToByte(params.shouldScalePixelValues);
       this.imageThresholded.setProcessor(this.ipThresholded);
-      Utils.thresholdFlexible(this.ipThresholded, this.thresholdRangeSliderLow.getValue(), this.thresholdRangeSliderHigh.getValue());
+      BatchUtils.thresholdFlexible(this.ipThresholded, this.thresholdRangeSliderLow.getValue(), this.thresholdRangeSliderHigh.getValue());
       this.ipThresholded.setThreshold(255.0, 255.0, 2);
       this.updateOutline(null);
    }
@@ -2038,23 +2013,27 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       progressBar.setStringPainted(true);
       updateStatus(progress, "");
       this.updateOutline(null);
-      int splineIterations = 0;
       int fraction = 1;
 
+      /*
+      int splineIterations = 0;
       for(int i = 0; i < splineIterations; ++i) {
          this.smoothROIs(fraction);
          progress += 11;
          updateStatus(progress, "smooth ROIs");
       }
+      */
 
-      this.results.vesselPixelArea = Utils.thresholdedPixelArea(this.imageThresholded.getProcessor());
+      this.results.vesselPixelArea = BatchUtils.thresholdedPixelArea(this.imageThresholded.getProcessor());
       if (params.shouldComputeLacunarity) {
          updateStatus(progress, "Computing lacunarity...");
          ImageProcessor ipTemp = this.imageThresholded.getProcessor().duplicate();
          ImagePlus iplusTemp = new ImagePlus("iplusTemp", ipTemp);
+         /*
          if (!Utils.isReleaseVersion) {
             IJ.saveAs(iplusTemp, "tiff", this.imageFile.getAbsolutePath() + " lacunarity.tif");
          }
+         */
 
          this.computeLacunarity(iplusTemp, 10, 10, 5);
          this.results.ELacunaritySlope = this.ElSlope;
@@ -2063,6 +2042,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          this.results.FLacuanrity = this.medialFLacunarity;
          this.results.meanEl = this.meanEl;
          this.results.meanFl = this.meanFl;
+         /*
          if (!Utils.isReleaseVersion) {
             for(int i = 0; i < this.lacunarityBoxes.length; ++i) {
                System.out.println(this.lacunarityBoxes[i] + "\t" + this.Elamdas.get(i) + "\t" + this.Flamdas.get(i));
@@ -2081,22 +2061,23 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
                + this.meanFl
             );
          }
+         */
       }
 
-      //this.computeThickness = !Utils.isReleaseVersion;
       if (params.shouldComputeThickness) {
          updateStatus(progress, "vessel thickness");
          EDT_S1D ed = new EDT_S1D(Analyzer.threadPool);
          ed.setup(null, this.imageThresholded);
          ed.run(this.imageThresholded.getProcessor());
          this.imageThickness = ed.getImageResult();
+         /*
          if (!Utils.isReleaseVersion) {
             IJ.saveAs(this.imageThickness, "tif", this.imageFile.getAbsolutePath() + " thickness.tif");
          }
+         */
       }
 
-      this.convexHull = Utils.computeConvexHull(this.imageThresholded.getProcessor());
-      this.convexHullArea = this.convexHull.area();
+      this.convexHullArea = ConvexHull.findConvexHull(this.convexHull, this.imageThresholded.getProcessor());
       this.convexHullRoi = new PolygonRoi(this.convexHull.polygon(), 2);
 
       progress += 5;
@@ -2155,10 +2136,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       @Override
       protected void done() {
          try {
-            if (!Utils.isReleaseVersion) {
-               System.out.println("Done starting worker");
-            }
-
             AngioToolGUI.this.populateResults();
          } catch (Exception var2) {
          }

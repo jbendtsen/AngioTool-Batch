@@ -1,6 +1,6 @@
 package GUI;
 
-import Utils.Utils;
+import Batch.BatchUtils;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -609,10 +609,7 @@ public class MyImageView extends View implements ImageObserver, MouseListener, M
    private Icon makeIcon(String gifFile) throws IOException {
       InputStream resource = MyImageView.class.getResourceAsStream(gifFile);
       if (resource == null) {
-         if (!Utils.isReleaseVersion) {
-            System.err.println(MyImageView.class.getName() + "/" + gifFile + " not found.");
-         }
-
+         BatchUtils.showDialogBox("Image Not Found", MyImageView.class.getName() + "/" + gifFile + " not found.");
          return null;
       } else {
          BufferedInputStream in = new BufferedInputStream(resource);
@@ -646,9 +643,7 @@ public class MyImageView extends View implements ImageObserver, MouseListener, M
             sMissingImageIcon = this.makeIcon("icons/image-failed.gif");
          }
       } catch (Exception var2) {
-         if (!Utils.isReleaseVersion) {
-            System.err.println("ImageView: Couldn't load image icons");
-         }
+         BatchUtils.showDialogBox("ImageView", "Couldn't load image icons");
       }
    }
 

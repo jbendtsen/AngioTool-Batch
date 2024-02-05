@@ -3,7 +3,6 @@ package Batch;
 import AngioTool.AngioTool;
 import AngioTool.ATPreferences;
 import GUI.RoundedPanel;
-import Utils.Utils;
 import java.awt.Color;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
@@ -99,13 +98,13 @@ public class BatchAnalysisUi
 
         labelInputFolders.setText("Select input folders:");
 
-        btnInputFolders.setIcon(Utils.ATOpenImageSmall);
+        btnInputFolders.setIcon(AngioTool.ATOpenImageSmall);
         btnInputFolders.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectInputFolders());
         //textInputFolders
 
         labelExcel.setText("Excel spreadsheet:");
 
-        btnExcel.setIcon(Utils.ATExcelSmall);
+        btnExcel.setIcon(AngioTool.ATExcelSmall);
         btnExcel.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectExcelFile());
         //textExcel
 
@@ -125,7 +124,7 @@ public class BatchAnalysisUi
         groupSaveResults.add(rbSameOutput);
         groupSaveResults.add(rbSaveResultsTo);
 
-        btnSaveResultsFolder.setIcon(Utils.ATOpenImageSmall);
+        btnSaveResultsFolder.setIcon(AngioTool.ATOpenImageSmall);
         btnSaveResultsFolder.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectResultFolder());
         //textSaveResultsFolder
 

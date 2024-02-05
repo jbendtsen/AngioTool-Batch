@@ -3,7 +3,7 @@ package AngioTool;
 import Batch.AnalyzerParameters;
 import Batch.BatchUtils;
 import GUI.AngioToolGUI;
-import Utils.Utils;
+import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.Toolkit;
@@ -15,6 +15,33 @@ public class AngioTool {
    public static final String PREFS_TXT = "AT_Prefs.txt";
    public static final String BATCH_TXT = "AT_BatchPrefs.txt";
    public static AngioToolGUI angioToolGUI;
+
+   public static String osName;
+   public static String osArch;
+   public static String osVersion;
+   public static String javaVersion;
+   public static String javaVmVersion;
+   public static String javaVmName;
+   //public static String ijVersion;
+   public static String javamailVersion;
+   public static String poiVersion;
+   public static final String LOOKANDFEEL = "System";
+   public static final String THEME = "Test";
+   public static Dimension screenDim;
+   public static String ATDir;
+   public static String prefsDir;
+   public static String currentDir;
+   public static String resultsPath;
+   public static String ATClassCanonicalName;
+   public static ImageIcon ATIcon;
+   public static ImageIcon ATOpenImage;
+   public static ImageIcon ATRunAnalysis;
+   public static ImageIcon ATBatch;
+   public static ImageIcon ATExit;
+   public static ImageIcon ATHelp;
+   public static ImageIcon ATExcel;
+   public static ImageIcon ATOpenImageSmall;
+   public static ImageIcon ATExcelSmall;
 
    AngioTool() {
       this.getSystemInfo();
@@ -34,44 +61,43 @@ public class AngioTool {
    }
 
    public void getSystemInfo() {
-      Utils.ATClassCanonicalName = this.getClass().getCanonicalName();
-      Utils.osName = System.getProperty("os.name");
-      Utils.osArch = System.getProperty("os.arch");
-      Utils.osVersion = System.getProperty("os.version");
-      Utils.javaVersion = System.getProperty("java.version");
-      Utils.javaVmName = System.getProperty("java.vm.name");
-      Utils.javaVmVersion = System.getProperty("java.vm.version");
-      Utils.ATDir = System.getProperty("user.dir");
-      Utils.ATDir = Utils.string2path(Utils.ATDir);
+      ATClassCanonicalName = this.getClass().getCanonicalName();
+      osName = System.getProperty("os.name");
+      osArch = System.getProperty("os.arch");
+      osVersion = System.getProperty("os.version");
+      javaVersion = System.getProperty("java.version");
+      javaVmName = System.getProperty("java.vm.name");
+      javaVmVersion = System.getProperty("java.vm.version");
+      ATDir = System.getProperty("user.dir").replace("\\", "/");
       URL url = AngioToolGUI.class.getProtectionDomain().getCodeSource().getLocation();
-      Utils.prefsDir = url.toString();
+      prefsDir = url.toString();
 
       /*
-      Utils.isInternetActive = new ReachableTest().test();
+      isInternetActive = new ReachableTest().test();
 
       try {
          InetAddress addr = InetAddress.getLocalHost();
-         Utils.myIP = InetAddress.getLocalHost();
-         Utils.myIPAddr = addr.getHostAddress();
-         Utils.myIPHostName = addr.getHostName();
+         myIP = InetAddress.getLocalHost();
+         myIPAddr = addr.getHostAddress();
+         myIPHostName = addr.getHostName();
       } catch (UnknownHostException var3) {
       }
       */
 
-      //Utils.ijVersion = IJ.getVersion();
-      Utils.screenDim = Toolkit.getDefaultToolkit().getScreenSize();
+      //ijVersion = IJ.getVersion();
+      screenDim = Toolkit.getDefaultToolkit().getScreenSize();
 
       Class at = this.getClass();
-      Utils.ATIcon = this.createImageIcon(at, "/images/ATIcon20 64x64.gif");
-      Utils.ATOpenImage = this.createImageIcon(at, "/images/OpenImages642.png");
-      Utils.ATRunAnalysis = this.createImageIcon(at, "/images/RunAnalysis64-2.png");
-      Utils.ATBatch = this.createImageIcon(at, "/images/batch64.png");
-      Utils.ATExit = this.createImageIcon(at, "/images/Close64.png");
-      Utils.ATHelp = this.createImageIcon(at, "/images/help64.png");
-      Utils.ATExcel = this.createImageIcon(at, "/images/Excel64.png");
+      ATIcon = this.createImageIcon(at, "/images/ATIcon20 64x64.gif");
+      ATOpenImage = this.createImageIcon(at, "/images/OpenImages642.png");
+      ATRunAnalysis = this.createImageIcon(at, "/images/RunAnalysis64-2.png");
+      ATBatch = this.createImageIcon(at, "/images/batch64.png");
+      ATExit = this.createImageIcon(at, "/images/Close64.png");
+      ATHelp = this.createImageIcon(at, "/images/help64.png");
+      ATExcel = this.createImageIcon(at, "/images/Excel64.png");
 
-      Utils.ATOpenImageSmall = this.createResizedIcon(Utils.ATOpenImage, 24, 24);
-      Utils.ATExcelSmall = this.createResizedIcon(Utils.ATExcel, 24, 24);
+      ATOpenImageSmall = this.createResizedIcon(ATOpenImage, 24, 24);
+      ATExcelSmall = this.createResizedIcon(ATExcel, 24, 24);
    }
 
    protected ImageIcon createImageIcon(String path) {

@@ -1,6 +1,6 @@
 package GUI;
 
-import Utils.Utils;
+import Batch.BatchUtils;
 import java.io.File;
 import javax.swing.filechooser.FileFilter;
 
@@ -10,7 +10,7 @@ public class ExcelFilter extends FileFilter {
       if (f.isDirectory()) {
          return true;
       } else {
-         String extension = Utils.getExtension(f);
+         String extension = BatchUtils.getExtension(f);
          if (extension != null) {
             return extension.equals("xls");
          } else {
