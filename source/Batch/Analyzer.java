@@ -405,12 +405,10 @@ public class Analyzer
         }
 
         if (params.shouldDrawOutline) {
-            uiToken.updateImageProgress("Drawing outltine...");
+            uiToken.updateImageProgress("Drawing outline...");
 
-            Outline.findOutline(data.outlineScratch, tubenessImage, inputImage.width, inputImage.height);
-            outlineRoi.setStrokeColor(params.outlineColor.toColor());
-            outlineRoi.setStrokeWidth(params.outlineSize);
-            data.allantoisOverlay.add(outlineRoi);
+            // TODO: implement strokeWidth
+            Outline.drawOutline(overlayImage, params.outlineColor.value, params.outlineSize, tubenessImage, inputImage.width, inputImage.height);
         }
 
         data.vesselPixelArea = BatchUtils.countForegroundPixels(tubenessImage, inputImage.width, inputImage.height);

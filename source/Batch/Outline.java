@@ -2,73 +2,72 @@ package Batch;
 
 public class Outline
 {
-    public static class Scratch
+    static final int[] firstPointIsTopLeft = new int[] {
+        0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, 0, -1, 0
+    };
+    static final int[] firstPointIsTopRight = new int[] {
+        0, 0, 0, 0, -1, -1, -1, -1, 0, 0, 0, 0, 0, -1, 0, 0
+    };
+    static final int[] firstPointIsBottomLeft = new int[] {
+        0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    };
+    static final int[] firstPointIsBottomRight = new int[] {
+        0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    };
+    static final int[] secondPointIsTopRight = new int[] {
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0
+    };
+    static final int[] secondPointIsBottomRight = new int[] {
+        0, 0, 0, -1, 0, 0, -1, 0, 0, 0, -1, -1, 0, 0, -1, 0
+    };
+    static final int[] secondPointIsBottomLeft = new int[] {
+        0, 0, 0, 0, 0, -1, 0, -1, 0, -1, 0, 0, 0, -1, 0, 0
+    };
+
+    // TODO: implement strokeWidth
+    public void drawOutline(int[] outline, int rgbColor, double strokeWidth, byte[] image, int width, int height)
     {
-        
-    }
+        // this cuts out the need for branching
+        byte firstInputPixel = image[0];
+        int firstOutputPixel = outline[0];
+        image[0] = 0;
+        outline[0] = 0;
 
-    public void findOutline(byte[] image, int width, int height)
-    {
-        ArrayList polygons = new ArrayList();
+        for (int y = -1; y < height; y += 2) {
+            for (int x = -1; x < width; x += 2) {
+                int topLeft     = (x   + width * y)     & ~((x | y) >> 31);
+                int topRight    = (x+1 + width * y)     & ~(((width-1-x) | y)  >> 31);
+                int bottomLeft  = (x   + width * (y+1)) & ~((x | (height-1-y)) >> 31);
+                int bottomRight = (x+1 + width * (y+1)) & ~(((width-1-x) | (height-1-y)) >> 31);
 
-        for (int y = 0; y <= height; y++) {
-            boolean prevFilled = false;
+                int type =
+                    ((image[topLeft]     >> 31) & 8) |
+                    ((image[topRight]    >> 31) & 4) |
+                    ((image[bottomRight] >> 31) & 2) |
+                    ((image[bottomLeft]  >> 31) & 1);
 
-            for (int x = 0; x <= width; x++) {
-                boolean aboveFilled   = y > 0 && y < height && x < width && image[x + width * (y-1)] != 0;
-                boolean currentFilled = y < height          && x < width && image[x + width * y]     != 0;
+                int p1 =
+                    (topLeft & firstPointIsTopLeft[type]) |
+                    (topRight & firstPointIsTopRight[type]) |
+                    (bottomRight & firstPointIsBottomRight[type]) |
+                    (bottomLeft & firstPointIsBottomLeft[type]);
 
-                if (currentFilled ^ aboveFilled) {
-                    if (outline[x] == null) {
-                        if (outline[x + 1] == null) {
-                            outline[x + 1] = outline[x] = new ThresholdToSelection.Outline();
-                            outline[x].push(x + 1, y); // push(x, y)
-                            outline[x].push(x, y);     // push(x + 1, y)
-                        } else {
-                            outline[x] = outline[x + 1];
-                            outline[x + 1] = null;
-                            outline[x].push(x, y); // shift
-                        }
-                    } else if (outline[x + 1] == null) {
-                        outline[x + 1] = outline[x];
-                        outline[x] = null;
-                        outline[x + 1].shift(x + 1, y); // push
-                    } else if (outline[x + 1] == outline[x]) {
-                        polygons.add(outline[x].getPolygon());
-                        outline[x] = outline[x + 1] = null;
-                    } else {
-                        outline[x].shift(outline[x + 1]); // push
+                int p2 =
+                    (topRight & secondPointIsTopRight[type]) |
+                    (bottomRight & secondPointIsBottomRight[type]) |
+                    (bottomLeft & secondPointIsBottomLeft[type]);
 
-                        for(int x1 = 0; x1 <= this.w; ++x1) {
-                            if (x1 != x + 1 && outline[x1] == outline[x + 1]) {
-                                outline[x1] = outline[x];
-                                outline[x] = outline[x + 1] = null;
-                                break;
-                            }
-                        }
+                /*
+                if (p1 == 0 && p2 == 0)
+                    continue;
+                */
 
-                        if (outline[x] != null) {
-                            throw new RuntimeException("assertion failed");
-                        }
-                    }
-                }
-
-                if (currentFilled ^ prevFilled) {
-                    outline[x].push(x, y + 1); // shift
-                }
-
-                prevFilled = currentFilled;
+                outline[p1] = color;
+                outline[p2] = color;
             }
         }
 
-        GeneralPath path = new GeneralPath(0);
-
-        for(int i = 0; i < polygons.size(); ++i) {
-            path.append((Polygon)polygons.get(i), false);
-        }
-
-        ShapeRoi shape = new ShapeRoi(path);
-        Roi roi = shape != null ? shape.shapeToRoi() : null;
-        return (Roi)(roi != null ? roi : shape);
+        image[0] = firstInputPixel;
+        outline[0] = firstOutputPixel;
     }
 }
