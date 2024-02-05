@@ -42,10 +42,10 @@ public class BatchUtils
         int area = width * height;
         for (int i = 0; i < area; i++) {
             int pixel = image[i];
-            // pixel > min && pixel <= max -> white
-            // pixel <= min || pixel > max -> black
-            // this should probably [min, max] not (min, max], but the original behaviour must stay the same
-            image[i] = ((pixel - (max+1)) >> 31) & ((min - pixel) >> 31);
+            // pixel > low && pixel <= high -> white
+            // pixel <= low || pixel > high -> black
+            // this should probably [low, high] not (low, high], but the original behaviour must stay the same
+            image[i] = (byte)(((pixel - (high+1)) >> 31) & ((low - pixel) >> 31));
         }
     }
 

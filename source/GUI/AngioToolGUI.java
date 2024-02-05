@@ -1,12 +1,5 @@
 package GUI;
 
-/*
-import AnalyzeSkeleton.AnalyzeSkeleton;
-import AnalyzeSkeleton.Edge;
-import AnalyzeSkeleton.Graph;
-import AnalyzeSkeleton.Point;
-import AnalyzeSkeleton.SkeletonResult;
-*/
 import AngioTool.AngioTool;
 import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
@@ -18,13 +11,10 @@ import Batch.Analyzer;
 import Batch.AnalyzerParameters;
 import Batch.AnalyzeSkeleton2;
 import Batch.BatchAnalysisUi;
-import Batch.ComputeShapeRoiSplines;
 import Batch.Lee94;
-import Batch.PixelCalibration;
 import Batch.Rgb;
 import Batch.SkeletonResult2;
 import Batch.SpreadsheetWriter;
-import Lacunarity.Lacunarity;
 import Utils.Utils;
 //import com.jidesoft.swing.RangeSlider;
 //import features.Tubeness;
@@ -98,7 +88,6 @@ import javax.swing.plaf.metal.OceanTheme;
 import kz.swing.markSlider;
 import org.netbeans.lib.awtextra.AbsoluteConstraints;
 import org.netbeans.lib.awtextra.AbsoluteLayout;
-import vesselThickness.EDT_S1D;
 
 public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    public static Point ATAboutBoxLoc;

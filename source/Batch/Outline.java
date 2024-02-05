@@ -25,7 +25,7 @@ public class Outline
     };
 
     // TODO: implement strokeWidth
-    public void drawOutline(int[] outline, int rgbColor, double strokeWidth, byte[] image, int width, int height)
+    public static void drawOutline(int[] outline, int rgbColor, double strokeWidth, byte[] image, int width, int height)
     {
         // this cuts out the need for branching
         byte firstInputPixel = image[0];
@@ -62,8 +62,8 @@ public class Outline
                     continue;
                 */
 
-                outline[p1] = color;
-                outline[p2] = color;
+                outline[p1] = rgbColor;
+                outline[p2] = rgbColor;
             }
         }
 

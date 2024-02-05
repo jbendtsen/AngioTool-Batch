@@ -33,11 +33,13 @@ public class AnalyzeSkeleton2
 
     public static void analyze(
         SkeletonResult2 result,
-        PixelCalibration calibration,
         byte[] skeletonImages,
         int width,
         int height,
-        int breadth
+        int breadth,
+        double pixelWidth,
+        double pixelHeight,
+        double pixelBreadth
     ) {
         breadth = Math.min(Math.max(1, breadth), MAX_BREADTH);
         result.reset(breadth);
@@ -71,7 +73,7 @@ public class AnalyzeSkeleton2
         result.numberOfBranches = IntBufferPool.acquireZeroed(nTrees);
         result.numberOfSlabs = IntBufferPool.acquireZeroed(nTrees);
 
-        buildSkeletonGraphs(result, calibration, skeletonImages, width, height, breadth, imageInfo, nTrees);
+        buildSkeletonGraphs(result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, nTrees);
 
         isolateDominantJunctions(result, width, height, junctionMap2d);
 
@@ -300,11 +302,13 @@ public class AnalyzeSkeleton2
 
     static void buildSkeletonGraphs(
         SkeletonResult2 result,
-        PixelCalibration calibration,
         byte[] skeletonImages,
         int width,
         int height,
         int breadth,
+        double pixelWidth,
+        double pixelHeight,
+        double pixelBreadth,
         int[] imageInfo,
         int nTrees
     ) {
@@ -321,7 +325,7 @@ public class AnalyzeSkeleton2
             int slabListIdx = result.slabList.size;
 
             visitBranch(
-                result, calibration, skeletonImages, width, height, breadth, imageInfo, t,
+                result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, t,
                 END_POINT, i, slabListIdx, 0.0, x, y, z
             );
         }
@@ -356,11 +360,11 @@ public class AnalyzeSkeleton2
                         continue;
                     }
 
-                    double initialLength = calculateDistance(x, y, z, xx, yy, zz, calibration);
+                    double initialLength = calculateDistance(x, y, z, xx, yy, zz, pixelWidth, pixelHeight, pixelBreadth);
                     int slabListIdx = result.slabList.addThree(xx, yy, zz);
 
                     visitBranch(
-                        result, calibration, skeletonImages, width, height, breadth, imageInfo, t,
+                        result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, t,
                         JUNCTION, vertexIdx, slabListIdx, initialLength, xx, yy, zz
                     );
                 }
@@ -395,7 +399,7 @@ public class AnalyzeSkeleton2
                 int slabListIdx = result.slabList.addThree(x, y, z);
 
                 visitBranch(
-                    result, calibration, skeletonImages, width, height, breadth, imageInfo, t,
+                    result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, t,
                     SLAB, s, slabListIdx, 0.0, x, y, z
                 );
             }
@@ -404,11 +408,13 @@ public class AnalyzeSkeleton2
 
     static void visitBranch(
         SkeletonResult2 result,
-        PixelCalibration calibration,
         byte[] skeletonImages,
         int width,
         int height,
         int breadth,
+        double pixelWidth,
+        double pixelHeight,
+        double pixelBreadth,
         int[] imageInfo,
         int iTree,
         int mode,
@@ -445,7 +451,7 @@ public class AnalyzeSkeleton2
                     ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
                     ((imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
                 ) {
-                    length += calculateDistance(x, y, z, xx, yy, zz, calibration);
+                    length += calculateDistance(x, y, z, xx, yy, zz, pixelWidth, pixelHeight, pixelBreadth);
                     imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
                     type = (imageInfo[xx + width * yy] >>> (zz << 1)) & 3;
                     x = xx;
@@ -517,7 +523,7 @@ public class AnalyzeSkeleton2
                 ) {
                     finalVertIdx = vert;
                     modeEnd = JUNCTION;
-                    length += calculateDistance(x, y, z, xx, yy, zz, calibration);
+                    length += calculateDistance(x, y, z, xx, yy, zz, pixelWidth, pixelHeight, pixelBreadth);
                     break;
                 }
             }
@@ -564,11 +570,11 @@ public class AnalyzeSkeleton2
         }
     }
 
-    static double calculateDistance(int x1, int y1, int z1, int x2, int y2, int z2, PixelCalibration calibration)
+    static double calculateDistance(int x1, int y1, int z1, int x2, int y2, int z2, double pixelWidth, double pixelHeight, double pixelBreadth)
     {
-        double dx = (double)(x2 - x1) * calibration.widthUnits;
-        double dy = (double)(y2 - y1) * calibration.heightUnits;
-        double dz = (double)(z2 - z1) * calibration.breadthUnits;
+        double dx = (double)(x2 - x1) * pixelWidth;
+        double dy = (double)(y2 - y1) * pixelHeight;
+        double dz = (double)(z2 - z1) * pixelBreadth;
         return Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
     }
 }

@@ -62,14 +62,12 @@ public class Analyzer
         public SkeletonResult2 skelResult;
         public Lee94.Scratch lee94Scratch;
         public Lacunarity2.Statistics lacunarity;
-        public Outline.Scratch outlineScratch;
         public IntVector convexHull;
 
         public Scratch() {
             skelResult = new SkeletonResult2();
             lee94Scratch = new Lee94.Scratch();
             lacunarity = new Lacunarity2.Statistics();
-            outlineScratch = new Outline.Scratch();
             convexHull = new IntVector();
         }
 
@@ -82,7 +80,6 @@ public class Analyzer
 
             lee94Scratch = null;
             lacunarity = null;
-            outlineScratch = null;
             convexHull = null;
         }
     }
@@ -362,11 +359,11 @@ public class Analyzer
 
         uiToken.updateImageProgress("Calculating tubeness...");
 
-        byte[] tubenessImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+        byte[] analysisImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
         Tubeness.computeTubenessImage(
             sliceRunner,
-            tubenessImage,
+            analysisImage,
             inputImage.getDefaultChannel(),
             inputImage.width,
             inputImage.height,
@@ -379,48 +376,45 @@ public class Analyzer
         uiToken.updateImageProgress("Filtering image...");
 
         BatchUtils.thresholdFlexible(
-            tubenessImage,
+            analysisImage,
             inputImage.width,
             inputImage.height,
             params.thresholdLow,
             params.thresholdHigh
         );
 
-        //imageThresholded = tubenessImage.setThreshold(255.0, 255.0, 2);
+        byte[] skeletonImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
-        Filters.filterMax(); // erode
-        Filters.filterMax(); // erode
-        Filters.filterMin(); // dilate
-        Filters.filterMin(); // dilate
+        Filters.filterMax(skeletonImage, analysisImage, inputImage.width, inputImage.height); // erode
+        Filters.filterMax(analysisImage, skeletonImage, inputImage.width, inputImage.height); // erode
+        Filters.filterMin(skeletonImage, analysisImage, inputImage.width, inputImage.height); // dilate
+        Filters.filterMin(analysisImage, skeletonImage, inputImage.width, inputImage.height); // dilate
+
+        // skeletonImage gets used later
 
         if (params.shouldRemoveSmallParticles)
-            Particles.fillHoles(data.imageThresholded, 0.0, params.removeSmallParticlesThreshold, 0.0, 1.0, 0);
+            Particles.fillHoles(analysisImage, inputImage.width, inputImage.height, params.removeSmallParticlesThreshold, (byte)0xff, (byte)0);
 
-        if (params.shouldFillHoles) {
-            data.imageThresholded.killRoi();
-            data.tempProcessor2 = data.imageThresholded.getProcessor();
-            data.tempProcessor2.invert();
-            Particles.fillHoles(data.imageThresholded, 0.0, params.fillHolesValue, 0.0, 1.0, 0);
-            data.tempProcessor2.invert();
-        }
+        if (params.shouldFillHoles)
+            Particles.fillHoles(analysisImage, inputImage.width, inputImage.height, params.fillHolesValue, (byte)0, (byte)0xff);
 
         if (params.shouldDrawOutline) {
             uiToken.updateImageProgress("Drawing outline...");
 
             // TODO: implement strokeWidth
-            Outline.drawOutline(overlayImage, params.outlineColor.value, params.outlineSize, tubenessImage, inputImage.width, inputImage.height);
+            Outline.drawOutline(overlayImage, params.outlineColor.value, params.outlineSize, analysisImage, inputImage.width, inputImage.height);
         }
 
-        data.vesselPixelArea = BatchUtils.countForegroundPixels(tubenessImage, inputImage.width, inputImage.height);
+        data.vesselPixelArea = BatchUtils.countForegroundPixels(analysisImage, inputImage.width, inputImage.height);
 
         if (params.shouldComputeLacunarity) {
             uiToken.updateImageProgress("Computing lacunarity...");
-            Lacunarity2.computeLacunarity(data.lacunarity, tubenessImage, inputImage.width, inputImage.height, 10, 10, 5);
+            Lacunarity2.computeLacunarity(data.lacunarity, analysisImage, inputImage.width, inputImage.height, 10, 10, 5);
         }
 
         uiToken.updateImageProgress("Computing convex hull...");
 
-        data.convexHullArea = ConvexHull.computeConvexHull(data.convexHull, tubenessImage, inputImage.width, inputImage.height);
+        data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
 
         if (params.shouldDrawConvexHull) {
             uiToken.updateImageProgress("Drawing convex hull...");
@@ -432,26 +426,16 @@ public class Analyzer
 
         uiToken.updateImageProgress("Computing skeleton...");
 
-        data.iplusSkeleton = data.imageThresholded.duplicate();
-        data.iplusSkeleton.setTitle("iplusSkeleton");
-
-        int skelWidth = data.iplusSkeleton.getWidth();
-        int skelHeight = data.iplusSkeleton.getHeight();
-        int skelBreadth = data.iplusSkeleton.getStackSize();
-
-        data.skeletonImagePlanes = ByteBufferPool.acquireAsIs(skelWidth * skelHeight);
-
         if (params.shouldUseFastSkeletonizer) {
-            byte[] pixels = (byte[])data.iplusSkeleton.getProcessor().getPixels();
-
-            data.zha84ScratchImage = ByteBufferPool.acquireAsIs(skelWidth * skelHeight);
-            Zha84.skeletonize(data.skeletonImagePlanes, data.zha84ScratchImage, pixels, skelWidth, skelHeight);
-            data.zha84ScratchImage = ByteBufferPool.release(data.zha84ScratchImage);
+            byte[] zha84ScratchImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+            Zha84.skeletonize(skeletonImage, data.zha84ScratchImage, analysisImage, inputImage.width, inputImage.height);
+            ByteBufferPool.release(zha84ScratchImage);
         }
         else {
-            int bitDepth = data.iplusSkeleton.getBitDepth();
+            int bitDepth = 8;
             Object[] layers;
 
+            /*
             if (skelBreadth > 1) {
                 ImageStack stack = data.iplusSkeleton.getStack();
                 skelBreadth = Math.min(skelBreadth, Lee94.MAX_BREADTH);
@@ -464,35 +448,35 @@ public class Analyzer
                 layers = new Object[1];
                 layers[0] = data.iplusSkeleton.getProcessor().getPixels();
             }
+            */
+
+            layers = new Object[1];
+            layers[0] = analysisImage;
 
             Lee94.skeletonize(
                 data.lee94Scratch,
-                data.skeletonImagePlanes,
+                skeletonImage,
                 sliceRunner,
                 MAX_WORKERS,
                 layers,
-                skelWidth,
-                skelHeight,
+                inputImage.width,
+                inputImage.height,
                 bitDepth
             );
         }
 
-        /*
-        data.skeleton = new AnalyzeSkeleton();
-        data.skeleton.setup("", data.iplusSkeleton);
-        data.skelResult = data.skeleton.run(0, false, false, data.iplusSkeleton, false, false);
-        data.graphs = data.skeleton.getGraphs();
-        */
         AnalyzeSkeleton2.analyze(
             data.skelResult,
-            calibration,
-            data.skeletonImagePlanes,
-            skelWidth,
-            skelHeight,
-            skelBreadth
+            skeletonImage,
+            inputImage.width,
+            inputImage.height,
+            1,
+            inputImage.pixelWidth,
+            inputImage.pixelHeight,
+            inputImage.pixelBreadth
         );
 
-        data.skeletonImagePlanes = ByteBufferPool.release(data.skeletonImagePlanes);
+        ByteBufferPool.release(skeletonImage);
 
         double averageVesselDiameter = 0.0;
 
@@ -500,9 +484,14 @@ public class Analyzer
             uiToken.updateImageProgress("Computing thickness...");
 
             float[] thicknessImage = FloatBufferPool.acquireAsIs(inputImage.width * inputImage.height);
-            VesselThickness.computeThickness(sliceRunner, MAX_WORKERS, thicknessImage, tubenessImage, inputImage.width, inputImage.height);
+            VesselThickness.computeThickness(sliceRunner, MAX_WORKERS, thicknessImage, analysisImage, inputImage.width, inputImage.height);
 
-            averageVesselDiameter = BatchUtils.computeMedianThickness(data.skelResult.slabList, thicknessImage) * linearScalingFactor;
+            averageVesselDiameter = linearScalingFactor * BatchUtils.computeMedianThickness(
+                data.skelResult.slabList,
+                thicknessImage,
+                inputImage.width,
+                inputImage.height
+            );
 
             FloatBufferPool.release(thicknessImage);
         }

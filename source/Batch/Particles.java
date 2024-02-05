@@ -2,50 +2,33 @@ package Batch;
 
 public class Particles
 {
-    public static void fillHoles(byte[] image, int width, int height)
+    public static void fillHoles(byte[] image, int width, int height, double maxSize, byte pixelFind, byte pixelReplace)
     {
-        ImageProcessor result = iplus.getProcessor();
-        if (!result.isBinary() && !isReleaseVersion) {
-        System.err.println("fillHoles requires a binary image");
-        }
+        int[] buf = IntBufferPool.acquireZeroed(width * height);
+        int occ = 0;
 
-        , 0.0, params.fillHolesValue, 0.0, 1.0, 0
-        PolygonRoi[] pr = findAndAnalyzeObjects(iplus, minSize, maxSize, minCircularity, maxCircularity, result);
-        if (pr != null) {
-            result.setColor(color);
+        for (int y = 0; y < height; y++) {
+            byte prev = pixelFind;
+            for (int x = 0; x < width; x++) {
+                byte cur = image[x + width * y];
+                if (cur != pixelFind || buf[x + width * y] != 0) {
+                    prev = cur;
+                    continue;
+                }
 
-            for(int i = 0; i < pr.length; ++i) {
-                result.fill(pr[i]);
+                occ++;
+                int upCount = 0;
+                int downCount = 0;
+                int leftCount = 0;
+                int rightCount = 0;
+                int count = 0;
+                while (true) {
+                    // ...
+                    break;
+                }
             }
-
-            iplus.setProcessor(result);
-        }
-    }
-
-    static void findAndAnalyzeObjects(
-        ImagePlus _iplus,
-        double maxSize,
-        ImageProcessor _ip
-    ) {
-        final double minSize = 0.0;
-
-        final double minCircularity = 0.0;
-        final double maxCircularity = 1.0;
-
-        ParticleAnalyzer pa = new ParticleAnalyzer(RECORD_STARTS | SHOW_PROGRESS, 1, rt, minSize, maxSize, minCircularity, maxCircularity);
-        pa.analyze(new ImagePlus("findAndAnalyzeObjects", _ip), _ip);
-
-        float[] Xstart = rt.getColumn(rt.getColumnIndex("XStart"));
-        float[] Ystart = rt.getColumn(rt.getColumnIndex("YStart"));
-        int DataArrayLength = Xstart.length;
-        PolygonRoi[] pr = new PolygonRoi[DataArrayLength];
-
-        for(int i = 0; i < pr.length; ++i) {
-            Wand w = new Wand(_ip);
-            w.autoOutline((int)Xstart[i], (int)Ystart[i], 254, 255);
-            pr[i] = new PolygonRoi(w.xpoints, w.ypoints, w.npoints, 2);
         }
 
-        return pr;
+        IntBufferPool.release(buf);
     }
 }
