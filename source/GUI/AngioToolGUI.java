@@ -4,19 +4,25 @@ import AngioTool.AngioTool;
 import AngioTool.ATPreferences;
 import AngioTool.MemoryMonitor;
 import AngioTool.Results;
-//import AngioTool.SaveToExcel;
 import Batch.Analyzer;
 import Batch.AnalyzerParameters;
 import Batch.AnalyzeSkeleton2;
 import Batch.BatchAnalysisUi;
 import Batch.BatchUtils;
+import Batch.Canvas;
+import Batch.ConvexHull;
+import Batch.ImageUtils;
 import Batch.IntVector;
+import Batch.ISliceRunner;
+import Batch.Lacunarity2;
 import Batch.Lee94;
+import Batch.Outline;
+import Batch.Particles;
 import Batch.Rgb;
 import Batch.SkeletonResult2;
 import Batch.SpreadsheetWriter;
-//import com.jidesoft.swing.RangeSlider;
-//import features.Tubeness;
+import Batch.Tubeness;
+import Batch.VesselThickness;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.OvalRoi;
@@ -92,8 +98,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    public static Point ATAboutBoxLoc;
 
    private AnalyzerParameters params;
+   private ISliceRunner sliceRunner = new ISliceRunner.Parallel(Analyzer.threadPool);
 
-   //private SaveToExcel ste;
    private String excelPath;
    private File currentDir;
    private Icon lockedIcon;
@@ -105,7 +111,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ImagePlus imageResult;
    private ImagePlus imageThresholded;
    private ImagePlus imageTubeness;
-   private ImagePlus imageThickness;
    private ImageProcessor ipOriginal;
    private ImageProcessor ipThresholded;
    private ImageProcessor tubenessIp;
@@ -116,25 +121,22 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<Double> currentSigmas;
    private ArrayList<AngioToolGUI.sigmaImages> sI;
    private ArrayList<int[]> al;
-   //private ArrayList<AnalyzeSkeleton.Point> al2;
-   //private ArrayList<AnalyzeSkeleton.Point> removedJunctions;
-   //private ArrayList<AnalyzeSkeleton.Point> endPoints;
    private IntVector convexHull;
    private double convexHullArea;
-   private Overlay allantoisOverlay;
-   private Roi outlineRoi;
-   private PolygonRoi convexHullRoi;
-   private ArrayList<Roi> skeletonRoi;
-   private ArrayList<Roi> junctionsRoi;
+   //private Overlay allantoisOverlay;
+   //private Roi outlineRoi;
+   //private PolygonRoi convexHullRoi;
+   //private ArrayList<Roi> skeletonRoi;
+   //private ArrayList<Roi> junctionsRoi;
+   private double averageVesselDiameter;
    private long thresholdedPixelArea = 0L;
-   //private AnalyzeSkeleton.Graph[] graph;
    private double ElSlope;
    private double medialELacunarity;
    private double FlSlope;
    private double medialFLacunarity;
-   private int[] lacunarityBoxes;
-   private ArrayList<Double> Elamdas = new ArrayList<>();
-   private ArrayList<Double> Flamdas = new ArrayList<>();
+   //private int[] lacunarityBoxes;
+   //private ArrayList<Double> Elamdas = new ArrayList<>();
+   //private ArrayList<Double> Flamdas = new ArrayList<>();
    private double meanEl;
    private double meanFl;
    private SkeletonResult2 skelResult;
@@ -1387,7 +1389,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.results.vesselMMArea = (double)this.results.vesselPixelArea * areaScalingFactor;
       this.results.vesselPercentageArea = this.results.vesselMMArea * 100.0 / this.results.allantoisMMArea;
       if (params.shouldComputeThickness) {
-         this.results.averageVesselDiameter = BatchUtils.computeMedianThickness(this.skelResult.slabList, this.imageThickness) * params.linearScalingFactor;
+         this.results.averageVesselDiameter = this.averageVesselDiameter;
       }
 
       double totalLength = 0.0;
@@ -1685,7 +1687,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.imageTubeness = new ImagePlus();
       this.imageTubeness.setTitle("Tubeness");
       this.sI = new ArrayList<>();
-      this.allantoisOverlay = new Overlay();
+      //this.allantoisOverlay = new Overlay();
       this.results = new Results();
       this.results.computeLacunarity = params.shouldComputeLacunarity;
       this.results.computeThickness = params.shouldComputeThickness;
@@ -1712,16 +1714,14 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    */
 
    public void computeLacunarity(ImagePlus iplus, int numBoxes, int minBoxSize, int slideXY) {
-      Lacunarity l = new Lacunarity(iplus, numBoxes, minBoxSize, slideXY, true);
-      this.ElSlope = l.getEl3Slope();
-      this.FlSlope = l.getFl3Slope();
-      this.lacunarityBoxes = l.getBoxes();
-      this.Elamdas = l.getEoneplusl3();
-      this.medialELacunarity = l.getMedialELacunarity();
-      this.meanEl = l.getMeanEl();
-      this.Flamdas = l.getFoneplusl3();
-      this.medialFLacunarity = l.getMedialFLacunarity();
-      this.meanFl = l.getMeanFl();
+      Lacunarity2.Statistics l = new Lacunarity2.Statistics();
+      Lacunarity2.computeLacunarity(l, (byte[])iplus.getProcessor().getPixels(), iplus.getWidth(), iplus.getHeight(), numBoxes, minBoxSize, slideXY);
+      this.ElSlope = l.elCurve;
+      this.FlSlope = l.flCurve;
+      this.medialELacunarity = l.elMedial;
+      this.meanEl = l.elMean;
+      this.medialFLacunarity = l.flMedial;
+      this.meanFl = l.flMean;
    }
 
    private ArrayList<Roi> computeSkeletonRoi(int size) {
@@ -1773,13 +1773,26 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (this.ipOriginal == null)
          return;
 
+      Calibration c = this.imageOriginal.getCalibration();
+
       for(int i = 0; i < s.length; ++i) {
          double sigma = s[i];
          if (!this.allSigmas.contains(sigma)) {
             this.allSigmas.add(sigma);
             Tubeness t = new Tubeness();
             double[] sigmaDouble = new double[]{sigma};
-            this.imageTubeness = t.runTubeness(new ImagePlus("", this.ipOriginal), 100, sigmaDouble, false);
+            this.imageTubeness = new ImagePlus("", this.ipOriginal);
+            Tubeness.computeTubenessImage(
+               sliceRunner,
+               (byte[])this.imageTubeness.getProcessor().getPixels(),
+               (byte[])this.ipOriginal.getPixels(),
+               this.imageTubeness.getWidth(),
+               this.imageTubeness.getHeight(),
+               (float)c.pixelWidth,
+               (float)c.pixelHeight,
+               sigmaDouble,
+               1
+            );
             this.sI.add(new AngioToolGUI.sigmaImages(sigma, this.imageTubeness.getProcessor()));
          }
 
@@ -1807,11 +1820,24 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (this.ipOriginal == null)
          return;
 
+      Calibration c = this.imageOriginal.getCalibration();
+
       if (!this.allSigmas.contains((double)low)) {
          this.allSigmas.add((double)low);
          Tubeness t = new Tubeness();
          double[] s = new double[]{(double)low};
-         this.imageTubeness = t.runTubeness(new ImagePlus("", this.ipOriginal), 100, s, false);
+         this.imageTubeness = new ImagePlus("", this.ipOriginal);
+         Tubeness.computeTubenessImage(
+            sliceRunner,
+            (byte[])this.imageTubeness.getProcessor().getPixels(),
+            (byte[])this.ipOriginal.getPixels(),
+            this.imageTubeness.getWidth(),
+            this.imageTubeness.getHeight(),
+            (float)c.pixelWidth,
+            (float)c.pixelHeight,
+            s,
+            1
+         );
          this.sI.add(new AngioToolGUI.sigmaImages((double)low, this.imageTubeness.getProcessor()));
       }
 
@@ -1819,7 +1845,18 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          this.allSigmas.add((double)high);
          Tubeness t = new Tubeness();
          double[] s = new double[]{(double)high};
-         this.imageTubeness = t.runTubeness(new ImagePlus("", this.ipOriginal), 100, s, false);
+         this.imageTubeness = new ImagePlus("", this.ipOriginal);
+         Tubeness.computeTubenessImage(
+            sliceRunner,
+            (byte[])this.imageTubeness.getProcessor().getPixels(),
+            (byte[])this.ipOriginal.getPixels(),
+            this.imageTubeness.getWidth(),
+            this.imageTubeness.getHeight(),
+            (float)c.pixelWidth,
+            (float)c.pixelHeight,
+            s,
+            1
+         );
          this.sI.add(new AngioToolGUI.sigmaImages((double)high, this.imageTubeness.getProcessor()));
       }
 
@@ -1893,9 +1930,20 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    }
 
    private void computeFirstOutline(double[] sigmas) {
-      Tubeness t = new Tubeness();
-      this.imageTubeness = t.runTubeness(new ImagePlus("imageTubeness", this.ipOriginal), 100, sigmas, false);
+      this.imageTubeness = new ImagePlus("imageTubeness", this.ipOriginal);
       this.tubenessIp = this.imageTubeness.getProcessor();
+      Calibration c = this.imageTubeness.getCalibration();
+      Tubeness.computeTubenessImage(
+         sliceRunner,
+         (byte[])this.tubenessIp.getPixels(),
+         (byte[])this.ipOriginal.getPixels(),
+         this.imageTubeness.getWidth(),
+         this.imageTubeness.getHeight(),
+         (float)c.pixelWidth,
+         (float)c.pixelHeight,
+         params.sigmas,
+         params.sigmas.length
+      );
       this.sI.add(new AngioToolGUI.sigmaImages(sigmas[0], this.tubenessIp));
       this.sigmasMarkSlider.addMark((int)sigmas[0]);
       this.allSigmas.add(sigmas[0]);
@@ -1903,7 +1951,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.ipThresholded = this.tubenessIp.duplicate();
       this.ipThresholded = this.ipThresholded.convertToByte(params.shouldScalePixelValues);
       this.imageThresholded.setProcessor(this.ipThresholded);
-      BatchUtils.thresholdFlexible(this.ipThresholded, this.thresholdRangeSliderLow.getValue(), this.thresholdRangeSliderHigh.getValue());
+      BatchUtils.thresholdFlexible((byte[])this.ipThresholded.getPixels(), this.imageThresholded.getWidth(), this.imageThresholded.getHeight(), this.thresholdRangeSliderLow.getValue(), this.thresholdRangeSliderHigh.getValue());
       this.ipThresholded.setThreshold(255.0, 255.0, 2);
       this.updateOutline(null);
    }
@@ -2024,7 +2072,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       }
       */
 
-      this.results.vesselPixelArea = BatchUtils.thresholdedPixelArea(this.imageThresholded.getProcessor());
+      this.results.vesselPixelArea = BatchUtils.countForegroundPixels((byte[])this.imageThresholded.getProcessor().getPixels(), this.imageThresholded.getWidth(), this.imageThresholded.getHeight());
       if (params.shouldComputeLacunarity) {
          updateStatus(progress, "Computing lacunarity...");
          ImageProcessor ipTemp = this.imageThresholded.getProcessor().duplicate();
@@ -2064,21 +2112,13 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          */
       }
 
-      if (params.shouldComputeThickness) {
-         updateStatus(progress, "vessel thickness");
-         EDT_S1D ed = new EDT_S1D(Analyzer.threadPool);
-         ed.setup(null, this.imageThresholded);
-         ed.run(this.imageThresholded.getProcessor());
-         this.imageThickness = ed.getImageResult();
-         /*
-         if (!Utils.isReleaseVersion) {
-            IJ.saveAs(this.imageThickness, "tif", this.imageFile.getAbsolutePath() + " thickness.tif");
-         }
-         */
-      }
-
-      this.convexHullArea = ConvexHull.findConvexHull(this.convexHull, this.imageThresholded.getProcessor());
-      this.convexHullRoi = new PolygonRoi(this.convexHull.polygon(), 2);
+      this.convexHullArea = ConvexHull.findConvexHull(
+         this.convexHull,
+         (byte[])this.imageThresholded.getProcessor().getPixels(),
+         this.imageThresholded.getWidth(),
+         this.imageThresholded.getHeight()
+      );
+      //this.convexHullRoi = new PolygonRoi(this.convexHull.polygon(), 2);
 
       progress += 5;
       updateStatus(progress, "Analyzing skeleton... ");
@@ -2097,7 +2137,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       Lee94.skeletonize(
          new Lee94.Scratch(),
          skelImage,
-         Analyzer.threadPool,
+         sliceRunner,
          Analyzer.MAX_WORKERS,
          skelLayers,
          skelWidth,
@@ -2107,23 +2147,36 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       progress += 33;
       updateStatus(progress, "Computing convex hull... ");
+      Calibration c = iplusSkeleton.getCalibration();
       this.skelResult = new SkeletonResult2();
-      AnalyzeSkeleton2.analyze(this.skelResult, getCalibration(iplusSkeleton), skelImage, skelWidth, skelHeight, 1);
-      this.skeletonRoi = this.computeSkeletonRoi(getSpinnerValueInt(this.skeletonSpinner));
-      this.junctionsRoi = this.computeJunctionsRoi(getSpinnerValueInt(this.branchingPointsSpinner));
+      AnalyzeSkeleton2.analyze(
+         this.skelResult,
+         skelImage,
+         skelWidth,
+         skelHeight,
+         1,
+         c.pixelWidth,
+         c.pixelHeight,
+         c.pixelDepth
+      );
+
+      if (params.shouldComputeThickness) {
+         this.averageVesselDiameter = BatchUtils.computeAverageVesselDiameter(
+            sliceRunner,
+            this.skelResult.slabList,
+            skelImage,
+            skelWidth,
+            skelHeight,
+            params.linearScalingFactor
+         );
+      }
+
+      //this.skeletonRoi = this.computeSkeletonRoi(getSpinnerValueInt(this.skeletonSpinner));
+      //this.junctionsRoi = this.computeJunctionsRoi(getSpinnerValueInt(this.branchingPointsSpinner));
       this.updateOverlay();
       updateStatus(95, " Saving result image... ");
       updateStatus(100, "Done... ");
       return "Good";
-   }
-
-   private PixelCalibration getCalibration(ImagePlus image) {
-      PixelCalibration calibration = new PixelCalibration();
-      Calibration c = image.getCalibration();
-      calibration.widthUnits = c.pixelWidth;
-      calibration.heightUnits = c.pixelHeight;
-      calibration.breadthUnits = c.pixelDepth;
-      return calibration;
    }
 
    class AngioToolWorker extends SwingWorker<Object, Object> {

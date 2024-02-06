@@ -31,6 +31,29 @@ public class BatchUtils
         return thickness;
     }
 
+    public static double computeAverageVesselDiameter(
+        ISliceRunner sliceRunner,
+        IntVector slabList,
+        byte[] analysisImage,
+        int width,
+        int height,
+        double linearScalingFactor
+    ) {
+        float[] thicknessImage = FloatBufferPool.acquireAsIs(width * height);
+        VesselThickness.computeThickness(sliceRunner, Analyzer.MAX_WORKERS, thicknessImage, analysisImage, width, height);
+
+        double medianThickness = BatchUtils.computeMedianThickness(
+            slabList,
+            thicknessImage,
+            width,
+            height
+        );
+
+        FloatBufferPool.release(thicknessImage);
+
+        return medianThickness * linearScalingFactor;
+    }
+
     public static void thresholdFlexible(byte[] image, int width, int height, int low, int high)
     {
         if (low > high) {

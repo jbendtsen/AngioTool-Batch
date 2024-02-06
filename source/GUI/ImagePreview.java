@@ -1,7 +1,6 @@
 package GUI;
 
-import ij.IJ;
-import ij.ImagePlus;
+import Batch.ImageUtils;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -36,8 +35,7 @@ public class ImagePreview extends JComponent implements PropertyChangeListener {
       if (this.file == null) {
          this.thumbnail = null;
       } else {
-         ImagePlus ip = IJ.openImage(this.file.getPath());
-         ImageIcon tmpIcon = new ImageIcon(ip.getImage());
+         ImageIcon tmpIcon = ImageUtils.openAsImageIcon(this.file.getPath());
          if (tmpIcon != null) {
             int tmpIconWidth = tmpIcon.getIconWidth();
             int tmpIconHeight = tmpIcon.getIconHeight();
