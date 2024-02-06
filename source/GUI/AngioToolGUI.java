@@ -1493,7 +1493,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    public void updateOverlay() {
       if (this.imageResult != null) {
-         this.allantoisOverlay.clear();
+         //Arrays.fill(this.allantoisOverlay, 0);
+
          params.shouldShowOverlayOrGallery = this.showOverlayCheckBox.isSelected();
          params.shouldDrawOutline = this.showOutlineCheckBox.isSelected();
          params.shouldDrawSkeleton = this.showSkeletonCheckBox.isSelected();
@@ -1598,13 +1599,16 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       ImageProcessor check = this.imageThresholded.getProcessor().duplicate();
       final int iterations = 2;
 
-      for(int i = 0; i < iterations; ++i) {
-         this.imageThresholded.getProcessor().erode();
-      }
+      int width = this.imageThresholded.getWidth();
+      int height = this.imageThresholded.getHeight();
 
-      for(int i = 0; i < iterations; ++i) {
-         this.imageThresholded.getProcessor().dilate();
-      }
+      byte[] properImage = new byte[width * height];
+      byte[] tempImage = new byte[width * height];
+
+      Filters.filterMax(tempImage, properImage, width, height);
+      Filters.filterMax(properImage, tempImage, width, height);
+      Filters.filterMin(tempImage, properImage, width, height);
+      Filters.filterMin(properImage, tempImage, width, height);
 
       if (this.smallParticlesCheckBox.isSelected()) {
          Particles.fillHoles(this.imageThresholded, 0, (int)this.smallParticlesRangeSlider2.getValue(), 0.0, 1.0, 0);
@@ -1618,16 +1622,21 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          temp1.invert();
       }
 
+      if (this.allantoisOverlay == null || this.allantoisOverlay.length != width * height)
+         this.allantoisOverlay = new int[width * height];
+      else
+         Arrays.fill(this.allantoisOverlay, 0);
+
       Outline.drawOutline(
-         overlay,
+         this.allantoisOverlay,
          this.outlineRoundedPanel.getBackground(),
          getSpinnerValueDouble(this.outlineSpinner),
          this.imageThresholded.getProcessor(),
-         this.imageThresholded.getWidth(),
-         this.imageThresholded.getHeight()
+         width,
+         height
       );
 
-      this.imageResult.setOverlay(overlay);
+      this.imageResult.setOverlay(this.allantoisOverlay);
 
       /*
       ImagePlus iplus = new ImagePlus("tubenessIp", this.imageThresholded.getProcessor());
