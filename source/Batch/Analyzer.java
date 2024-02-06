@@ -53,8 +53,6 @@ public class Analyzer
 
     public static class Scratch
     {
-        //public Overlay allantoisOverlay;
-
         public double convexHullArea;
         public long vesselPixelArea;
 
@@ -339,27 +337,10 @@ public class Analyzer
         ISliceRunner sliceRunner,
         BatchAnalysisUi uiToken
     ) {
-        /*
-        uiToken.updateImageProgress("Loading image...");
-
-        data.allantoisOverlay = new Overlay();
-        data.imageThresholded = new ImagePlus();
-        data.imageResult = inputImage;
-
-        if (data.imageResult.getType() == ImagePlus.COLOR_RGB)
-            data.imageResult = RGBStackSplitter.split(data.imageResult, "green");
-
-        if (params.shouldResizeImage) {
-            ImageProcessor resized = data.imageResult.getProcessor().resize((int)((double)data.imageResult.getWidth() / params.resizingFactor));
-            data.imageResult.setProcessor(resized);
-        }
-
-        data.ipOriginal = data.imageResult.getProcessor().convertToByte(false);
-        */
+        int[] overlayImage = outputImage != null ? outputImage.getDefaultRgb() : null;
+        byte[] analysisImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
         uiToken.updateImageProgress("Calculating tubeness...");
-
-        byte[] analysisImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
         Tubeness.computeTubenessImage(
             sliceRunner,
@@ -390,19 +371,40 @@ public class Analyzer
         Filters.filterMin(skeletonImage, analysisImage, inputImage.width, inputImage.height); // dilate
         Filters.filterMin(analysisImage, skeletonImage, inputImage.width, inputImage.height); // dilate
 
-        // skeletonImage gets used later
+        // skeletonImage gets used later, which is why it's not released here
 
         if (params.shouldRemoveSmallParticles)
-            Particles.fillHoles(analysisImage, inputImage.width, inputImage.height, params.removeSmallParticlesThreshold, (byte)0xff, (byte)0);
+            Particles.fillHoles(
+                analysisImage,
+                inputImage.width,
+                inputImage.height,
+                params.removeSmallParticlesThreshold,
+                (byte)0xff,
+                (byte)0
+            );
 
         if (params.shouldFillHoles)
-            Particles.fillHoles(analysisImage, inputImage.width, inputImage.height, params.fillHolesValue, (byte)0, (byte)0xff);
+            Particles.fillHoles(
+                analysisImage,
+                inputImage.width,
+                inputImage.height,
+                params.fillHolesValue,
+                (byte)0,
+                (byte)0xff
+            );
 
-        if (params.shouldDrawOutline) {
+        if (params.shouldDrawOutline && params.shouldSaveResultImages) {
             uiToken.updateImageProgress("Drawing outline...");
 
             // TODO: implement strokeWidth
-            Outline.drawOutline(overlayImage, params.outlineColor.value, params.outlineSize, analysisImage, inputImage.width, inputImage.height);
+            Outline.drawOutline(
+                overlayImage,
+                params.outlineColor.value,
+                params.outlineSize,
+                analysisImage,
+                inputImage.width,
+                inputImage.height
+            );
         }
 
         data.vesselPixelArea = BatchUtils.countForegroundPixels(analysisImage, inputImage.width, inputImage.height);
@@ -416,41 +418,32 @@ public class Analyzer
 
         data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
 
-        if (params.shouldDrawConvexHull) {
+        if (params.shouldDrawConvexHull && params.shouldSaveResultImages) {
             uiToken.updateImageProgress("Drawing convex hull...");
-            PolygonRoi convexHullRoi = new PolygonRoi(data.convexHull.polygon(), 2);
-            convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
-            convexHullRoi.setStrokeWidth(params.convexHullSize);
-            data.allantoisOverlay.add(convexHullRoi);
+
+            Canvas.drawLines(
+                overlayImage,
+                inputImage.width,
+                inputImage.height,
+                null,
+                data.convexHull.buf,
+                data.convexHull.size,
+                2,
+                params.convexHullColor.value,
+                params.convexHullSize
+            );
         }
 
         uiToken.updateImageProgress("Computing skeleton...");
 
         if (params.shouldUseFastSkeletonizer) {
             byte[] zha84ScratchImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
-            Zha84.skeletonize(skeletonImage, data.zha84ScratchImage, analysisImage, inputImage.width, inputImage.height);
+            Zha84.skeletonize(skeletonImage, zha84ScratchImage, analysisImage, inputImage.width, inputImage.height);
             ByteBufferPool.release(zha84ScratchImage);
         }
         else {
             int bitDepth = 8;
-            Object[] layers;
-
-            /*
-            if (skelBreadth > 1) {
-                ImageStack stack = data.iplusSkeleton.getStack();
-                skelBreadth = Math.min(skelBreadth, Lee94.MAX_BREADTH);
-
-                layers = new Object[skelBreadth];
-                for (int i = 0; i < skelBreadth; i++)
-                    layers[i] = stack.getPixels(i + 1);
-            }
-            else {
-                layers = new Object[1];
-                layers[0] = data.iplusSkeleton.getProcessor().getPixels();
-            }
-            */
-
-            layers = new Object[1];
+            Object[] layers = new Object[1];
             layers[0] = analysisImage;
 
             Lee94.skeletonize(
@@ -499,63 +492,49 @@ public class Analyzer
         //uiToken.updateImageProgress("Generating skeleton points...");
         //uiToken.updateImageProgress("Computing junctions...");
 
-        if (params.shouldDrawSkeleton) {
+        if (params.shouldDrawSkeleton && params.shouldSaveResultImages) {
             uiToken.updateImageProgress("Drawing skeleton...");
 
-            Color skelColor = params.skeletonColor.toColor();
+            Canvas.drawCircles(
+                overlayImage,
+                inputImage.width,
+                inputImage.height,
+                null,
+                data.skelResult.slabList.buf,
+                data.skelResult.slabList.size,
+                3,
+                params.skeletonColor.value,
+                params.skeletonSize
+            );
 
-            for (int i = 0; i < data.skelResult.slabList.size; i += 3) {
-                int x = data.skelResult.slabList.buf[i];
-                int y = data.skelResult.slabList.buf[i+1];
-
-                OvalRoi r = new OvalRoi(
-                    x - params.skeletonSize / 2,
-                    y - params.skeletonSize / 2,
-                    params.skeletonSize,
-                    params.skeletonSize
-                );
-                r.setStrokeWidth((float)params.skeletonSize);
-                r.setStrokeColor(skelColor);
-                data.allantoisOverlay.add(r);
-            }
-
-            for (int i = 0; i < data.skelResult.removedJunctions.size; i++) {
-                int idx = data.skelResult.removedJunctions.buf[i];
-                int x = data.skelResult.junctionVoxels.buf[idx];
-                int y = data.skelResult.junctionVoxels.buf[idx+1];
-
-                OvalRoi r = new OvalRoi(x, y, 1, 1);
-                r.setStrokeWidth((float)params.skeletonSize);
-                r.setStrokeColor(skelColor);
-                data.allantoisOverlay.add(r);
-            }
+            Canvas.drawCircles(
+                overlayImage,
+                inputImage.width,
+                inputImage.height,
+                data.skelResult.removedJunctions.buf,
+                data.skelResult.junctionVoxels.buf,
+                data.skelResult.removedJunctions.size,
+                3,
+                params.skeletonColor.value,
+                params.skeletonSize
+            );
         }
 
-        if (params.shouldDrawBranchPoints) {
+        if (params.shouldDrawBranchPoints && params.shouldSaveResultImages) {
             uiToken.updateImageProgress("Drawing branch points...");
-            Color branchColor = params.branchingPointsColor.toColor();
 
-            for (int i = 0; i < data.skelResult.isolatedJunctions.size; i++) {
-                int idx = data.skelResult.isolatedJunctions.buf[i];
-                int x = data.skelResult.junctionVoxels.buf[idx];
-                int y = data.skelResult.junctionVoxels.buf[idx+1];
-
-                Roi r = new OvalRoi(
-                    x - params.branchingPointsSize / 2,
-                    y - params.branchingPointsSize / 2,
-                    params.branchingPointsSize,
-                    params.branchingPointsSize
-                );
-                r.setStrokeWidth(params.branchingPointsSize);
-                r.setStrokeColor(branchColor);
-                data.allantoisOverlay.add(r);
-            }
+            Canvas.drawCircles(
+                overlayImage,
+                inputImage.width,
+                inputImage.height,
+                data.skelResult.isolatedJunctions.buf,
+                data.skelResult.junctionVoxels.buf,
+                data.skelResult.isolatedJunctions.size,
+                3,
+                params.branchingPointsColor.value,
+                params.branchingPointsSize
+            );
         }
-
-        data.imageResult.setOverlay(data.allantoisOverlay);
-
-        //updateOverlay()
-        //populateResults()
 
         double areaScalingFactor = linearScalingFactor * linearScalingFactor;
 

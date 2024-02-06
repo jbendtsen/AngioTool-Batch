@@ -2,6 +2,7 @@ package Batch;
 
 public class Outline
 {
+    // TODO: Add LUT for stroke direction
     static final int[] firstPointIsTopLeft = new int[] {
         0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, 0, -1, 0
     };
