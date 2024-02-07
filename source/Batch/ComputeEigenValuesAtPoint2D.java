@@ -16,12 +16,15 @@ public class ComputeEigenValuesAtPoint2D
         double sigma,
         int threshold
     ) {
-        runner.runSlices(
-            new Params(input, width, height, sigma, threshold > 0 ? threshold : 3, output),
-            maxWorkers,
-            width,
-            IN_PLACE_THRESHOLD - 1
-        );
+        try {
+            runner.runSlices(
+                new Params(input, width, height, sigma, threshold > 0 ? threshold : 3, output),
+                maxWorkers,
+                width,
+                IN_PLACE_THRESHOLD - 1
+            );
+        }
+        catch (Throwable ignored) {}
     }
 
     static float findSecondHessianEigenvalueAtPoint2D(float[] data, int width, int x, int y, double sigma)

@@ -11,6 +11,7 @@ import Batch.BatchAnalysisUi;
 import Batch.BatchUtils;
 import Batch.Canvas;
 import Batch.ConvexHull;
+import Batch.Filters;
 import Batch.ImageUtils;
 import Batch.IntVector;
 import Batch.ISliceRunner;
@@ -32,6 +33,7 @@ import ij.gui.Roi;
 import ij.gui.ShapeRoi;
 import ij.measure.Calibration;
 import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -52,6 +54,7 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Hashtable;
@@ -123,7 +126,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<int[]> al;
    private IntVector convexHull;
    private double convexHullArea;
-   //private Overlay allantoisOverlay;
+   private int[] allantoisOverlay;
    //private Roi outlineRoi;
    //private PolygonRoi convexHullRoi;
    //private ArrayList<Roi> skeletonRoi;
@@ -943,12 +946,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          this.currentDir = fc.getCurrentDirectory();
          if (this.imageFile != null) {
             this.results.image = this.imageFile;
-            this.imageOriginal = IJ.openImage(this.imageFile.getAbsolutePath());
+            this.imageOriginal = this.openImageAndIsolateDominantChannel(this.imageFile.getAbsolutePath());
             if (this.imageOriginal != null) {
-               if (this.imageOriginal.getType() == 4) {
-                  this.imageOriginal = RGBStackSplitter.split(this.imageOriginal, "green");
-               }
-
                if (this.resizeImageCheckBox.isSelected()) {
                   ImageProcessor resized = this.imageOriginal.getProcessor().resize((int)((double)this.imageOriginal.getWidth() / params.resizingFactor));
                   this.imageOriginal.setProcessor(resized);
@@ -1504,66 +1503,73 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          params.skeletonColor = new Rgb(this.skeletonColorRoundedPanel.getBackground());
          params.branchingPointsColor = new Rgb(this.branchingPointsRoundedPanel.getBackground());
          params.convexHullColor = new Rgb(this.convexHullRoundedPanel.getBackground());
+
          if (params.shouldShowOverlayOrGallery) {
-            if (this.outlineRoi != null && params.shouldDrawOutline) {
-               this.outlineRoi.setStrokeColor(params.outlineColor.toColor());
-               params.outlineSize = getSpinnerValueInt(this.outlineSpinner);
-               this.outlineRoi.setStrokeWidth((float)params.outlineSize);
-               this.allantoisOverlay.add(this.outlineRoi);
-            }
-
+            int width = this.imageOriginal.getWidth();
+            int height = this.imageOriginal.getWidth();
             if (this.skelResult != null) {
-               params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
-               this.skeletonRoi = this.computeSkeletonRoi((int)params.skeletonSize);
-            }
 
-            if (this.skeletonRoi != null && params.shouldDrawSkeleton) {
-               params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
-               Color skelColor = params.skeletonColor.toColor();
+               if (params.shouldDrawSkeleton) {
+                  params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
+                  int skelColor = params.skeletonColor.value;
 
-               for(int i = 0; i < this.skeletonRoi.size(); ++i) {
-                  Roi r = (Roi)this.skeletonRoi.get(i);
-                  r.setStrokeWidth((float)params.skeletonSize);
-                  r.setStrokeColor(skelColor);
-                  this.allantoisOverlay.add(r);
+                  Canvas.drawCircles(
+                     allantoisOverlay,
+                     width,
+                     height,
+                     null,
+                     this.skelResult.slabList.buf,
+                     this.skelResult.slabList.size,
+                     3,
+                     params.skeletonColor.value,
+                     params.skeletonSize
+                  );
+                  Canvas.drawCircles(
+                     allantoisOverlay,
+                     width,
+                     height,
+                     this.skelResult.removedJunctions.buf,
+                     this.skelResult.junctionVoxels.buf,
+                     this.skelResult.removedJunctions.size,
+                     3,
+                     params.skeletonColor.value,
+                     params.skeletonSize
+                  );
                }
 
-               for(int i = 0; i < this.skelResult.removedJunctions.size; ++i) {
-                  int idx = this.skelResult.removedJunctions.buf[i];
-                  int x = this.skelResult.junctionVoxels.buf[idx];
-                  int y = this.skelResult.junctionVoxels.buf[idx+1];
-                  OvalRoi r = new OvalRoi(x, y, 1, 1);
-                  r.setStrokeWidth((float)params.skeletonSize);
-                  r.setStrokeColor(skelColor);
-                  this.allantoisOverlay.add(r);
+               if (params.shouldDrawBranchPoints) {
+                  int branchingPointsSize = getSpinnerValueInt(this.branchingPointsSpinner);
+                  Canvas.drawCircles(
+                     allantoisOverlay,
+                     width,
+                     height,
+                     this.skelResult.isolatedJunctions.buf,
+                     this.skelResult.junctionVoxels.buf,
+                     this.skelResult.isolatedJunctions.size,
+                     3,
+                     params.branchingPointsColor.value,
+                     branchingPointsSize
+                  );
                }
             }
 
-            if (this.skelResult != null) {
-               this.junctionsRoi = this.computeJunctionsRoi(getSpinnerValueInt(this.branchingPointsSpinner));
-            }
-
-            if (this.junctionsRoi != null && params.shouldDrawBranchPoints) {
-               params.branchingPointsSize = getSpinnerValueInt(this.branchingPointsSpinner);
-               Color branchColor = params.branchingPointsColor.toColor();
-
-               for(int i = 0; i < this.junctionsRoi.size(); ++i) {
-                  Roi r = (Roi)this.junctionsRoi.get(i);
-                  r.setStrokeWidth((float)params.branchingPointsSize);
-                  r.setStrokeColor(branchColor);
-                  this.allantoisOverlay.add(r);
-               }
-            }
-
-            if (this.convexHullRoi != null && params.shouldDrawConvexHull) {
-               this.convexHullRoi.setStrokeColor(params.convexHullColor.toColor());
+            if (params.shouldDrawConvexHull) {
                params.convexHullSize = getSpinnerValueInt(convexHullSizeSpinner);
-               this.convexHullRoi.setStrokeWidth((float)params.convexHullSize);
-               this.allantoisOverlay.add(this.convexHullRoi);
+               Canvas.drawLines(
+                  allantoisOverlay,
+                  width,
+                  height,
+                  null,
+                  this.convexHull.buf,
+                  this.convexHull.size,
+                  2,
+                  params.convexHullColor.value,
+                  params.convexHullSize
+               );
             }
          }
 
-         this.imageResult.setOverlay(this.allantoisOverlay);
+         this.imageResult = applyOverlayToResult(this.imageResult, this.imageOriginal, this.allantoisOverlay);
       }
    }
 
@@ -1593,33 +1599,36 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       ImageProcessor temp = this.tubenessIp.duplicate();
       temp = temp.convertToByte(true);
-      BatchUtils.thresholdFlexible(temp, this.thresholdRangeSliderLow.getValue(), this.thresholdRangeSliderHigh.getValue());
       this.imageThresholded.setProcessor(temp);
-      temp.setThreshold(255.0, 255.0, 2);
-      ImageProcessor check = this.imageThresholded.getProcessor().duplicate();
-      final int iterations = 2;
 
       int width = this.imageThresholded.getWidth();
       int height = this.imageThresholded.getHeight();
 
-      byte[] properImage = new byte[width * height];
+      BatchUtils.thresholdFlexible(
+         (byte[])this.imageThresholded.getProcessor().getPixels(),
+         width,
+         height,
+         this.thresholdRangeSliderLow.getValue(),
+         this.thresholdRangeSliderHigh.getValue()
+      );
+
+      temp.setThreshold(255.0, 255.0, 2);
+      //ImageProcessor check = this.imageThresholded.getProcessor().duplicate();
+
+      byte[] thresholdedPixels = (byte[])this.imageThresholded.getProcessor().getPixels();
       byte[] tempImage = new byte[width * height];
 
-      Filters.filterMax(tempImage, properImage, width, height);
-      Filters.filterMax(properImage, tempImage, width, height);
-      Filters.filterMin(tempImage, properImage, width, height);
-      Filters.filterMin(properImage, tempImage, width, height);
+      Filters.filterMax(tempImage, thresholdedPixels, width, height);
+      Filters.filterMax(thresholdedPixels, tempImage, width, height);
+      Filters.filterMin(tempImage, thresholdedPixels, width, height);
+      Filters.filterMin(thresholdedPixels, tempImage, width, height);
 
       if (this.smallParticlesCheckBox.isSelected()) {
-         Particles.fillHoles(this.imageThresholded, 0, (int)this.smallParticlesRangeSlider2.getValue(), 0.0, 1.0, 0);
+         Particles.fillHoles(thresholdedPixels, width, height, (int)this.smallParticlesRangeSlider2.getValue(), (byte)0xff, (byte)0);
       }
 
       if (this.fillHolesCheckBox.isSelected()) {
-         this.imageThresholded.killRoi();
-         ImageProcessor temp1 = this.imageThresholded.getProcessor();
-         temp1.invert();
-         Particles.fillHoles(this.imageThresholded, 0, (int)this.fillHolesRangeSlider2.getValue(), 0.0, 1.0, 0);
-         temp1.invert();
+         Particles.fillHoles(thresholdedPixels, width, height, (int)this.fillHolesRangeSlider2.getValue(), (byte)0, (byte)0xff);
       }
 
       if (this.allantoisOverlay == null || this.allantoisOverlay.length != width * height)
@@ -1627,16 +1636,18 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       else
          Arrays.fill(this.allantoisOverlay, 0);
 
-      Outline.drawOutline(
-         this.allantoisOverlay,
-         this.outlineRoundedPanel.getBackground(),
-         getSpinnerValueDouble(this.outlineSpinner),
-         this.imageThresholded.getProcessor(),
-         width,
-         height
-      );
+      if (params.shouldDrawOutline) {
+         Outline.drawOutline(
+            this.allantoisOverlay,
+            this.outlineRoundedPanel.getBackground().getRGB(),
+            getSpinnerValueDouble(this.outlineSpinner),
+            thresholdedPixels,
+            width,
+            height
+         );
+      }
 
-      this.imageResult.setOverlay(this.allantoisOverlay);
+      this.imageResult = applyOverlayToResult(this.imageResult, this.imageOriginal, this.allantoisOverlay);
 
       /*
       ImagePlus iplus = new ImagePlus("tubenessIp", this.imageThresholded.getProcessor());
@@ -2186,6 +2197,81 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       updateStatus(95, " Saving result image... ");
       updateStatus(100, "Done... ");
       return "Good";
+   }
+
+   ImagePlus openImageAndIsolateDominantChannel(String absPath) {
+      ImagePlus image = IJ.openImage(absPath);
+      if (image != null) {
+         int width = image.getWidth();
+         int height = image.getHeight();
+         int area = width * height;
+         if (image.getType() == ImagePlus.COLOR_RGB) {
+            int[] rgbPixels = (int[])((ColorProcessor)image.getProcessor()).getPixels();
+            long redTally = 0;
+            long greenTally = 0;
+            long blueTally = 0;
+            for (int i = 0; i < area; i++) {
+               int r = (rgbPixels[i] >> 16) & 0xff;
+               int g = (rgbPixels[i] >> 8) & 0xff;
+               int b = rgbPixels[i] & 0xff;
+               redTally += r;
+               greenTally += g;
+               blueTally += b;
+            }
+
+            int mask;
+            if (redTally >= greenTally && redTally >= blueTally)
+               mask = 0xffff0000;
+            else if (greenTally >= blueTally)
+               mask = 0xff00ff00;
+            else
+               mask = 0xff0000ff;
+
+            for (int i = 0; i < area; i++)
+               rgbPixels[i] &= mask;
+         }
+         else {
+            byte[] pixels = (byte[])image.getProcessor().convertToByte(true).getPixels();
+            int[] rgbPixels = new int[area];
+            for (int i = 0; i < area; i++) {
+               int p = pixels[i] & 0xff;
+               rgbPixels[i] = (p << 24) | (p << 8);
+            }
+            image.setProcessor(new ColorProcessor(width, height, rgbPixels));
+         }
+      }
+      return image;
+   }
+
+   ImagePlus applyOverlayToResult(ImagePlus result, ImagePlus original, int[] overlay) {
+      int width = original.getWidth();
+      int height = original.getHeight();
+      if (result == original || result == null)
+         result = new ImagePlus("Result", new ColorProcessor(width, height));
+
+      int[] output = (int[])result.getProcessor().getPixels();
+      int[] input = (int[])original.getProcessor().getPixels();
+
+      int area = width * height;
+      for (int i = 0; i < area; i++) {
+         double a1 = (double)((overlay[i] >> 24) & 0xff) / 255.0;
+         double r1 = (double)((overlay[i] >> 16) & 0xff) / 255.0;
+         double g1 = (double)((overlay[i] >> 8) & 0xff) / 255.0;
+         double b1 = (double)(overlay[i] & 0xff) / 255.0;
+
+         double a2 = (double)((input[i] >> 24) & 0xff) / 255.0;
+         double r2 = (double)((input[i] >> 16) & 0xff) / 255.0;
+         double g2 = (double)((input[i] >> 8) & 0xff) / 255.0;
+         double b2 = (double)(input[i] & 0xff) / 255.0;
+
+         output[i] =
+            ((int)(255.0 * (1.0 - ((1.0 - a1) * (1.0 - a2)))) << 24 & 0xff000000) |
+            ((int)(255.0 * ((1.0 - a1) * r2 + a1 * r1)) << 16 & 0xff0000) |
+            ((int)(255.0 * ((1.0 - a1) * g2 + a1 * g1)) << 8 & 0xff00) |
+            ((int)(255.0 * ((1.0 - a1) * b2 + a1 * b1)) & 0xff);
+      }
+
+      return result;
    }
 
    class AngioToolWorker extends SwingWorker<Object, Object> {

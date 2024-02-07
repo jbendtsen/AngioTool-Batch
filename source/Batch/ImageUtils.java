@@ -6,6 +6,7 @@ import ij.ImageStack;
 import ij.measure.Calibration;
 import ij.process.ImageProcessor;
 import ij.process.ColorProcessor;
+import javax.swing.ImageIcon;
 
 public class ImageUtils
 {
@@ -119,9 +120,18 @@ public class ImageUtils
         IntBufferPool.release(rgbCopy);
     }
 
-    public static Bitmap releaseImage(Bitmap image)
+    public static void releaseImage(Bitmap image)
     {
         for (int i = 0; i < image.layers.size; i++)
             image.layers.buf[i].releaseBuffers();
+    }
+
+    public static ImageIcon openAsImageIcon(String absolutePath)
+    {
+        ImagePlus ip = IJ.openImage(absolutePath);
+        if (ip == null)
+            return null;
+
+        return new ImageIcon(ip.getImage());
     }
 }

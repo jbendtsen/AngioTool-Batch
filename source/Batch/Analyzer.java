@@ -15,11 +15,11 @@ public class Analyzer
     public static final int MAX_WORKERS = 24;
 
     public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
-        2, /* corePoolSize */
-        MAX_WORKERS + 4, /* maximumPoolSize */
-        30, /* keepAliveTime */
-        TimeUnit.SECONDS, /* unit */
-        new LinkedBlockingQueue<>() /* workQueue */
+        /* corePoolSize */ 2,
+        /* maximumPoolSize */ MAX_WORKERS + 4,
+        /* keepAliveTime */ 30,
+        /* unit */ TimeUnit.SECONDS,
+        /* workQueue */ new LinkedBlockingQueue<>()
     );
 
     static class Stats
@@ -82,7 +82,7 @@ public class Analyzer
         }
     }
 
-    static int calculateUpdateCountPerImage(AnalyzerParameters params) {
+    static int determineUpdateCountPerImage(AnalyzerParameters params) {
         int count = 5;
         if (params.shouldDrawOutline && params.shouldSaveResultImages)
             count++;
@@ -133,7 +133,7 @@ public class Analyzer
 
         double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
 
-        uiToken.startProgressBars(inputs.size(), calculateUpdateCountPerImage(params));
+        uiToken.startProgressBars(inputs.size(), determineUpdateCountPerImage(params));
         boolean startedAnyImages = false;
 
         Scratch data = new Scratch();
@@ -393,7 +393,8 @@ public class Analyzer
                 (byte)0xff
             );
 
-        if (params.shouldDrawOutline && params.shouldSaveResultImages) {
+        if (params.shouldDrawOutline && params.shouldSaveResultImages)
+        {
             uiToken.updateImageProgress("Drawing outline...");
 
             // TODO: implement strokeWidth
@@ -409,16 +410,19 @@ public class Analyzer
 
         data.vesselPixelArea = BatchUtils.countForegroundPixels(analysisImage, inputImage.width, inputImage.height);
 
-        if (params.shouldComputeLacunarity) {
+        if (params.shouldComputeLacunarity)
+        {
             uiToken.updateImageProgress("Computing lacunarity...");
+
             Lacunarity2.computeLacunarity(data.lacunarity, analysisImage, inputImage.width, inputImage.height, 10, 10, 5);
         }
 
-        uiToken.updateImageProgress("Computing convex hull...");
+        uiToken.updateImageProgress("Building convex hull...");
 
         data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
 
-        if (params.shouldDrawConvexHull && params.shouldSaveResultImages) {
+        if (params.shouldDrawConvexHull && params.shouldSaveResultImages)
+        {
             uiToken.updateImageProgress("Drawing convex hull...");
 
             Canvas.drawLines(
@@ -473,7 +477,8 @@ public class Analyzer
 
         double averageVesselDiameter = 0.0;
 
-        if (params.shouldComputeThickness) {
+        if (params.shouldComputeThickness)
+        {
             uiToken.updateImageProgress("Computing thickness...");
 
             float[] thicknessImage = FloatBufferPool.acquireAsIs(inputImage.width * inputImage.height);
@@ -492,7 +497,8 @@ public class Analyzer
         //uiToken.updateImageProgress("Generating skeleton points...");
         //uiToken.updateImageProgress("Computing junctions...");
 
-        if (params.shouldDrawSkeleton && params.shouldSaveResultImages) {
+        if (params.shouldDrawSkeleton && params.shouldSaveResultImages)
+        {
             uiToken.updateImageProgress("Drawing skeleton...");
 
             Canvas.drawCircles(
@@ -506,7 +512,6 @@ public class Analyzer
                 params.skeletonColor.value,
                 params.skeletonSize
             );
-
             Canvas.drawCircles(
                 overlayImage,
                 inputImage.width,
@@ -520,7 +525,8 @@ public class Analyzer
             );
         }
 
-        if (params.shouldDrawBranchPoints && params.shouldSaveResultImages) {
+        if (params.shouldDrawBranchPoints && params.shouldSaveResultImages)
+        {
             uiToken.updateImageProgress("Drawing branch points...");
 
             Canvas.drawCircles(

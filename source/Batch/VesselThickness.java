@@ -14,7 +14,10 @@ public class VesselThickness
 
         step1(input, output, width, height, thresh);
 
-        runner.runSlices(new Step2(output, width, height), maxWorkers, width, Step2.IN_PLACE_THRESHOLD - 1);
+        try {
+            runner.runSlices(new Step2(output, width, height), maxWorkers, width, Step2.IN_PLACE_THRESHOLD - 1);
+        }
+        catch (Throwable ignored) {}
 
         // There was a step 3, but since it only iterated over the depth of the image, it was entirely redundant
 

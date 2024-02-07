@@ -211,12 +211,15 @@ public class Lee94 {
         data.params.finalSimplePoints.size = 0;
         data.params.planes = planes;
 
-        runner.runSlices(
-            data.params,
-            maxWorkers,
-            data.params.width,
-            IN_PLACE_THRESHOLD - 1
-        );
+        try {
+            runner.runSlices(
+                data.params,
+                maxWorkers,
+                data.params.width,
+                IN_PLACE_THRESHOLD - 1
+            );
+        }
+        catch (Throwable ignored) {}
 
         data.params.planes = null;
 
