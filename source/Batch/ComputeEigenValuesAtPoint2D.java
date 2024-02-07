@@ -1,5 +1,6 @@
 package Batch;
 
+import java.util.Arrays;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ComputeEigenValuesAtPoint2D
@@ -16,6 +17,9 @@ public class ComputeEigenValuesAtPoint2D
         double sigma,
         int threshold
     ) {
+        int area = width * height;
+        Arrays.fill(output, 0, width, 0.0f);
+        Arrays.fill(output, area-width, area, 0.0f);
         try {
             runner.runSlices(
                 new Params(input, width, height, sigma, threshold > 0 ? threshold : 3, output),
@@ -93,10 +97,13 @@ public class ComputeEigenValuesAtPoint2D
             for (int y = 1; y < height - 1; ++y) {
                 for (int x = start; x < end; ++x) {
                     int index = x + width*y;
+                    float value = 0.0f;
                     if (data[index] > threshold) {
-                        float value = findSecondHessianEigenvalueAtPoint2D(data, width, x, y, sigma);
-                        output[index] = value < 0.0f ? -value : 0.0f;
+                        float ev = findSecondHessianEigenvalueAtPoint2D(data, width, x, y, sigma);
+                        if (ev < 0.0f)
+                            value = -ev;
                     }
+                    output[index] = value;
                 }
             }
 
