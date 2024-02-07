@@ -18,27 +18,6 @@ public class Tubeness
         for (int i = 0; i < area; i++)
             image[i] = (float)(input[i] & 0xff);
 
-        byte[] fileOutput = new byte[area * 4];
-        for (int i = 0; i < area * 4; i += 4) {
-            int bits = Float.floatToIntBits(image[i>>2]);
-            fileOutput[i] = (byte)(bits >> 24);
-            fileOutput[i+1] = (byte)(bits >> 16);
-            fileOutput[i+2] = (byte)(bits >> 8);
-            fileOutput[i+3] = (byte)bits;
-        }
-        try {
-            java.nio.file.Files.write(
-                java.nio.file.FileSystems.getDefault().getPath("", "tubeness-float-r7.bin"),
-                fileOutput,
-                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
-                java.nio.file.StandardOpenOption.CREATE,
-                java.nio.file.StandardOpenOption.WRITE
-            );
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
         float[] eigenOutput = FloatBufferPool.acquireAsIs(area);
 
         float minResult = Float.MAX_VALUE;
@@ -88,6 +67,19 @@ public class Tubeness
 
         for (int i = 0; i < area; i++)
             output[i] = (byte)image[i];
+
+        try {
+            java.nio.file.Files.write(
+                java.nio.file.FileSystems.getDefault().getPath("", "tubeness-result-byte-r7.bin"),
+                output,
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.WRITE
+            );
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
 
         FloatBufferPool.release(eigenOutput);
         FloatBufferPool.release(image);
@@ -154,11 +146,11 @@ public class Tubeness
                 float avg = 0.0f;
                 for (int f = -ksHalfY; f <= ksHalfY; f++) {
                     // yy := mirror(y+f)
-                    //   int yf = abs(y+f) % (2*width)
-                    int yf = (y+f - (((y+f) >> 31) & ((y+f) << 1))) % ((width-1) << 1);
-                    int cond = (width - 1 - yf) >> 31;
-                    //   int yy = yf >= width ? 2*width - yf : yf;
-                    int yy = ((cond ^ yf) + cond) + (cond & (width << 1));
+                    //   int yf = abs(y+f) % (2*height)
+                    int yf = (y+f - (((y+f) >> 31) & ((y+f) << 1))) % ((height-1) << 1);
+                    int cond = (height - 1 - yf) >> 31;
+                    //   int yy = yf >= height ? 2*height - yf : yf;
+                    int yy = ((cond ^ yf) + cond) + (cond & (height << 1));
                     avg += kernelY[f + ksHalfY] * scratch[x + width * yy];
                 }
                 image[x + width * y] = avg;
