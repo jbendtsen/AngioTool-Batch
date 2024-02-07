@@ -37,9 +37,9 @@ public class Outline
         for (int y = -1; y < height; y += 2) {
             for (int x = -1; x < width; x += 2) {
                 int topLeft     = (x   + width * y)     & ~((x | y) >> 31);
-                int topRight    = (x+1 + width * y)     & ~(((width-1-x) | y)  >> 31);
-                int bottomLeft  = (x   + width * (y+1)) & ~((x | (height-1-y)) >> 31);
-                int bottomRight = (x+1 + width * (y+1)) & ~(((width-1-x) | (height-1-y)) >> 31);
+                int topRight    = (x+1 + width * y)     & ~(((width-2-x) | y)  >> 31);
+                int bottomLeft  = (x   + width * (y+1)) & ~((x | (height-2-y)) >> 31);
+                int bottomRight = (x+1 + width * (y+1)) & ~(((width-2-x) | (height-2-y)) >> 31);
 
                 int type =
                     ((image[topLeft]     >> 31) & 8) |

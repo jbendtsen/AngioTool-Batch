@@ -98,12 +98,12 @@ public class Tubeness
         pixelWidth = pixelWidth > 0.0F ? pixelWidth : 1.0F;
         pixelHeight = pixelHeight > 0.0F ? pixelHeight : 1.0F;
 
-        double sigmaW = sigma / pixelWidth;
+        double sigmaW = sigma; // / pixelWidth;
         int kernelSizeX = determineGaussianKernelSize(sigmaW);
         float[] kernelX = FloatBufferPool.acquireAsIs(kernelSizeX);
         populateGaussianKernel1D(kernelX, sigmaW);
 
-        double sigmaH = sigma / pixelHeight;
+        double sigmaH = sigma; // / pixelHeight;
         int kernelSizeY = determineGaussianKernelSize(sigmaH);
         float[] kernelY = FloatBufferPool.acquireAsIs(kernelSizeY);
         populateGaussianKernel1D(kernelY, sigmaH);
@@ -128,8 +128,8 @@ public class Tubeness
 
         final int ksHalfY = kernelSizeY / 2;
 
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
                 float avg = 0.0f;
                 for (int f = -ksHalfY; f <= ksHalfY; f++) {
                     // yy := mirror(y+f)
