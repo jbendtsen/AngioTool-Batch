@@ -8,7 +8,7 @@ source/Batch/IntBufferPool.java
 source/Batch/FloatBufferPool.java
 source/Batch/DoubleBufferPool.java
 lee94-simple-points.bin
-AngioTool-Batch.jar
+AngioTool-Batch*.jar
 AngioTool-Batch.exe
 launcher.coff
 angiotool_jar.h

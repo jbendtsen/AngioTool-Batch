@@ -18,6 +18,27 @@ public class Tubeness
         for (int i = 0; i < area; i++)
             image[i] = (float)(input[i] & 0xff);
 
+        byte[] fileOutput = new byte[area * 4];
+        for (int i = 0; i < area * 4; i += 4) {
+            int bits = Float.floatToIntBits(image[i>>2]);
+            fileOutput[i] = (byte)(bits >> 24);
+            fileOutput[i+1] = (byte)(bits >> 16);
+            fileOutput[i+2] = (byte)(bits >> 8);
+            fileOutput[i+3] = (byte)bits;
+        }
+        try {
+            java.nio.file.Files.write(
+                java.nio.file.FileSystems.getDefault().getPath("", "tubeness-float-r7.bin"),
+                fileOutput,
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.WRITE
+            );
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
         float[] eigenOutput = FloatBufferPool.acquireAsIs(area);
 
         float minResult = Float.MAX_VALUE;
