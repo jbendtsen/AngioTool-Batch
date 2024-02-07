@@ -18,6 +18,9 @@ public class Tubeness
         for (int i = 0; i < area; i++)
             image[i] = (float)(input[i] & 0xff);
 
+        float[] maxOutput = FloatBufferPool.acquireZeroed(area);
+
+        float[] gaussianOutput = FloatBufferPool.acquireAsIs(area);
         float[] eigenOutput = FloatBufferPool.acquireAsIs(area);
 
         float minResult = Float.MAX_VALUE;
@@ -33,14 +36,14 @@ public class Tubeness
             */
 
             // eigenOutput is used as scratch. Its contents are only useful after computeEigenvalues() is called
-            computeGaussianFastMirror(image, eigenOutput, width, height, sigma[s], pixelWidth, pixelHeight);
+            computeGaussianFastMirror(gaussianOutput, image, eigenOutput, width, height, sigma[s], pixelWidth, pixelHeight);
 
             final int threshold = -1;
             ComputeEigenValuesAtPoint2D.computeEigenvalues(
                 sliceRunner,
                 Analyzer.MAX_WORKERS,
                 eigenOutput,
-                image,
+                gaussianOutput,
                 width,
                 height,
                 sigma[s],
@@ -48,7 +51,7 @@ public class Tubeness
             );
 
             for(int i = 0; i < area; ++i) {
-                image[i] = Math.max(image[i], eigenOutput[i]);
+                maxOutput[i] = Math.max(maxOutput[i], eigenOutput[i]);
                 /*
                 if (eigenOutput[i] > image[i]) {
                     image[i] = eigenOutput[i];
@@ -65,9 +68,31 @@ public class Tubeness
             }
         }
 
-        for (int i = 0; i < area; i++)
-            output[i] = (byte)image[i];
+        byte[] outputFile = new byte[maxOutput.length * 4];
+        for (int i = 0; i < outputFile.length; i += 4) {
+            int bits = Float.floatToIntBits(maxOutput[i>>2]);
+            outputFile[i] = (byte)(bits >> 24);
+            outputFile[i+1] = (byte)(bits >> 16);
+            outputFile[i+2] = (byte)(bits >> 8);
+            outputFile[i+3] = (byte)bits;
+        }
+        try {
+            java.nio.file.Files.write(
+                java.nio.file.FileSystems.getDefault().getPath("", "tubeness-result-float-r7.bin"),
+                outputFile,
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.WRITE
+            );
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
 
+        for (int i = 0; i < area; i++)
+            output[i] = (byte)maxOutput[i];
+
+        /*
         try {
             java.nio.file.Files.write(
                 java.nio.file.FileSystems.getDefault().getPath("", "tubeness-result-byte-r7.bin"),
@@ -80,7 +105,10 @@ public class Tubeness
         catch (Exception ex) {
             ex.printStackTrace();
         }
+        */
 
+        FloatBufferPool.release(maxOutput);
+        FloatBufferPool.release(gaussianOutput);
         FloatBufferPool.release(eigenOutput);
         FloatBufferPool.release(image);
 
@@ -100,6 +128,7 @@ public class Tubeness
 
     // scratch MUST NOT ALIAS image
     private static void computeGaussianFastMirror(
+        float[] output,
         float[] image,
         float[] scratch,
         int width,
@@ -153,7 +182,7 @@ public class Tubeness
                     int yy = ((cond ^ yf) + cond) + (cond & (height << 1));
                     avg += kernelY[f + ksHalfY] * scratch[x + width * yy];
                 }
-                image[x + width * y] = avg;
+                output[x + width * y] = avg;
             }
         }
 
