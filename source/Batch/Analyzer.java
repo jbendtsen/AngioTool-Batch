@@ -123,6 +123,19 @@ public class Analyzer
                 skelResult = null;
             }
 
+            if (f1 != null) { f1.buf = null; } f1 = null;
+            if (f2 != null) { f2.buf = null; } f2 = null;
+            if (f3 != null) { f3.buf = null; } f3 = null;
+            if (f4 != null) { f4.buf = null; } f4 = null;
+            if (i1 != null) { i1.buf = null; } i1 = null;
+            if (i2 != null) { i2.buf = null; } i2 = null;
+            if (iv1 != null) { iv1.buf = null; } iv1 = null;
+            if (iv2 != null) { iv2.buf = null; } iv2 = null;
+            if (iv3 != null) { iv3.buf = null; } iv3 = null;
+            if (b1 != null) { b1.buf = null; } b1 = null;
+            if (b2 != null) { b2.buf = null; } b2 = null;
+            if (b3 != null) { b3.buf = null; } b3 = null;
+
             tubeness = null;
             lee94Scratch = null;
             lacunarity = null;
@@ -415,12 +428,16 @@ public class Analyzer
             params.thresholdHigh
         );
 
+        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " thresholded.pgm");
+
         byte[] skeletonImage = data.b2.buf;
 
         Filters.filterMax(skeletonImage, analysisImage, inputImage.width, inputImage.height); // erode
         Filters.filterMax(analysisImage, skeletonImage, inputImage.width, inputImage.height); // erode
         Filters.filterMin(skeletonImage, analysisImage, inputImage.width, inputImage.height); // dilate
         Filters.filterMin(analysisImage, skeletonImage, inputImage.width, inputImage.height); // dilate
+
+        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " filtered.pgm");
 
         int[] particleScratch = data.i1.buf;
 
@@ -490,6 +507,8 @@ public class Analyzer
                 params.convexHullSize
             );
         }
+
+        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " b4skel.pgm");
 
         uiToken.updateImageProgress("Computing skeleton...");
 

@@ -13,13 +13,13 @@ public class Filters
         int min = 0;
 
         for (int y = 1; y < height-1; y++) {
-            int offset = y * width;
-            p2 = inputPixels[offset-width] & 0xff;
-            p3 = inputPixels[offset-width+1] & 0xff;
-            p5 = inputPixels[offset] & 0xff;
-            p6 = inputPixels[offset+1] & 0xff;
-            p8 = inputPixels[offset+width] & 0xff;
-            p9 = inputPixels[offset+width+1] & 0xff;
+            int offset = 1 + width * y;
+            p2 = inputPixels[offset-width-1] & 0xff;
+            p3 = inputPixels[offset-width] & 0xff;
+            p5 = inputPixels[offset-1] & 0xff;
+            p6 = inputPixels[offset] & 0xff;
+            p8 = inputPixels[offset+width-1] & 0xff;
+            p9 = inputPixels[offset+width] & 0xff;
 
             for (int x = 1; x < width-1; x++) {
                 p1 = p2; p2 = p3;
@@ -98,13 +98,13 @@ public class Filters
         int max = 0;
 
         for (int y = 1; y < height-1; y++) {
-            int offset = y * width;
-            p2 = inputPixels[offset-width] & 0xff;
-            p3 = inputPixels[offset-width+1] & 0xff;
-            p5 = inputPixels[offset] & 0xff;
-            p6 = inputPixels[offset+1] & 0xff;
-            p8 = inputPixels[offset+width] & 0xff;
-            p9 = inputPixels[offset+width+1] & 0xff;
+            int offset = 1 + width * y;
+            p2 = inputPixels[offset-width-1] & 0xff;
+            p3 = inputPixels[offset-width] & 0xff;
+            p5 = inputPixels[offset-1] & 0xff;
+            p6 = inputPixels[offset] & 0xff;
+            p8 = inputPixels[offset+width-1] & 0xff;
+            p9 = inputPixels[offset+width] & 0xff;
 
             for (int x = 1; x < width-1; x++) {
                 p1 = p2; p2 = p3;
