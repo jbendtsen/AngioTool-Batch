@@ -4,14 +4,18 @@ public class Tubeness
 {
     public static final int IN_PLACE_THRESHOLD = 5;
 
+    public static class Scratch
+    {
+        Params params = new Params();
+    }
+
     public static void computeTubenessImage(
+        Scratch data,
         ISliceRunner sliceRunner,
         byte[] output,
         byte[] input,
         int width,
         int height,
-        float pixelWidth,
-        float pixelHeight,
         double[] sigma,
         int nSigmas
     ) {
@@ -33,11 +37,10 @@ public class Tubeness
                 scratchBuf,
                 width,
                 height,
-                sigma[s],
-                pixelWidth,
-                pixelHeight
+                sigma[s]
             );
             double highestValue = computeEigenvalues(
+                data,
                 sliceRunner,
                 Analyzer.MAX_WORKERS,
                 maxEigenOutput,
@@ -49,10 +52,11 @@ public class Tubeness
             maxResult = Math.max(maxResult, highestValue);
         }
 
-        float factor = maxResult > 0.0 ? (float)(255.0 / maxResult) : 1.0f;
+        float factor = maxResult > 0.0 ? (float)(256.0 / maxResult) : 1.0f;
+        System.out.println("maxResult: " + maxResult + ", factor: " + factor);
 
         for (int i = 0; i < area; i++)
-            output[i] = (byte)(Math.max(maxEigenOutput[i] * factor, 255.0f));
+            output[i] = (byte)(Math.min(maxEigenOutput[i] * factor, 255.0f));
 
         FloatBufferPool.release(maxEigenOutput);
         FloatBufferPool.release(gaussianOutput);
@@ -67,61 +71,47 @@ public class Tubeness
         float[] scratch,
         int width,
         int height,
-        double sigma,
-        float pixelWidth,
-        float pixelHeight
+        double sigma
     ) {
-        pixelWidth = pixelWidth > 0.0F ? pixelWidth : 1.0F;
-        pixelHeight = pixelHeight > 0.0F ? pixelHeight : 1.0F;
+        int kernelSize = determineGaussianKernelSize(sigma);
+        float[] kernel = FloatBufferPool.acquireAsIs(kernelSize);
+        populateGaussianKernel1D(kernel, sigma);
 
-        double sigmaW = sigma; // / pixelWidth;
-        int kernelSizeX = determineGaussianKernelSize(sigmaW);
-        float[] kernelX = FloatBufferPool.acquireAsIs(kernelSizeX);
-        populateGaussianKernel1D(kernelX, sigmaW);
-
-        double sigmaH = sigma; // / pixelHeight;
-        int kernelSizeY = determineGaussianKernelSize(sigmaH);
-        float[] kernelY = FloatBufferPool.acquireAsIs(kernelSizeY);
-        populateGaussianKernel1D(kernelY, sigmaH);
-
-        final int ksHalfX = kernelSizeX / 2;
+        final int ksHalf = kernelSize / 2;
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 float avg = 0.0f;
-                for (int f = -ksHalfX; f <= ksHalfX; f++) {
+                for (int f = -ksHalf; f <= ksHalf; f++) {
                     // xx := mirror(x+f)
                     //   int xf = abs(x+f) % (2*width)
                     int xf = (x+f - (((x+f) >> 31) & ((x+f) << 1))) % ((width-1) << 1);
                     int cond = (width - 1 - xf) >> 31;
                     //   int xx = xf >= width ? 2*width - xf : xf;
                     int xx = ((cond ^ xf) + cond) + (cond & (width << 1));
-                    avg += kernelX[f + ksHalfX] * image[xx + width * y];
+                    avg += kernel[f + ksHalf] * image[xx + width * y];
                 }
                 scratch[x + width * y] = avg;
             }
         }
 
-        final int ksHalfY = kernelSizeY / 2;
-
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 float avg = 0.0f;
-                for (int f = -ksHalfY; f <= ksHalfY; f++) {
+                for (int f = -ksHalf; f <= ksHalf; f++) {
                     // yy := mirror(y+f)
                     //   int yf = abs(y+f) % (2*height)
                     int yf = (y+f - (((y+f) >> 31) & ((y+f) << 1))) % ((height-1) << 1);
                     int cond = (height - 1 - yf) >> 31;
                     //   int yy = yf >= height ? 2*height - yf : yf;
                     int yy = ((cond ^ yf) + cond) + (cond & (height << 1));
-                    avg += kernelY[f + ksHalfY] * scratch[x + width * yy];
+                    avg += kernel[f + ksHalf] * scratch[x + width * yy];
                 }
                 output[x + width * y] = avg;
             }
         }
 
-        FloatBufferPool.release(kernelX);
-        FloatBufferPool.release(kernelY);
+        FloatBufferPool.release(kernel);
     }
 
     private static int determineGaussianKernelSize(double sigma)
@@ -162,6 +152,7 @@ public class Tubeness
     }
 
     static double computeEigenvalues(
+        Scratch data,
         ISliceRunner runner,
         int maxWorkers,
         float[] output,
@@ -172,16 +163,18 @@ public class Tubeness
     ) {
         double highestValue = 0.0;
         try {
-            Params params = new Params(input, width, height, sigma, 3, output, maxWorkers);
+            data.params.setup(input, width, height, sigma, 3, output);
             runner.runSlices(
-                params,
+                data.params,
                 maxWorkers,
                 width,
                 IN_PLACE_THRESHOLD - 1
             );
-            highestValue = params.finalMaximum;
+            highestValue = data.params.finalMaximum;
         }
-        catch (Throwable ignored) {}
+        catch (Throwable ex) {
+            ex.printStackTrace();
+        }
         return highestValue;
     }
 
@@ -222,16 +215,16 @@ public class Tubeness
 
     static class Params implements ISliceCompute
     {
-        public final float[] data;
-        public final int width;
-        public final int height;
-        public final double sigma;
-        public final float threshold;
-        public final float[] output;
-        public final double[] maximums;
+        public float[] data;
+        public int width;
+        public int height;
+        public double sigma;
+        public float threshold;
+        public float[] output;
+        public DoubleVector maximums = new DoubleVector();
         public double finalMaximum;
 
-        public Params(float[] data, int width, int height, double sigma, float threshold, float[] output, int maxWorkers)
+        public void setup(float[] data, int width, int height, double sigma, float threshold, float[] output)
         {
             this.data = data;
             this.width = width;
@@ -239,8 +232,13 @@ public class Tubeness
             this.sigma = sigma;
             this.threshold = threshold;
             this.output = output;
-            this.maximums = new double[maxWorkers];
             this.finalMaximum = 0.0;
+        }
+
+        @Override
+        public void initSlices(int nSlices)
+        {
+            this.maximums.resize(nSlices);
         }
 
         @Override
@@ -259,7 +257,7 @@ public class Tubeness
                         float ev = findSecondHessianEigenvalueAtPoint2D(data, width, x, y, sigma);
                         if (ev < 0.0f) {
                             output[index] = Math.max(output[index], -ev);
-                            maximums[sliceIdx] = Math.max(maximums[sliceIdx], -ev);
+                            maximums.buf[sliceIdx] = Math.max(maximums.buf[sliceIdx], -ev);
                         }
                     }
                 }
@@ -271,7 +269,7 @@ public class Tubeness
         @Override
         public void finishSlice(ISliceCompute.Result res)
         {
-            finalMaximum = Math.max(finalMaximum, maximums[res.idx]);
+            finalMaximum = Math.max(finalMaximum, maximums.buf[res.idx]);
         }
     }
 }

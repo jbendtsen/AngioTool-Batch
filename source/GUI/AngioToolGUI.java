@@ -1793,23 +1793,21 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (this.ipOriginal == null)
          return;
 
-      Calibration c = this.imageOriginal.getCalibration();
+      Tubeness.Scratch t = new Tubeness.Scratch();
 
       for(int i = 0; i < s.length; ++i) {
          double sigma = s[i];
          if (!this.allSigmas.contains(sigma)) {
             this.allSigmas.add(sigma);
-            Tubeness t = new Tubeness();
             double[] sigmaDouble = new double[]{sigma};
             this.imageTubeness = new ImagePlus("", this.ipOriginal);
             Tubeness.computeTubenessImage(
+               t,
                sliceRunner,
                (byte[])this.imageTubeness.getProcessor().getPixels(),
                (byte[])this.ipOriginal.getPixels(),
                this.imageTubeness.getWidth(),
                this.imageTubeness.getHeight(),
-               (float)c.pixelWidth,
-               (float)c.pixelHeight,
                sigmaDouble,
                1
             );
@@ -1840,21 +1838,19 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (this.ipOriginal == null)
          return;
 
-      Calibration c = this.imageOriginal.getCalibration();
+      Tubeness.Scratch t = new Tubeness.Scratch();
 
       if (!this.allSigmas.contains((double)low)) {
          this.allSigmas.add((double)low);
-         Tubeness t = new Tubeness();
          double[] s = new double[]{(double)low};
          this.imageTubeness = new ImagePlus("", this.ipOriginal);
          Tubeness.computeTubenessImage(
+            t,
             sliceRunner,
             (byte[])this.imageTubeness.getProcessor().getPixels(),
             (byte[])this.ipOriginal.getPixels(),
             this.imageTubeness.getWidth(),
             this.imageTubeness.getHeight(),
-            (float)c.pixelWidth,
-            (float)c.pixelHeight,
             s,
             1
          );
@@ -1863,17 +1859,15 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       if (!this.allSigmas.contains((double)high)) {
          this.allSigmas.add((double)high);
-         Tubeness t = new Tubeness();
          double[] s = new double[]{(double)high};
          this.imageTubeness = new ImagePlus("", this.ipOriginal);
          Tubeness.computeTubenessImage(
+            t,
             sliceRunner,
             (byte[])this.imageTubeness.getProcessor().getPixels(),
             (byte[])this.ipOriginal.getPixels(),
             this.imageTubeness.getWidth(),
             this.imageTubeness.getHeight(),
-            (float)c.pixelWidth,
-            (float)c.pixelHeight,
             s,
             1
          );
@@ -1954,13 +1948,12 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.tubenessIp = this.imageTubeness.getProcessor();
       Calibration c = this.imageTubeness.getCalibration();
       Tubeness.computeTubenessImage(
+         new Tubeness.Scratch(),
          sliceRunner,
          (byte[])this.tubenessIp.getPixels(),
          (byte[])this.ipOriginal.getPixels(),
          this.imageTubeness.getWidth(),
          this.imageTubeness.getHeight(),
-         (float)c.pixelWidth,
-         (float)c.pixelHeight,
          params.sigmas,
          params.sigmas.length
       );

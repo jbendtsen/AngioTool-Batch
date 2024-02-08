@@ -67,13 +67,15 @@ public class ImageUtils
             int[] rgb = IntBufferPool.acquireAsIs(area);
             if (outUseSingleChannel) {
                 byte[] channel = layer.getSelectedChannel();
+                int shift = (2-layer.selectedChannelIdx) * 8;
                 for (int i = 0; i < area; i++) {
                     int p = channel[i] & 0xff;
-                    rgb[i] = (p << 16) | (p << 8) | p;
+                    rgb[i] = 0xff000000 | (p << shift);
                 }
             }
             else {
-                System.arraycopy(pixels, 0, rgb, 0, area);
+                for (int i = 0; i < area; i++)
+                    rgb[i] = 0xff000000 | pixels[i];
             }
 
             Bitmap.CombinedLayer outLayer = new Bitmap.CombinedLayer();
@@ -110,14 +112,17 @@ public class ImageUtils
         int[] rgbCopy = null;
         int[] rgbOriginal = layer.getRgb();
 
-        if (rgbOriginal == null)
-            rgbCopy = layer.acquireRgbCopy(image.width, image.height);
+        // ImageJ requires that a buffer passed into the ColorProcessor constructor must have a length equal to width*height.
+        // What if it's bigger? That should be fine, right? ImageJ disagrees.
+        // This is unfortunate, since our BufferPool design allows for buffers larger than what is requested to be returned.
+        if (rgbOriginal == null || rgbOriginal.length != image.width * image.height) {
+            rgbCopy = new int[image.width * image.height];
+            layer.exportRgb(rgbCopy, image.width, image.height);
+        }
 
-        ColorProcessor proc = new ColorProcessor(image.width, image.height, rgbOriginal != null ? rgbOriginal : rgbCopy);
+        ColorProcessor proc = new ColorProcessor(image.width, image.height, rgbCopy != null ? rgbCopy : rgbOriginal);
         ImagePlus iplus = new ImagePlus(null, proc);
         IJ.saveAs(iplus, format, absPath);
-
-        IntBufferPool.release(rgbCopy);
     }
 
     public static void releaseImage(Bitmap image)
@@ -133,5 +138,24 @@ public class ImageUtils
             return null;
 
         return new ImageIcon(ip.getImage());
+    }
+
+    public static void writePgm(byte[] pixels, int width, int height, String title) {
+        byte[] header = ("P5\n" + width + " " + height + "\n255\n").getBytes();
+        ByteVectorOutputStream out = new ByteVectorOutputStream(header.length + pixels.length);
+        out.add(header);
+        out.add(pixels);
+        try {
+            java.nio.file.Files.write(
+                java.nio.file.FileSystems.getDefault().getPath("", title),
+                out.buf,
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.WRITE
+            );
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 }

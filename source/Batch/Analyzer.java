@@ -26,6 +26,8 @@ public class Analyzer
     {
         public String imageFileName;
         public String imageAbsolutePath;
+        public int imageWidth;
+        public int imageHeight;
         public int thresholdLow;
         public int thresholdHigh;
         public double[] sigmas;
@@ -57,12 +59,14 @@ public class Analyzer
         public long vesselPixelArea;
 
         // Recycling resources
+        public Tubeness.Scratch tubeness;
         public SkeletonResult2 skelResult;
         public Lee94.Scratch lee94Scratch;
         public Lacunarity2.Statistics lacunarity;
         public IntVector convexHull;
 
         public Scratch() {
+            tubeness = new Tubeness.Scratch();
             skelResult = new SkeletonResult2();
             lee94Scratch = new Lee94.Scratch();
             lacunarity = new Lacunarity2.Statistics();
@@ -76,6 +80,7 @@ public class Analyzer
                 skelResult = null;
             }
 
+            tubeness = null;
             lee94Scratch = null;
             lacunarity = null;
             convexHull = null;
@@ -191,7 +196,7 @@ public class Analyzer
                         String format = resolveImageFormat(params.resultImageFormat);
 
                         // data.imageResult.flatten()
-                        ImageUtils.saveImage(outputImage, 0, format, basePath + " data." + format);
+                        ImageUtils.saveImage(outputImage, 0, format, basePath + " result." + format);
                     }
                     catch (Throwable ex) {
                         exception = ex;
@@ -343,16 +348,17 @@ public class Analyzer
         uiToken.updateImageProgress("Calculating tubeness...");
 
         Tubeness.computeTubenessImage(
+            data.tubeness,
             sliceRunner,
             analysisImage,
             inputImage.getDefaultChannel(),
             inputImage.width,
             inputImage.height,
-            (float)inputImage.pixelWidth,
-            (float)inputImage.pixelHeight,
             params.sigmas,
             params.sigmas.length
         );
+
+        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " tubeness.pgm");
 
         uiToken.updateImageProgress("Filtering image...");
 
@@ -547,6 +553,8 @@ public class Analyzer
         Stats stats = new Stats();
         stats.imageFileName = inFile.getName();
         stats.imageAbsolutePath = inFile.getAbsolutePath();
+        stats.imageWidth = inputImage.width;
+        stats.imageHeight = inputImage.height;
         stats.thresholdLow = params.thresholdLow;
         stats.thresholdHigh = params.thresholdHigh;
         stats.sigmas = params.sigmas;
@@ -600,6 +608,8 @@ public class Analyzer
             "Date",
             "Time",
             "Image Location",
+            "Width",
+            "Height",
             "Low Threshold",
             "High Threshold",
             "Vessel Thickness",
@@ -637,6 +647,8 @@ public class Analyzer
             dateOut,
             timeOut,
             stats.imageAbsolutePath,
+            stats.imageWidth,
+            stats.imageHeight,
             stats.thresholdLow,
             stats.thresholdHigh,
             BatchUtils.formatDoubleArray(stats.sigmas),

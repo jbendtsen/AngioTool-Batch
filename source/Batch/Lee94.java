@@ -61,7 +61,7 @@ public class Lee94 {
             this.offs = new int[3];
         }
 
-        public void setup(int nSlices, byte[] planes, int width, int height, int breadth) {
+        public void setup(byte[] planes, int width, int height, int breadth) {
             this.planes = planes;
             this.width = width;
             this.height = height;
@@ -71,12 +71,7 @@ public class Lee94 {
             if (finalSimplePoints.buf == null)
                 finalSimplePoints.buf = new int[reservedCap];
 
-            points3d.resize(nSlices);
-            for (int i = 0; i < nSlices; i++) {
-                if (points3d.buf[i] == null)
-                    points3d.buf[i] = new IntVector(reservedCap / nSlices);
-                points3d.buf[i].size = 0;
-            }
+            finalSimplePoints.size = 0;
         }
 
         public void setBorder(int border) {
@@ -90,6 +85,18 @@ public class Lee94 {
                 offs[0] = 1 - ((border-3) * 2);
             else if (border == 5 || border == 6)
                 offs[2] = 1 - ((border-5) * 2);
+        }
+
+        @Override
+        public void initSlices(int nSlices) {
+            points3d.resize(nSlices);
+
+            int reservedCap = Math.max(width * height / 32, 384) / nSlices;
+            for (int i = 0; i < nSlices; i++) {
+                if (points3d.buf[i] == null)
+                    points3d.buf[i] = new IntVector(reservedCap);
+                points3d.buf[i].size = 0;
+            }
         }
 
         @Override
@@ -168,8 +175,7 @@ public class Lee94 {
                 throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
         }
 
-        int nSlices = runner.countSlices(maxWorkers, width, IN_PLACE_THRESHOLD - 1);
-        data.params.setup(nSlices, planes, width, height, breadth);
+        data.params.setup(planes, width, height, breadth);
 
         boolean anyChanged;
         do {
@@ -181,25 +187,6 @@ public class Lee94 {
         } while (anyChanged);
     }
 
-    static void writePgm(byte[] pixels, int width, int height, String title) {
-        byte[] header = ("P5\n" + width + " " + height + "\n255\n").getBytes();
-        ByteVectorOutputStream out = new ByteVectorOutputStream(header.length + pixels.length);
-        out.add(header);
-        out.add(pixels);
-        try {
-            java.nio.file.Files.write(
-                java.nio.file.FileSystems.getDefault().getPath("", title),
-                out.buf,
-                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
-                java.nio.file.StandardOpenOption.CREATE,
-                java.nio.file.StandardOpenOption.WRITE
-            );
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
-
     static boolean thin(
         Scratch data,
         byte[] planes,
@@ -208,7 +195,6 @@ public class Lee94 {
         int border
     ) {
         data.params.setBorder(border);
-        data.params.finalSimplePoints.size = 0;
         data.params.planes = planes;
 
         try {
@@ -219,7 +205,9 @@ public class Lee94 {
                 IN_PLACE_THRESHOLD - 1
             );
         }
-        catch (Throwable ignored) {}
+        catch (Throwable ex) {
+            ex.printStackTrace();
+        }
 
         data.params.planes = null;
 

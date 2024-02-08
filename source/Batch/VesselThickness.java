@@ -17,7 +17,9 @@ public class VesselThickness
         try {
             runner.runSlices(new Step2(output, width, height), maxWorkers, width, Step2.IN_PLACE_THRESHOLD - 1);
         }
-        catch (Throwable ignored) {}
+        catch (Throwable ex) {
+            ex.printStackTrace();
+        }
 
         // There was a step 3, but since it only iterated over the depth of the image, it was entirely redundant
 
@@ -89,6 +91,9 @@ public class VesselThickness
         }
 
         @Override
+        public void initSlices(int nSlices) {}
+
+        @Override
         public Object computeSlice(int sliceIdx, int start, int length)
         {
             final int maxDimension = Math.max(width, height);
@@ -122,5 +127,8 @@ public class VesselThickness
             IntBufferPool.release(tempInt);
             return null;
         }
+
+        @Override
+        public void finishSlice(ISliceCompute.Result res) {}
     }
 }

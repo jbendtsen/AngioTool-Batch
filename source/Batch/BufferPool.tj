@@ -24,8 +24,8 @@ public class <bigtype>BufferPool
 
     public static int findQueueNumber(int allocSize)
     {
-        int leadingZeros = Integer.numberOfLeadingZeros(allocSize);
-        return Math.min((32 - leadingZeros) / 6, N_QUEUES - 1);
+        return 0;
+        //return Math.min((32 - Integer.numberOfLeadingZeros(allocSize)) / 6, N_QUEUES - 1);
     }
 
     public static <type>[] acquireAsIs(int minSize)

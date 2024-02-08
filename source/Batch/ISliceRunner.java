@@ -7,13 +7,16 @@ import java.util.concurrent.ThreadPoolExecutor;
 public interface ISliceRunner
 {
     void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws Throwable;
-    int countSlices(int maxWorkers, int length, int largestAtom);
+    //int countSlices(int maxWorkers, int length, int largestAtom);
 
     public class Series implements ISliceRunner
     {
         @Override
         public void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws Throwable
         {
+            int nSlices = (length + largestAtom - 1) / largestAtom;
+            work.initSlices(nSlices);
+
             ISliceCompute.Result res = new ISliceCompute.Result();
 
             int idx = 0;
@@ -23,12 +26,6 @@ public interface ISliceRunner
                 work.finishSlice(res);
                 idx++;
             }
-        }
-
-        @Override
-        public int countSlices(int maxWorkers, int length, int largestAtom)
-        {
-            return (length + largestAtom - 1) / largestAtom;
         }
     }
 
@@ -44,6 +41,8 @@ public interface ISliceRunner
         @Override
         public void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws Throwable
         {
+            work.initSlices(countSlices(maxWorkers, length, largestAtom));
+
             final int nWorkers = Math.max(maxWorkers, 1);
             final int atomSize = Math.max(largestAtom, 1);
             final int workJump = nWorkers * atomSize;
@@ -87,8 +86,7 @@ public interface ISliceRunner
             }
         }
 
-        @Override
-        public int countSlices(int maxWorkers, int length, int largestAtom)
+        private static int countSlices(int maxWorkers, int length, int largestAtom)
         {
             final int nWorkers = Math.max(maxWorkers, 1);
             final int atomSize = Math.max(largestAtom, 1);

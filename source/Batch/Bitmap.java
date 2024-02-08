@@ -11,7 +11,7 @@ public class Bitmap
         int getLayerType();
         byte[] getSelectedChannel();
         int[] getRgb();
-        int[] acquireRgbCopy(int width, int height);
+        void exportRgb(int[] buf, int width, int height);
         void releaseBuffers();
     }
 
@@ -47,17 +47,15 @@ public class Bitmap
         }
 
         @Override
-        public int[] acquireRgbCopy(int width, int height)
+        public void exportRgb(int[] buf, int width, int height)
         {
             int area = width * height;
-            int[] rgb = IntBufferPool.acquireAsIs(area);
             for (int i = 0; i < area; i++)
-                rgb[i] = (red[i] & 0xff) << 16;
+                buf[i] = (red[i] & 0xff) << 16;
             for (int i = 0; i < area; i++)
-                rgb[i] |= (green[i] & 0xff) << 8;
+                buf[i] |= (green[i] & 0xff) << 8;
             for (int i = 0; i < area; i++)
-                rgb[i] |= blue[i] & 0xff;
-            return rgb;
+                buf[i] |= blue[i] & 0xff;
         }
 
         @Override
@@ -92,12 +90,10 @@ public class Bitmap
         }
 
         @Override
-        public int[] acquireRgbCopy(int width, int height)
+        public void exportRgb(int[] buf, int width, int height)
         {
             int area = width * height;
-            int[] copy = IntBufferPool.acquireAsIs(area);
-            System.arraycopy(rgb, 0, copy, 0, area);
-            return copy;
+            System.arraycopy(rgb, 0, buf, 0, area);
         }
 
         @Override
