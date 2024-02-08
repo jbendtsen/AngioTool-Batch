@@ -41,7 +41,6 @@ public class Lee94 {
     };
 
     public static class Scratch {
-        public IntVector offsetLengthPairs = new IntVector();
         public Params params = new Params();
     }
 

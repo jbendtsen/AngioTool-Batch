@@ -6,20 +6,22 @@ public class Bitmap
     public static final int LAYER_SPLIT = 1;
     public static final int LAYER_COMBINED = 2;
 
+    public static final int RESIZE_ROUNDING = 4 * 1024;
+
     public interface Layer
     {
         int getLayerType();
         byte[] getSelectedChannel();
         int[] getRgb();
         void exportRgb(int[] buf, int width, int height);
-        void releaseBuffers();
+        void reallocate(int width, int height);
     }
 
     public static class SplitLayer implements Layer
     {
-        public byte[] red;
-        public byte[] green;
-        public byte[] blue;
+        public ByteVectorOutputStream red = new ByteVectorOutputStream();
+        public ByteVectorOutputStream green = new ByteVectorOutputStream();
+        public ByteVectorOutputStream blue = new ByteVectorOutputStream();
         public int selectedChannelIdx;
 
         @Override
@@ -33,11 +35,11 @@ public class Bitmap
         {
             switch (selectedChannelIdx) {
                 case 0:
-                    return red;
+                    return red.buf;
                 case 2:
-                    return blue;
+                    return blue.buf;
             }
-            return green;
+            return green.buf;
         }
 
         @Override
@@ -51,25 +53,26 @@ public class Bitmap
         {
             int area = width * height;
             for (int i = 0; i < area; i++)
-                buf[i] = (red[i] & 0xff) << 16;
+                buf[i] = (red.buf[i] & 0xff) << 16;
             for (int i = 0; i < area; i++)
-                buf[i] |= (green[i] & 0xff) << 8;
+                buf[i] |= (green.buf[i] & 0xff) << 8;
             for (int i = 0; i < area; i++)
-                buf[i] |= blue[i] & 0xff;
+                buf[i] |= blue.buf[i] & 0xff;
         }
 
         @Override
-        public void releaseBuffers()
+        public void reallocate(int width, int height)
         {
-            red = ByteBufferPool.release(red);
-            green = ByteBufferPool.release(green);
-            blue = ByteBufferPool.release(blue);
+            int area = width * height;
+            red.resizeExactly(area, RESIZE_ROUNDING);
+            green.resizeExactly(area, RESIZE_ROUNDING);
+            blue.resizeExactly(area, RESIZE_ROUNDING);
         }
     }
 
     public static class CombinedLayer implements Layer
     {
-        public int[] rgb;
+        public IntVector rgb = new IntVector();
 
         @Override
         public int getLayerType()
@@ -86,20 +89,20 @@ public class Bitmap
         @Override
         public int[] getRgb()
         {
-            return rgb;
+            return rgb.buf;
         }
 
         @Override
         public void exportRgb(int[] buf, int width, int height)
         {
             int area = width * height;
-            System.arraycopy(rgb, 0, buf, 0, area);
+            System.arraycopy(rgb.buf, 0, buf, 0, area);
         }
 
         @Override
-        public void releaseBuffers()
+        public void reallocate(int width, int height)
         {
-            rgb = IntBufferPool.release(rgb);
+            rgb.resizeExactly(width * height, RESIZE_ROUNDING);
         }
     }
 
@@ -123,5 +126,23 @@ public class Bitmap
     public int getBreadth()
     {
         return layers.size;
+    }
+
+    public Layer reallocate(Layer tpl, int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+
+        Layer layer;
+        if (layers.size == 0) {
+            layers.add(tpl);
+            layer = tpl;
+        }
+        else {
+            layer = layers.buf[0];
+        }
+
+        layer.reallocate(width, height);
+        return layer;
     }
 }

@@ -55,22 +55,59 @@ public class Analyzer
 
     public static class Scratch
     {
+        static final int RESIZE_ROUNDING = 4 * 1024;
+
         public double convexHullArea;
         public long vesselPixelArea;
 
-        // Recycling resources
-        public Tubeness.Scratch tubeness;
-        public SkeletonResult2 skelResult;
-        public Lee94.Scratch lee94Scratch;
-        public Lacunarity2.Statistics lacunarity;
-        public IntVector convexHull;
+        // Vectors with sizes equal to image area
+        FloatVector f1 = new FloatVector();
+        FloatVector f2 = new FloatVector();
+        FloatVector f3 = new FloatVector();
+        FloatVector f4 = new FloatVector();
+        IntVector i1 = new IntVector();
+        IntVector i2 = new IntVector();
+        IntVector iv1 = new IntVector();
+        IntVector iv2 = new IntVector();
+        IntVector iv3 = new IntVector();
+        ByteVectorOutputStream b1 = new ByteVectorOutputStream();
+        ByteVectorOutputStream b2 = new ByteVectorOutputStream();
+        ByteVectorOutputStream b3 = new ByteVectorOutputStream();
 
-        public Scratch() {
-            tubeness = new Tubeness.Scratch();
-            skelResult = new SkeletonResult2();
-            lee94Scratch = new Lee94.Scratch();
-            lacunarity = new Lacunarity2.Statistics();
-            convexHull = new IntVector();
+        // Recycling resources
+        public Tubeness.Scratch tubeness = new Tubeness.Scratch();
+        public SkeletonResult2 skelResult = new SkeletonResult2();
+        public Lee94.Scratch lee94Scratch = new Lee94.Scratch();
+        public Lacunarity2.Statistics lacunarity = new Lacunarity2.Statistics();
+        public IntVector convexHull = new IntVector();
+
+        public void reallocate(AnalyzerParameters params, int width, int height, int breadth)
+        {
+            int area = width * height;
+            breadth = Math.max(breadth, 1);
+
+            f1.resizeExactly(area, RESIZE_ROUNDING);
+            f2.resizeExactly(area, RESIZE_ROUNDING);
+            f3.resizeExactly(area, RESIZE_ROUNDING);
+            f4.resizeExactly(area, RESIZE_ROUNDING);
+
+            i1.resizeExactly(area, RESIZE_ROUNDING);
+            i2.resizeExactly(area, RESIZE_ROUNDING);
+
+            iv1.resizeExactly(area * breadth, RESIZE_ROUNDING);
+            iv2.resizeExactly(area * breadth, RESIZE_ROUNDING);
+            iv3.resizeExactly(area * breadth, RESIZE_ROUNDING);
+
+            b1.resizeExactly(area, RESIZE_ROUNDING);
+            b2.resizeExactly(area, RESIZE_ROUNDING);
+
+            if (params.shouldUseFastSkeletonizer)
+                b3.resizeExactly(area, RESIZE_ROUNDING);
+            else
+                b3.buf = null;
+
+            tubeness.useBuffers(f1.buf, f2.buf, f3.buf, f4.buf);
+            skelResult.useBuffers(i1.buf, i2.buf, iv1.buf, iv2.buf, iv3.buf);
         }
 
         public void close()
@@ -141,27 +178,30 @@ public class Analyzer
         uiToken.startProgressBars(inputs.size(), determineUpdateCountPerImage(params));
         boolean startedAnyImages = false;
 
-        Scratch data = new Scratch();
-
         ISliceRunner sliceRunner = new ISliceRunner.Parallel(threadPool);
+
+        Scratch data = new Scratch();
+        Bitmap outputImage = params.shouldSaveResultImages ? new Bitmap() : null;
+        Bitmap inputImage = new Bitmap();
 
         for (File inFile : inputs) {
             if (uiToken.isClosed.get())
                 return;
 
             boolean useSingleChannelInOutputImage = true; // TODO: add option in params
-            Bitmap outputImage = params.shouldSaveResultImages ? new Bitmap() : null;
-            Bitmap inputImage = null;
 
             try {
-                inputImage = ImageUtils.openAndAcquireImage(
+                ImageUtils.openImage(
+                    inputImage,
                     inFile.getAbsolutePath(),
                     params.resizingFactor,
                     outputImage,
                     useSingleChannelInOutputImage
                 );
             }
-            catch (Throwable ignored) {}
+            catch (Throwable ex) {
+                ex.printStackTrace();
+            }
 
             if (inputImage == null) {
                 uiToken.notifyImageWasInvalid();
@@ -209,9 +249,6 @@ public class Analyzer
                 }
                 catch (Exception ignored) {}
             }
-
-            ImageUtils.releaseImage(inputImage);
-            ImageUtils.releaseImage(outputImage);
 
             if (exception != null)
                 BatchUtils.showExceptionInDialogBox(exception);
@@ -342,8 +379,10 @@ public class Analyzer
         ISliceRunner sliceRunner,
         BatchAnalysisUi uiToken
     ) {
+        data.reallocate(params, inputImage.width, inputImage.height, 1);
+
         int[] overlayImage = outputImage != null ? outputImage.getDefaultRgb() : null;
-        byte[] analysisImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+        byte[] analysisImage = data.b1.buf;
 
         uiToken.updateImageProgress("Calculating tubeness...");
 
@@ -370,18 +409,19 @@ public class Analyzer
             params.thresholdHigh
         );
 
-        byte[] skeletonImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+        byte[] skeletonImage = data.b2.buf;
 
         Filters.filterMax(skeletonImage, analysisImage, inputImage.width, inputImage.height); // erode
         Filters.filterMax(analysisImage, skeletonImage, inputImage.width, inputImage.height); // erode
         Filters.filterMin(skeletonImage, analysisImage, inputImage.width, inputImage.height); // dilate
         Filters.filterMin(analysisImage, skeletonImage, inputImage.width, inputImage.height); // dilate
 
-        // skeletonImage gets used later, which is why it's not released here
+        int[] particleScratch = data.i1.buf;
 
         if (params.shouldRemoveSmallParticles)
             Particles.fillHoles(
                 analysisImage,
+                particleScratch,
                 inputImage.width,
                 inputImage.height,
                 params.removeSmallParticlesThreshold,
@@ -392,6 +432,7 @@ public class Analyzer
         if (params.shouldFillHoles)
             Particles.fillHoles(
                 analysisImage,
+                particleScratch,
                 inputImage.width,
                 inputImage.height,
                 params.fillHolesValue,
@@ -447,9 +488,8 @@ public class Analyzer
         uiToken.updateImageProgress("Computing skeleton...");
 
         if (params.shouldUseFastSkeletonizer) {
-            byte[] zha84ScratchImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+            byte[] zha84ScratchImage = data.b3.buf;
             Zha84.skeletonize(skeletonImage, zha84ScratchImage, analysisImage, inputImage.width, inputImage.height);
-            ByteBufferPool.release(zha84ScratchImage);
         }
         else {
             int bitDepth = 8;
@@ -479,16 +519,15 @@ public class Analyzer
             inputImage.pixelBreadth
         );
 
-        ByteBufferPool.release(skeletonImage);
-
         double averageVesselDiameter = 0.0;
 
         if (params.shouldComputeThickness)
         {
             uiToken.updateImageProgress("Computing thickness...");
 
-            float[] thicknessImage = FloatBufferPool.acquireAsIs(inputImage.width * inputImage.height);
-            VesselThickness.computeThickness(sliceRunner, MAX_WORKERS, thicknessImage, analysisImage, inputImage.width, inputImage.height);
+            float[] thicknessImage = data.f1.buf;
+            float[] thicknessScratch = data.f2.buf;
+            VesselThickness.computeThickness(sliceRunner, MAX_WORKERS, thicknessImage, analysisImage, thicknessScratch, inputImage.width, inputImage.height);
 
             averageVesselDiameter = linearScalingFactor * BatchUtils.computeMedianThickness(
                 data.skelResult.slabList,
@@ -496,8 +535,6 @@ public class Analyzer
                 inputImage.width,
                 inputImage.height
             );
-
-            FloatBufferPool.release(thicknessImage);
         }
 
         //uiToken.updateImageProgress("Generating skeleton points...");

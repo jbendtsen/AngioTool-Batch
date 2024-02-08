@@ -10,7 +10,7 @@ import javax.swing.ImageIcon;
 
 public class ImageUtils
 {
-    public static Bitmap openAndAcquireImage(String absPath, double resizeFactor, Bitmap outCombinedCopy, boolean outUseSingleChannel)
+    public static Bitmap openImage(Bitmap image, String absPath, double resizeFactor, Bitmap outCombinedCopy, boolean outUseSingleChannel)
     {
         ImagePlus iplus = IJ.openImage(absPath);
         if (iplus == null)
@@ -32,9 +32,11 @@ public class ImageUtils
         ColorProcessor proc = resizeFactor == 1.0 ? fullScaleProc : (ColorProcessor)fullScaleProc.resize((int)((double)width / resizeFactor));
         int[] pixels = (int[])proc.getPixels();
 
-        byte[] red   = ByteBufferPool.acquireAsIs(area);
-        byte[] green = ByteBufferPool.acquireAsIs(area);
-        byte[] blue  = ByteBufferPool.acquireAsIs(area);
+        Bitmap.SplitLayer layer = (Bitmap.SplitLayer)image.reallocate(new Bitmap.SplitLayer(), width, height);
+
+        byte[] red   = layer.red.buf;
+        byte[] green = layer.green.buf;
+        byte[] blue  = layer.blue.buf;
 
         long redTally = 0;
         long greenTally = 0;
@@ -51,11 +53,6 @@ public class ImageUtils
             blue[i] = (byte)b;
         }
 
-        Bitmap.SplitLayer layer = new Bitmap.SplitLayer();
-        layer.red = red;
-        layer.green = green;
-        layer.blue = blue;
-
         if (redTally >= greenTally && redTally >= blueTally)
             layer.selectedChannelIdx = 0;
         else if (greenTally >= blueTally)
@@ -64,7 +61,9 @@ public class ImageUtils
             layer.selectedChannelIdx = 2;
 
         if (outCombinedCopy != null) {
-            int[] rgb = IntBufferPool.acquireAsIs(area);
+            outCombinedCopy.reallocate(new Bitmap.CombinedLayer(), width, height);
+            int[] rgb = outCombinedCopy.getDefaultRgb();
+
             if (outUseSingleChannel) {
                 byte[] channel = layer.getSelectedChannel();
                 int shift = (2-layer.selectedChannelIdx) * 8;
@@ -78,10 +77,6 @@ public class ImageUtils
                     rgb[i] = 0xff000000 | pixels[i];
             }
 
-            Bitmap.CombinedLayer outLayer = new Bitmap.CombinedLayer();
-            outLayer.rgb = rgb;
-
-            outCombinedCopy.layers.add(outLayer);
             outCombinedCopy.width = width;
             outCombinedCopy.height = height;
             outCombinedCopy.pixelWidth = pixelWidth;
@@ -96,8 +91,6 @@ public class ImageUtils
         calibration = null;
         iplus = null;
 
-        Bitmap image = new Bitmap();
-        image.layers.add(layer);
         image.width = width;
         image.height = height;
         image.pixelWidth = pixelWidth;
@@ -123,12 +116,6 @@ public class ImageUtils
         ColorProcessor proc = new ColorProcessor(image.width, image.height, rgbCopy != null ? rgbCopy : rgbOriginal);
         ImagePlus iplus = new ImagePlus(null, proc);
         IJ.saveAs(iplus, format, absPath);
-    }
-
-    public static void releaseImage(Bitmap image)
-    {
-        for (int i = 0; i < image.layers.size; i++)
-            image.layers.buf[i].releaseBuffers();
     }
 
     public static ImageIcon openAsImageIcon(String absolutePath)

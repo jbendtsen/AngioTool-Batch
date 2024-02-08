@@ -29,6 +29,30 @@ public class ByteVectorOutputStream extends OutputStream {
 
         size = newSize;
     }
+    
+    public int resizeExactly(int newSize, int roundingFactor) {
+        int oldSize = size;
+        int s;
+        if (roundingFactor > 0) {
+            s = (newSize + roundingFactor - 1) / roundingFactor;
+            s *= roundingFactor;
+        }
+        else {
+            s = newSize;
+        }
+
+        if (buf == null) {
+            buf = new byte[s];
+        }
+        else if (s > buf.length) {
+            byte[] newBuf = new byte[s];
+            System.arraycopy(buf, 0, newBuf, 0, buf.length);
+            buf = newBuf;
+        }
+
+        size = s;
+        return oldSize;
+    }
 
     @Override public void write(int b) { add((byte)(b & 0xff)); }
     @Override public void write(byte[] buf) { add(buf, 0, buf.length); }

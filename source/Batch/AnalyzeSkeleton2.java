@@ -1,5 +1,7 @@
 package Batch;
 
+import java.util.Arrays;
+
 public class AnalyzeSkeleton2
 {
     public static final int NONE = 0;
@@ -44,18 +46,14 @@ public class AnalyzeSkeleton2
         breadth = Math.min(Math.max(1, breadth), MAX_BREADTH);
         result.reset(breadth);
 
-        int[] imageInfo = IntBufferPool.acquireAsIs(width * height);
-        int[] junctionMap2d = IntBufferPool.acquireZeroed(width * height);
+        Arrays.fill(result.junctionMap2d, 0, width * height, 0);
+        Arrays.fill(result.endPointVertexMap, 0, width * height * breadth, 0);
 
-        for (int z = 0; z < breadth; z++)
-            result.endPointVertexMap[z] = IntBufferPool.acquireZeroed(width * height);
+        tagImages(result, skeletonImages, width, height, breadth);
 
-        tagImages(result, skeletonImages, width, height, breadth, imageInfo, junctionMap2d);
+        Arrays.fill(result.markedImages, 0, width * height * breadth, 0);
 
-        for (int z = 0; z < breadth; z++)
-            result.markedImages[z] = IntBufferPool.acquireZeroed(width * height);
-
-        int nTrees = markTreesOnImages(result, skeletonImages, width, height, breadth, imageInfo);
+        int nTrees = markTreesOnImages(result, skeletonImages, width, height, breadth);
         if (nTrees <= 0)
             nTrees = 1;
 
@@ -63,22 +61,18 @@ public class AnalyzeSkeleton2
         result.triplePointCounts = IntBufferPool.acquireZeroed(nTrees);
         result.quadruplePointCounts = IntBufferPool.acquireZeroed(nTrees);
 
-        for (int z = 0; z < breadth; z++)
-            result.junctionVertexMap[z] = IntBufferPool.acquireZeroed(width * height);
+        Arrays.fill(result.junctionVertexMap, 0, width * height * breadth, 0);
 
-        groupJunctions(result, skeletonImages, width, height, breadth, imageInfo, nTrees);
+        groupJunctions(result, skeletonImages, width, height, breadth, nTrees);
 
         result.totalBranchLengths = DoubleBufferPool.acquireZeroed(nTrees);
         result.maximumBranchLengths = DoubleBufferPool.acquireZeroed(nTrees);
         result.numberOfBranches = IntBufferPool.acquireZeroed(nTrees);
         result.numberOfSlabs = IntBufferPool.acquireZeroed(nTrees);
 
-        buildSkeletonGraphs(result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, nTrees);
+        buildSkeletonGraphs(result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, nTrees);
 
-        isolateDominantJunctions(result, width, height, junctionMap2d);
-
-        IntBufferPool.release(imageInfo);
-        IntBufferPool.release(junctionMap2d);
+        isolateDominantJunctions(result, width, height);
     }
 
     static void tagImages(
@@ -86,14 +80,13 @@ public class AnalyzeSkeleton2
         byte[] skeletonImages,
         int width,
         int height,
-        int breadth,
-        int[] imageInfo,
-        int[] junctionMap2d
+        int breadth
     ) {
         result.pointVectors[END_POINT-1] = result.endPoints;
         result.pointVectors[JUNCTION-1] = result.junctionVoxels;
         result.pointVectors[SLAB-1] = result.slabVoxels;
 
+        int area = width * height;
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 int idx = x + width * y;
@@ -108,12 +101,12 @@ public class AnalyzeSkeleton2
                         if (numOfNeighbors < 2) {
                             type = END_POINT;
                             int pos = result.pointVectors[type-1].addThree(x, y, z);
-                            result.endPointVertexMap[z][idx] = pos;
+                            result.endPointVertexMap[idx + area * z] = pos;
                         }
                         else if (numOfNeighbors > 2) {
                             type = JUNCTION;
                             int pos = result.pointVectors[type-1].addThree(x, y, z);
-                            junctionMap2d[idx] = pos + 1;
+                            result.junctionMap2d[idx] = pos + 1;
                         }
                         else {
                             type = SLAB;
@@ -122,7 +115,7 @@ public class AnalyzeSkeleton2
                     }
                     value = (value << 2) | type;
                 }
-                imageInfo[idx] = value;
+                result.imageInfo[idx] = value;
             }
         }
     }
@@ -132,9 +125,9 @@ public class AnalyzeSkeleton2
         byte[] skeletonImages,
         int width,
         int height,
-        int breadth,
-        int[] imageInfo
+        int breadth
     ) {
+        final int area = width * height;
         int nTrees = 0;
         for (int type = END_POINT; type <= SLAB; type++) {
             int n = result.pointVectors[type-1].size;
@@ -142,17 +135,17 @@ public class AnalyzeSkeleton2
                 int x = result.pointVectors[type-1].buf[i];
                 int y = result.pointVectors[type-1].buf[i+1];
                 int z = result.pointVectors[type-1].buf[i+2];
-                if (result.markedImages[z][x + width * y] != 0)
+                if (result.markedImages[x + width * y + area * z] != 0)
                     continue;
 
                 if (type == SLAB)
                     result.startingSlabVoxels.addThree(x, y, z);
 
                 int numOfVoxels = 0;
-                result.markedImages[z][x + width * y] = nTrees + 1;
+                result.markedImages[x + width * y + area * z] = nTrees + 1;
 
                 result.toRevisit.size = 0;
-                if (((imageInfo[x + width * y] >>> (z << 1)) & 3) == JUNCTION)
+                if (((result.imageInfo[x + width * y] >>> (z << 1)) & 3) == JUNCTION)
                     result.toRevisit.addThree(x, y, z);
 
                 int revisitIdx = 0;
@@ -172,7 +165,7 @@ public class AnalyzeSkeleton2
 
                         if (
                             ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
-                            result.markedImages[zz][xx + width * yy] == 0
+                            result.markedImages[xx + width * yy + area * zz] == 0
                         ) {
                             x = xx;
                             y = yy;
@@ -184,9 +177,9 @@ public class AnalyzeSkeleton2
 
                     if (didFindPoint) {
                         ++numOfVoxels;
-                        result.markedImages[z][x + width * y] = nTrees + 1;
+                        result.markedImages[x + width * y + area * z] = nTrees + 1;
 
-                        if (((imageInfo[x + width * y] >>> (z << 1)) & 3) == JUNCTION)
+                        if (((result.imageInfo[x + width * y] >>> (z << 1)) & 3) == JUNCTION)
                             result.toRevisit.addThree(x, y, z);
                     }
                     else {
@@ -217,23 +210,23 @@ public class AnalyzeSkeleton2
         int width,
         int height,
         int breadth,
-        int[] imageInfo,
         int nTrees
     ) {
+        final int area = width * height;
         int vertexCount = 0;
 
         for (int i = 0; i < result.junctionVoxels.size; i += 3) {
             int x = result.junctionVoxels.buf[i];
             int y = result.junctionVoxels.buf[i+1];
             int z = result.junctionVoxels.buf[i+2];
-            if (((imageInfo[x + width * y] >>> (JUNC_VISIT + z)) & 1) != 0)
+            if (((result.imageInfo[x + width * y] >>> (JUNC_VISIT + z)) & 1) != 0)
                 continue;
             
-            imageInfo[x + width * y] |= 1 << (JUNC_VISIT + z);
-            int treeIdx = result.markedImages[z][x * width + y] - 1;
+            result.imageInfo[x + width * y] |= 1 << (JUNC_VISIT + z);
+            int treeIdx = result.markedImages[x * width + y + area * z] - 1;
 
             vertexCount++;
-            result.junctionVertexMap[z][x + width * y] = vertexCount;
+            result.junctionVertexMap[x + width * y + area * z] = vertexCount;
             result.singleJunctions.addThree(x, y, z);
 
             result.toRevisit.size = 0;
@@ -255,11 +248,11 @@ public class AnalyzeSkeleton2
                     if (xx < 0 || xx >= width || yy < 0 || yy >= height || zz < 0 || zz >= breadth)
                         continue;
 
-                    int type = (imageInfo[xx + width * yy] >>> (zz << 1)) & 3;
+                    int type = (result.imageInfo[xx + width * yy] >>> (zz << 1)) & 3;
                     if (
                         pointFound == -1 &&
                         ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
-                        ((imageInfo[xx + width * yy] >>> (JUNC_VISIT + zz)) & 1) == 0 &&
+                        ((result.imageInfo[xx + width * yy] >>> (JUNC_VISIT + zz)) & 1) == 0 &&
                         type == JUNCTION
                     ) {
                         pointFound = j;
@@ -274,8 +267,8 @@ public class AnalyzeSkeleton2
                     y += ((pointFound / 3) % 3) - 1;
                     z += (pointFound % 3) - 1;
 
-                    imageInfo[x + width * y] |= 1 << (JUNC_VISIT + z);
-                    result.junctionVertexMap[z][x + width * y] = vertexCount;
+                    result.imageInfo[x + width * y] |= 1 << (JUNC_VISIT + z);
+                    result.junctionVertexMap[x + width * y + area * z] = vertexCount;
                     result.singleJunctions.addThree(x, y, z);
                     result.toRevisit.addThree(x, y, z);
 
@@ -309,23 +302,24 @@ public class AnalyzeSkeleton2
         double pixelWidth,
         double pixelHeight,
         double pixelBreadth,
-        int[] imageInfo,
         int nTrees
     ) {
+        int area = width * height;
+
         for (int i = 0; i < result.endPoints.size; i += 3) {
             int x = result.endPoints.buf[i];
             int y = result.endPoints.buf[i+1];
             int z = result.endPoints.buf[i+2];
-            int t = result.markedImages[z][x + width * y] - 1;
+            int t = result.markedImages[x + width * y + area * z] - 1;
 
-            if (((imageInfo[x + width * y] >>> (SKEL_VISIT + z)) & 1) != 0)
+            if (((result.imageInfo[x + width * y] >>> (SKEL_VISIT + z)) & 1) != 0)
                 continue;
 
-            imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
+            result.imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
             int slabListIdx = result.slabList.size;
 
             visitBranch(
-                result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, t,
+                result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, t,
                 END_POINT, i, slabListIdx, 0.0, x, y, z
             );
         }
@@ -334,11 +328,11 @@ public class AnalyzeSkeleton2
             int x = result.singleJunctions.buf[i];
             int y = result.singleJunctions.buf[i+1];
             int z = result.singleJunctions.buf[i+2];
-            int t = result.markedImages[z][x + width * y] - 1;
+            int t = result.markedImages[x + width * y + area * z] - 1;
 
             // no check
-            imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
-            int vertexIdx = result.junctionVertexMap[z][x + width * y] - 1;
+            result.imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
+            int vertexIdx = result.junctionVertexMap[x + width * y + area * z] - 1;
 
             for (int j = 0; j < 27; j++) {
                 if (j == 13)
@@ -352,11 +346,11 @@ public class AnalyzeSkeleton2
 
                 if (
                     ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
-                    ((imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
+                    ((result.imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
                 ) {
                     //didFindPoint = true;
-                    if (((imageInfo[xx + width * yy] >>> (zz << 1)) & 3) == JUNCTION) {
-                        imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
+                    if (((result.imageInfo[xx + width * yy] >>> (zz << 1)) & 3) == JUNCTION) {
+                        result.imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
                         continue;
                     }
 
@@ -364,7 +358,7 @@ public class AnalyzeSkeleton2
                     int slabListIdx = result.slabList.addThree(xx, yy, zz);
 
                     visitBranch(
-                        result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, t,
+                        result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, t,
                         JUNCTION, vertexIdx, slabListIdx, initialLength, xx, yy, zz
                     );
                 }
@@ -377,7 +371,7 @@ public class AnalyzeSkeleton2
             int x = result.startingSlabVoxels.buf[s];
             int y = result.startingSlabVoxels.buf[s+1];
             int z = result.startingSlabVoxels.buf[s+2];
-            int t = result.markedImages[z][x + width * y] - 1;
+            int t = result.markedImages[x + width * y + area * z] - 1;
 
             boolean isSingle = true;
             startingSlabStart += 3;
@@ -386,7 +380,7 @@ public class AnalyzeSkeleton2
                 int xx = result.startingSlabVoxels.buf[startingSlabStart];
                 int yy = result.startingSlabVoxels.buf[startingSlabStart+1];
                 int zz = result.startingSlabVoxels.buf[startingSlabStart+2];
-                if (result.markedImages[zz][xx + width * yy] != t + 1)
+                if (result.markedImages[xx + width * yy + area * zz] != t + 1)
                     break;
 
                 isSingle = false;
@@ -399,7 +393,7 @@ public class AnalyzeSkeleton2
                 int slabListIdx = result.slabList.addThree(x, y, z);
 
                 visitBranch(
-                    result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, imageInfo, t,
+                    result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, t,
                     SLAB, s, slabListIdx, 0.0, x, y, z
                 );
             }
@@ -415,7 +409,6 @@ public class AnalyzeSkeleton2
         double pixelWidth,
         double pixelHeight,
         double pixelBreadth,
-        int[] imageInfo,
         int iTree,
         int mode,
         int initialVertIdx,
@@ -425,6 +418,7 @@ public class AnalyzeSkeleton2
         int yStart,
         int zStart
     ) {
+        final int area = width * height;
         double length = initialLength;
         int type = NONE;
         int finalVertIdx = initialVertIdx;
@@ -432,7 +426,7 @@ public class AnalyzeSkeleton2
         int y = yStart;
         int z = zStart;
 
-        imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
+        result.imageInfo[x + width * y] |= 1 << (SKEL_VISIT + z);
 
         boolean didFindSlabPoint;
         do {
@@ -449,21 +443,21 @@ public class AnalyzeSkeleton2
 
                 if (
                     ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
-                    ((imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
+                    ((result.imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
                 ) {
                     length += calculateDistance(x, y, z, xx, yy, zz, pixelWidth, pixelHeight, pixelBreadth);
-                    imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
-                    type = (imageInfo[xx + width * yy] >>> (zz << 1)) & 3;
+                    result.imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
+                    type = (result.imageInfo[xx + width * yy] >>> (zz << 1)) & 3;
                     x = xx;
                     y = yy;
                     z = zz;
 
                     switch (type) {
                         case END_POINT:
-                            finalVertIdx = result.endPointVertexMap[z][x + width * y] - 1;
+                            finalVertIdx = result.endPointVertexMap[x + width * y + area * z] - 1;
                             break;
                         case JUNCTION:
-                            finalVertIdx = result.junctionVertexMap[z][x + width * y] - 1;
+                            finalVertIdx = result.junctionVertexMap[x + width * y + area * z] - 1;
                             //this.auxFinalVertex = this.findPointVertex(this.junctionVertex[iTree], nextPoint);
                             break;
                         case SLAB:
@@ -512,8 +506,8 @@ public class AnalyzeSkeleton2
                 if (xx < 0 || xx >= width || yy < 0 || yy >= height || zz < 0 || zz >= breadth)
                     continue;
 
-                int info = imageInfo[xx + width * yy];
-                int vert = result.junctionVertexMap[zz][xx + width * yy];
+                int info = result.imageInfo[xx + width * yy];
+                int vert = result.junctionVertexMap[xx + width * yy + area * zz];
                 if (
                     ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
                     ((info >>> (SKEL_VISIT + zz)) & 1) != 0 &&
@@ -543,17 +537,17 @@ public class AnalyzeSkeleton2
         result.edgesLengths.add(length);
     }
 
-    static void isolateDominantJunctions(SkeletonResult2 result, int width, int height, int[] junctionMap2d)
+    static void isolateDominantJunctions(SkeletonResult2 result, int width, int height)
     {
         for (int i = 0; i < result.junctionVoxels.size; i += 3) {
             int x = result.junctionVoxels.buf[i];
             int y = result.junctionVoxels.buf[i+1];
-            int pos = junctionMap2d[x + width * y];
+            int pos = result.junctionMap2d[x + width * y];
             if (pos <= 0)
                 continue;
 
             result.isolatedJunctions.add(pos - 1);
-            junctionMap2d[x + width * y] = 0;
+            result.junctionMap2d[x + width * y] = 0;
 
             for (int j = 0; j < 9; j++) {
                 if (j == 4)
@@ -561,10 +555,10 @@ public class AnalyzeSkeleton2
 
                 int xx = x + (j % 3) - 1;
                 int yy = y + (j / 3) - 1;
-                int p = junctionMap2d[xx + width * yy];
+                int p = result.junctionMap2d[xx + width * yy];
                 if (p > 0) {
                     result.removedJunctions.add(p - 1);
-                    junctionMap2d[xx + width * yy] = 0;
+                    result.junctionMap2d[xx + width * yy] = 0;
                 }
             }
         }

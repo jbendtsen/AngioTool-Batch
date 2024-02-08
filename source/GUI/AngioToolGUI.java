@@ -1623,12 +1623,14 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       Filters.filterMin(tempImage, thresholdedPixels, width, height);
       Filters.filterMin(thresholdedPixels, tempImage, width, height);
 
+      int[] particlesScratch = new int[width * height];
+
       if (this.smallParticlesCheckBox.isSelected()) {
-         Particles.fillHoles(thresholdedPixels, width, height, (int)this.smallParticlesRangeSlider2.getValue(), (byte)0xff, (byte)0);
+         Particles.fillHoles(thresholdedPixels, particlesScratch, width, height, (int)this.smallParticlesRangeSlider2.getValue(), (byte)0xff, (byte)0);
       }
 
       if (this.fillHolesCheckBox.isSelected()) {
-         Particles.fillHoles(thresholdedPixels, width, height, (int)this.fillHolesRangeSlider2.getValue(), (byte)0, (byte)0xff);
+         Particles.fillHoles(thresholdedPixels, particlesScratch, width, height, (int)this.fillHolesRangeSlider2.getValue(), (byte)0, (byte)0xff);
       }
 
       if (this.allantoisOverlay == null || this.allantoisOverlay.length != width * height)
@@ -2174,13 +2176,23 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       );
 
       if (params.shouldComputeThickness) {
-         this.averageVesselDiameter = BatchUtils.computeAverageVesselDiameter(
+         int area = skelWidth * skelHeight;
+         float[] thicknessImage = new float[area];
+         float[] thicknessScratch = new float[area];
+         VesselThickness.computeThickness(
             sliceRunner,
-            this.skelResult.slabList,
+            Analyzer.MAX_WORKERS,
+            thicknessImage,
             skelImage,
+            thicknessScratch,
             skelWidth,
-            skelHeight,
-            params.linearScalingFactor
+            skelHeight
+         );
+         this.averageVesselDiameter = params.linearScalingFactor * BatchUtils.computeMedianThickness(
+            this.skelResult.slabList,
+            thicknessImage,
+            skelWidth,
+            skelHeight
          );
       }
 

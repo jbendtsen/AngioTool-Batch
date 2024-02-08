@@ -7,15 +7,16 @@ public class VesselThickness
         int maxWorkers,
         float[] output,
         byte[] input,
+        float[] scratch,
         int width,
         int height
     ) {
         final int thresh = 200;
 
-        step1(input, output, width, height, thresh);
+        step1(input, scratch, width, height, thresh);
 
         try {
-            runner.runSlices(new Step2(output, width, height), maxWorkers, width, Step2.IN_PLACE_THRESHOLD - 1);
+            runner.runSlices(new Step2(output, scratch, width, height), maxWorkers, width, Step2.IN_PLACE_THRESHOLD - 1);
         }
         catch (Throwable ex) {
             ex.printStackTrace();
@@ -23,17 +24,21 @@ public class VesselThickness
 
         // There was a step 3, but since it only iterated over the depth of the image, it was entirely redundant
 
-        //float distMax = 0.0f;
+        float distMax = 0.0f;
         int area = width * height;
 
         for (int i = 0; i < area; i++) {
             float dist = 0.0f;
             if ((input[i] & 255) >= thresh) {
                 dist = (float)Math.sqrt(output[i]);
-                //distMax = Math.max(dist, distMax);
+                if (dist > distMax) distMax = dist;
             }
             output[i] = dist;
         }
+
+        float factor = distMax > 0.0f ? 256.0f / distMax : 1.0f;
+        for (int i = 0; i < area; i++)
+            output[i] = Math.min(output[i] * factor, 255.0f);
 
         /*
         String title = this.stripExtension(this.imp.getTitle());
@@ -54,18 +59,14 @@ public class VesselThickness
 
                 for(int x = i; x < width; ++x) {
                     if ((input[x + width * j] & 255) < thresh) {
-                        int test = i - x;
-                        test *= test;
-                        min = test;
+                        min = (i-x)*(i-x);
                         break;
                     }
                 }
 
                 for(int x = i - 1; x >= 0; --x) {
                     if ((input[x + width * j] & 255) < thresh) {
-                        int test = i - x;
-                        test *= test;
-                        min = Math.min(test, min);
+                        min = Math.min((i-x)*(i-x), min);
                         break;
                     }
                 }
@@ -82,9 +83,11 @@ public class VesselThickness
         private final int width;
         private final int height;
         private final float[] src;
+        private final float[] dst;
 
-        public Step2(float[] src, int width, int height)
+        public Step2(float[] dst, float[] src, int width, int height)
         {
+            this.dst = dst;
             this.src = src;
             this.width = width;
             this.height = height;
@@ -99,8 +102,6 @@ public class VesselThickness
             final int maxDimension = Math.max(width, height);
             final int maxResult = 3 * (maxDimension + 1) * (maxDimension + 1);
 
-            int[] tempInt = IntBufferPool.acquireAsIs(maxDimension);
-
             for(int x = start; x < start + length; ++x) {
                 boolean empty = true;
 
@@ -112,19 +113,15 @@ public class VesselThickness
 
                 for(int y1 = 0; y1 < height; ++y1) {
                     int min = maxResult;
-                    int delta = y1;
 
-                    for(int y2 = 0; y2 < height; ++y2)
-                        min = Math.min((int)src[x + width * y2] + delta * delta--, min);
+                    for(int y2 = 0; y2 < height; ++y2) {
+                        min = Math.min((int)src[x + width * y2] + (y1-y2)*(y1-y2), min);
+                    }
 
-                    tempInt[y1] = min;
+                    dst[x + width * y1] = min;
                 }
-
-                for(int y = 0; y < height; ++y)
-                    src[x + width * y] = (float)tempInt[y];
             }
 
-            IntBufferPool.release(tempInt);
             return null;
         }
 

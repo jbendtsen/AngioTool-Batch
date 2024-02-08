@@ -1,17 +1,19 @@
 package Batch;
 
+import java.util.Arrays;
+
 public class Particles
 {
-    public static void fillHoles(byte[] image, int width, int height, double maxSize, byte pixelFind, byte pixelReplace)
+    public static void fillHoles(byte[] image, int[] scratch, int width, int height, double maxSize, byte pixelFind, byte pixelReplace)
     {
-        int[] buf = IntBufferPool.acquireZeroed(width * height);
+        Arrays.fill(scratch, 0, width * height, 0);
         int occ = 0;
 
         for (int y = 0; y < height; y++) {
             byte prev = pixelFind;
             for (int x = 0; x < width; x++) {
                 byte cur = image[x + width * y];
-                if (cur != pixelFind || buf[x + width * y] != 0) {
+                if (cur != pixelFind || scratch[x + width * y] != 0) {
                     prev = cur;
                     continue;
                 }
@@ -28,7 +30,5 @@ public class Particles
                 }
             }
         }
-
-        IntBufferPool.release(buf);
     }
 }

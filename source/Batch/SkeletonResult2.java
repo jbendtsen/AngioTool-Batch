@@ -20,9 +20,11 @@ public class SkeletonResult2 {
     public IntVector edgesPoints;
     public DoubleVector edgesLengths;
 
-    public int[][] markedImages;
-    public int[][] endPointVertexMap;
-    public int[][] junctionVertexMap;
+    public int[] imageInfo;
+    public int[] junctionMap2d;
+    public int[] markedImages; // volume
+    public int[] endPointVertexMap; // volume
+    public int[] junctionVertexMap; // volume
 
     public int treeCount;
     public int[] triplePointCounts;
@@ -91,18 +93,15 @@ public class SkeletonResult2 {
         numberOfBranches = IntBufferPool.release(numberOfBranches);
         numberOfSlabs = IntBufferPool.release(numberOfSlabs);
 
-        for (int i = 0; i < imageBreadth; i++) {
-            markedImages[i] = IntBufferPool.release(markedImages[i]);
-            endPointVertexMap[i] = IntBufferPool.release(endPointVertexMap[i]);
-            junctionVertexMap[i] = IntBufferPool.release(junctionVertexMap[i]);
-        }
-
-        if (newBreadth > imageBreadth) {
-            markedImages = new int[newBreadth][];
-            endPointVertexMap = new int[newBreadth][];
-            junctionVertexMap = new int[newBreadth][];
-        }
-
         imageBreadth = newBreadth;
+    }
+
+    public void useBuffers(int[] imageInfo, int[] junctionMap2d, int[] markedImages, int[] endPointVertexMap, int[] junctionVertexMap)
+    {
+        this.imageInfo = imageInfo;
+        this.junctionMap2d = junctionMap2d;
+        this.markedImages = markedImages;
+        this.endPointVertexMap = endPointVertexMap;
+        this.junctionVertexMap = junctionVertexMap;
     }
 }

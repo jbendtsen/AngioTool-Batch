@@ -1,5 +1,7 @@
 package Batch;
 
+import java.util.Arrays;
+
 public class Tubeness
 {
     public static final int IN_PLACE_THRESHOLD = 5;
@@ -7,6 +9,18 @@ public class Tubeness
     public static class Scratch
     {
         Params params = new Params();
+        float[] image;
+        float[] maxEigenOutput;
+        float[] gaussianOutput;
+        float[] scratchBuf;
+
+        public void useBuffers(float[] image, float[] maxEigenOutput, float[] gaussianOutput, float[] scratchBuf)
+        {
+            this.image = image;
+            this.maxEigenOutput = maxEigenOutput;
+            this.gaussianOutput = gaussianOutput;
+            this.scratchBuf = scratchBuf;
+        }
     }
 
     public static void computeTubenessImage(
@@ -20,21 +34,17 @@ public class Tubeness
         int nSigmas
     ) {
         final int area = width * height;
-        float[] image = FloatBufferPool.acquireAsIs(area);
         for (int i = 0; i < area; i++)
-            image[i] = (float)(input[i] & 0xff);
+            data.image[i] = (float)(input[i] & 0xff);
 
-        float[] maxEigenOutput = FloatBufferPool.acquireZeroed(area);
-
-        float[] gaussianOutput = FloatBufferPool.acquireAsIs(area);
-        float[] scratchBuf = FloatBufferPool.acquireAsIs(area);
+        Arrays.fill(data.maxEigenOutput, 0, area, 0.0f);
 
         double maxResult = 0.0;
         for (int s = 0; s < nSigmas; s++) {
             computeGaussianFastMirror(
-                gaussianOutput,
-                image,
-                scratchBuf,
+                data.gaussianOutput,
+                data.image,
+                data.scratchBuf,
                 width,
                 height,
                 sigma[s]
@@ -43,8 +53,8 @@ public class Tubeness
                 data,
                 sliceRunner,
                 Analyzer.MAX_WORKERS,
-                maxEigenOutput,
-                gaussianOutput,
+                data.maxEigenOutput,
+                data.gaussianOutput,
                 width,
                 height,
                 sigma[s]
@@ -53,15 +63,10 @@ public class Tubeness
         }
 
         float factor = maxResult > 0.0 ? (float)(256.0 / maxResult) : 1.0f;
-        System.out.println("maxResult: " + maxResult + ", factor: " + factor);
+        //System.out.println("maxResult: " + maxResult + ", factor: " + factor);
 
         for (int i = 0; i < area; i++)
-            output[i] = (byte)(Math.min(maxEigenOutput[i] * factor, 255.0f));
-
-        FloatBufferPool.release(maxEigenOutput);
-        FloatBufferPool.release(gaussianOutput);
-        FloatBufferPool.release(scratchBuf);
-        FloatBufferPool.release(image);
+            output[i] = (byte)(Math.min(data.maxEigenOutput[i] * factor, 255.0f));
     }
 
     // scratch MUST NOT ALIAS image
@@ -78,34 +83,68 @@ public class Tubeness
         populateGaussianKernel1D(kernel, sigma);
 
         final int ksHalf = kernelSize / 2;
+        final int edgeSizeX = Math.min(ksHalf + 1, width / 2);
+        final int edgeSizeY = Math.min(ksHalf + 1, height / 2);
 
         for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
+            for (int x = 0; x < edgeSizeX; x++) {
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
-                    // xx := mirror(x+f)
-                    //   int xf = abs(x+f) % (2*width)
-                    int xf = (x+f - (((x+f) >> 31) & ((x+f) << 1))) % ((width-1) << 1);
-                    int cond = (width - 1 - xf) >> 31;
-                    //   int xx = xf >= width ? 2*width - xf : xf;
-                    int xx = ((cond ^ xf) + cond) + (cond & (width << 1));
-                    avg += kernel[f + ksHalf] * image[xx + width * y];
+                    int xf = Math.abs(x+f) % (2*width-2);
+                    if (xf >= width)
+                        xf = 2*width - xf;
+                    avg += kernel[f + ksHalf] * image[xf + width * y];
+                }
+                scratch[x + width * y] = avg;
+            }
+            for (int x = edgeSizeX; x < width - edgeSizeX; x++) {
+                float avg = 0.0f;
+                for (int f = -ksHalf; f <= ksHalf; f++)
+                    avg += kernel[f + ksHalf] * image[x+f + width * y];
+
+                scratch[x + width * y] = avg;
+            }
+            for (int x = width - edgeSizeX; x < width; x++) {
+                float avg = 0.0f;
+                for (int f = -ksHalf; f <= ksHalf; f++) {
+                    int xf = Math.abs(x+f) % (2*width-2);
+                    if (xf >= width)
+                        xf = 2*width - xf;
+                    avg += kernel[f + ksHalf] * image[xf + width * y];
                 }
                 scratch[x + width * y] = avg;
             }
         }
 
-        for (int y = 0; y < height; y++) {
+        for (int y = 0; y < edgeSizeY; y++) {
             for (int x = 0; x < width; x++) {
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
-                    // yy := mirror(y+f)
-                    //   int yf = abs(y+f) % (2*height)
-                    int yf = (y+f - (((y+f) >> 31) & ((y+f) << 1))) % ((height-1) << 1);
-                    int cond = (height - 1 - yf) >> 31;
-                    //   int yy = yf >= height ? 2*height - yf : yf;
-                    int yy = ((cond ^ yf) + cond) + (cond & (height << 1));
-                    avg += kernel[f + ksHalf] * scratch[x + width * yy];
+                    int yf = Math.abs(y+f) % (2*height-2);
+                    if (yf >= height)
+                        yf = 2*height - yf;
+                    avg += kernel[f + ksHalf] * scratch[x + width * yf];
+                }
+                output[x + width * y] = avg;
+            }
+        }
+        for (int y = edgeSizeY; y < height - edgeSizeY; y++) {
+            for (int x = 0; x < width; x++) {
+                float avg = 0.0f;
+                for (int f = -ksHalf; f <= ksHalf; f++)
+                    avg += kernel[f + ksHalf] * scratch[x + width * (y+f)];
+
+                output[x + width * y] = avg;
+            }
+        }
+        for (int y = height - edgeSizeY; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                float avg = 0.0f;
+                for (int f = -ksHalf; f <= ksHalf; f++) {
+                    int yf = Math.abs(y+f) % (2*height-2);
+                    if (yf >= height)
+                        yf = 2*height - yf;
+                    avg += kernel[f + ksHalf] * scratch[x + width * yf];
                 }
                 output[x + width * y] = avg;
             }
