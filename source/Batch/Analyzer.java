@@ -86,28 +86,34 @@ public class Analyzer
             int area = width * height;
             breadth = Math.max(breadth, 1);
 
-            f1.resizeExactly(area, RESIZE_ROUNDING);
-            f2.resizeExactly(area, RESIZE_ROUNDING);
-            f3.resizeExactly(area, RESIZE_ROUNDING);
-            f4.resizeExactly(area, RESIZE_ROUNDING);
+            int oldCap = f1.buf != null ? f1.buf.length : 0;
 
-            i1.resizeExactly(area, RESIZE_ROUNDING);
-            i2.resizeExactly(area, RESIZE_ROUNDING);
+            f1.resize(area);
+            f2.resize(area);
+            f3.resize(area);
+            f4.resize(area);
 
-            iv1.resizeExactly(area * breadth, RESIZE_ROUNDING);
-            iv2.resizeExactly(area * breadth, RESIZE_ROUNDING);
-            iv3.resizeExactly(area * breadth, RESIZE_ROUNDING);
+            i1.resize(area);
+            i2.resize(area);
 
-            b1.resizeExactly(area, RESIZE_ROUNDING);
-            b2.resizeExactly(area, RESIZE_ROUNDING);
+            iv1.resize(area * breadth);
+            iv2.resize(area * breadth);
+            iv3.resize(area * breadth);
+
+            b1.resize(area);
+            b2.resize(area);
 
             if (params.shouldUseFastSkeletonizer)
-                b3.resizeExactly(area, RESIZE_ROUNDING);
+                b3.resize(area);
             else
                 b3.buf = null;
 
             tubeness.useBuffers(f1.buf, f2.buf, f3.buf, f4.buf);
             skelResult.useBuffers(i1.buf, i2.buf, iv1.buf, iv2.buf, iv3.buf);
+
+            int newCap = f1.buf.length;
+            if (newCap > oldCap)
+                System.gc();
         }
 
         public void close()

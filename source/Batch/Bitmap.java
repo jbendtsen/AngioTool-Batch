@@ -64,9 +64,9 @@ public class Bitmap
         public void reallocate(int width, int height)
         {
             int area = width * height;
-            red.resizeExactly(area, RESIZE_ROUNDING);
-            green.resizeExactly(area, RESIZE_ROUNDING);
-            blue.resizeExactly(area, RESIZE_ROUNDING);
+            red.resize(area);
+            green.resize(area);
+            blue.resize(area);
         }
     }
 
@@ -102,7 +102,7 @@ public class Bitmap
         @Override
         public void reallocate(int width, int height)
         {
-            rgb.resizeExactly(width * height, RESIZE_ROUNDING);
+            rgb.resize(width * height);
         }
     }
 
