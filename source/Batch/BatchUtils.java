@@ -4,6 +4,7 @@ import java.awt.Font;
 import java.io.File;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.HashSet;
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 
@@ -208,6 +209,14 @@ public class BatchUtils
         if (str.endsWith(".0"))
         str = str.substring(0, str.length() - 2);
         return str;
+    }
+
+    public static HashSet<String> makeHashSetFromStringArray(String[] array)
+    {
+        HashSet<String> c = new HashSet<>();
+        for (String s : array)
+            c.add(s);
+        return c;
     }
 
     public static boolean hasAnyFileExtension(File f)

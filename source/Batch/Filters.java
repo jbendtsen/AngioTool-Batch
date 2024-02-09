@@ -21,13 +21,13 @@ public class Filters
             p8 = inputPixels[offset+width-1] & 0xff;
             p9 = inputPixels[offset+width] & 0xff;
 
-            for (int x = 1; x < width-1; x++) {
+            for (int x = 0; x < width-2; x++) {
                 p1 = p2; p2 = p3;
-                p3 = inputPixels[offset-width+1] & 0xff;
+                p3 = inputPixels[offset-width+x+1] & 0xff;
                 p4 = p5; p5 = p6;
-                p6 = inputPixels[offset+1] & 0xff;
+                p6 = inputPixels[offset+x+1] & 0xff;
                 p7 = p8; p8 = p9;
-                p9 = inputPixels[offset+width+1] & 0xff;
+                p9 = inputPixels[offset+width+x+1] & 0xff;
 
                 min = p5;
                 if (p1<min) min = p1;
@@ -106,13 +106,13 @@ public class Filters
             p8 = inputPixels[offset+width-1] & 0xff;
             p9 = inputPixels[offset+width] & 0xff;
 
-            for (int x = 1; x < width-1; x++) {
+            for (int x = 0; x < width-2; x++) {
                 p1 = p2; p2 = p3;
-                p3 = inputPixels[offset-width+1] & 0xff;
+                p3 = inputPixels[offset-width+x+1] & 0xff;
                 p4 = p5; p5 = p6;
-                p6 = inputPixels[offset+1] & 0xff;
+                p6 = inputPixels[offset+x+1] & 0xff;
                 p7 = p8; p8 = p9;
-                p9 = inputPixels[offset+width+1] & 0xff;
+                p9 = inputPixels[offset+width+x+1] & 0xff;
 
                 max = p5;
                 if (p1>max) max = p1;

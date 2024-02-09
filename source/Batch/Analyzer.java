@@ -6,6 +6,7 @@ import java.io.File;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -21,6 +22,14 @@ public class Analyzer
         /* unit */ TimeUnit.SECONDS,
         /* workQueue */ new LinkedBlockingQueue<>()
     );
+
+    static final HashSet<String> suffixesToSkip = BatchUtils.makeHashSetFromStringArray(new String[] {
+        "result",
+        "tubeness",
+        "thresholded",
+        "filtered",
+        "overlay"
+    });
 
     static class Stats
     {
@@ -375,9 +384,12 @@ public class Analyzer
                 if (extIdx <= 0)
                     continue;
 
-                String baseName = name.substring(0, extIdx);
-                if (baseName.endsWith("result") || baseName.endsWith("tubeness") || baseName.endsWith("filtered") || baseName.endsWith("overlay"))
-                    continue;
+                int spaceIdx = name.lastIndexOf(' ');
+                if (spaceIdx > 0 && spaceIdx < extIdx-1) {
+                    String lastWordInFileName = name.substring(spaceIdx + 1, extIdx);
+                    if (suffixesToSkip.contains(lastWordInFileName))
+                        continue;
+                }
 
                 String ext = name.substring(extIdx).toLowerCase();
                 if (ext.equals(".txt") || ext.equals(".zip") || ext.equals(".xls") || ext.equals(".xlsx"))
