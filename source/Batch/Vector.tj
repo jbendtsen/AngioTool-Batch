@@ -97,6 +97,16 @@ public class <bigtype>Vector {
         return pos;
     }
 
+    public int addFour(<type> a, <type> b, <type> c, <type> d) {
+        int pos = size;
+        resize(pos + 4);
+        buf[pos] = a;
+        buf[pos+1] = b;
+        buf[pos+2] = c;
+        buf[pos+3] = d;
+        return pos;
+    }
+
     public <type> popOr(int defaultValue) {
         return size > 0 ? buf[--size] : defaultValue;
     }

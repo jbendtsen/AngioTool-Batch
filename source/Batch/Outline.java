@@ -26,26 +26,52 @@ public class Outline
     };
 
     // TODO: implement strokeWidth
-    public static void drawOutline(int[] outline, int rgbColor, double strokeWidth, byte[] image, int width, int height)
-    {
+    public static void drawOutline(
+        int[] outline,
+        int rgbColor,
+        double strokeWidth,
+        IntVector shapes,
+        int[] shapeRegions,
+        byte[] image,
+        int width,
+        int height
+    ) {
         // this cuts out the need for branching
         byte firstInputPixel = image[0];
         int firstOutputPixel = outline[0];
         image[0] = 0;
         outline[0] = 0;
 
-        for (int y = -1; y < height; y += 2) {
-            for (int x = -1; x < width; x += 2) {
-                int topLeft     = (x   + width * y)     & ~((x | y) >> 31);
-                int topRight    = (x+1 + width * y)     & ~(((width-2-x) | y)  >> 31);
-                int bottomLeft  = (x   + width * (y+1)) & ~((x | (height-2-y)) >> 31);
-                int bottomRight = (x+1 + width * (y+1)) & ~(((width-2-x) | (height-2-y)) >> 31);
+        for (int y = -1; y < height; y++) {
+            int topLeft = 0, topRight = 0, bottomLeft = 0, bottomRight = 0;
+            for (int x = -1; x < width; x++) {
+                topLeft = topRight;
+                bottomLeft = bottomRight;
 
-                int type =
-                    ((image[topLeft]     >> 31) & 8) |
-                    ((image[topRight]    >> 31) & 4) |
-                    ((image[bottomRight] >> 31) & 2) |
-                    ((image[bottomLeft]  >> 31) & 1);
+                topRight    = (x < width-1 && y >= 0)       ? (image[(x+1) + width * y] >> 31)     : 0;
+                bottomRight = (x < width-1 && y < height-1) ? (image[(x+1) + width * (y+1)] >> 31) : 0;
+
+                // If this pixel is black and surrounded by white pixels, then it is part of a hole.
+                // Therefore it is not included in the outline.
+                if (topRight == 0 && x < width-1 && y >= 0) {
+                    int idx = Particles.N_SHAPE_MEMBERS * (shapeRegions[(x+1) + width * y] - 1);
+                    if (idx >= 0 && (~shapes.buf[idx+1] & Particles.FLAG_SURROUNDED) == 0)
+                        topRight = -1;
+                }
+                if (bottomRight == 0 && x < width-1 && y < height-1) {
+                    int idx = Particles.N_SHAPE_MEMBERS * (shapeRegions[(x+1) + width * (y+1)] - 1);
+                    if (idx >= 0 && (~shapes.buf[idx+1] & Particles.FLAG_SURROUNDED) == 0)
+                        bottomRight = -1;
+                }
+
+                int type = (topLeft & 8) | (topRight & 4) | (bottomRight & 2) | (bottomLeft & 1);
+
+                /*
+                outline[topLeft]     = type >= 1 && type <= 14 && (type & 8) == 0 ? rgbColor : 0;
+                outline[topRight]    = type >= 1 && type <= 14 && (type & 4) == 0 ? rgbColor : 0;
+                outline[bottomRight] = type >= 1 && type <= 14 && (type & 2) == 0 ? rgbColor : 0;
+                outline[bottomLeft]  = type >= 1 && type <= 14 && (type & 1) == 0 ? rgbColor : 0;
+                */
 
                 int p1 =
                     (topLeft & firstPointIsTopLeft[type]) |
@@ -58,10 +84,8 @@ public class Outline
                     (bottomRight & secondPointIsBottomRight[type]) |
                     (bottomLeft & secondPointIsBottomLeft[type]);
 
-                /*
                 if (p1 == 0 && p2 == 0)
                     continue;
-                */
 
                 outline[p1] = rgbColor;
                 outline[p2] = rgbColor;

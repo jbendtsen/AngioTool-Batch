@@ -86,6 +86,7 @@ public class Analyzer
         // Recycling resources
         public Tubeness.Scratch tubeness = new Tubeness.Scratch();
         public SkeletonResult2 skelResult = new SkeletonResult2();
+        public Particles.Scratch particleScratch = new Particles.Scratch();
         public Lee94.Scratch lee94Scratch = new Lee94.Scratch();
         public Lacunarity2.Statistics lacunarity = new Lacunarity2.Statistics();
         public IntVector convexHull = new IntVector();
@@ -146,6 +147,7 @@ public class Analyzer
             if (b3 != null) { b3.buf = null; } b3 = null;
 
             tubeness = null;
+            particleScratch = null;
             lee94Scratch = null;
             lacunarity = null;
             convexHull = null;
@@ -451,28 +453,35 @@ public class Analyzer
 
         //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " filtered.pgm");
 
-        int[] particleScratch = data.i1.buf;
+        int[] particleBuf = data.i1.buf;
+        Particles.computeShapes(
+            data.particleScratch,
+            particleBuf,
+            analysisImage,
+            inputImage.width,
+            inputImage.height
+        );
 
         if (params.shouldRemoveSmallParticles)
-            Particles.fillHoles(
+            Particles.fillShapes(
+                data.particleScratch,
+                particleBuf,
                 analysisImage,
-                particleScratch,
                 inputImage.width,
                 inputImage.height,
                 params.removeSmallParticlesThreshold,
-                (byte)0xff,
-                (byte)0
+                true
             );
 
         if (params.shouldFillHoles)
-            Particles.fillHoles(
+            Particles.fillShapes(
+                data.particleScratch,
+                particleBuf,
                 analysisImage,
-                particleScratch,
                 inputImage.width,
                 inputImage.height,
                 params.fillHolesValue,
-                (byte)0,
-                (byte)0xff
+                false
             );
 
         if (params.shouldDrawOutline && params.shouldSaveResultImages)
@@ -484,6 +493,8 @@ public class Analyzer
                 overlayImage,
                 params.outlineColor.value,
                 params.outlineSize,
+                data.particleScratch.shapes,
+                particleBuf,
                 analysisImage,
                 inputImage.width,
                 inputImage.height
