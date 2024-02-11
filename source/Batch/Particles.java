@@ -29,35 +29,61 @@ public class Particles
         data.shapes.size = 0;
 
         int area = width * height;
-        Arrays.fill(regions, 0, width * height, 0);
+        Arrays.fill(regions, 0, area, 0);
 
         int startColor = image[0];
-        int startIdx = 0;
+        data.shapes.add(0);
+
         for (int y = 0; y < height; y++) {
-            int color = image[y*width];
-            if ((color ^ startColor) < 0)
-                startIdx++;
+            int prev = image[y*width];
 
-            startColor = color;
-            int prev = startColor;
-            int r = startIdx;
-            regions[y*width] = r;
+            for (int x = 0; x < width; x++) {
+                int color = image[x+width*y];
+                if ((color ^ prev) < 0)
+                    data.shapes.add(data.shapes.size + 1);
 
-            for (int x = 1; x < width; x++) {
-                color = image[x+width*y];
-                if ((color ^ prev) < 0) {
-                    r++;
-                    /*
-                    if (y > 0 && (image[x+width*(y-1)] ^ color) >= 0)
-                        r = regions[x+width*(y-1)];
-                    else
-                        r++;
-                    */
+                int idx = data.shapes.size - 1;
+                if (y > 0 && (image[x+width*(y-1)] ^ color) >= 0) {
+                    int aboveIdx = regions[x+width*(y-1)];
+                    if (data.shapes.buf[idx] > data.shapes.buf[aboveIdx])
+                        data.shapes.buf[idx] = data.shapes.buf[aboveIdx];
+                    else if (data.shapes.buf[idx] < data.shapes.buf[aboveIdx])
+                        data.shapes.buf[aboveIdx] = data.shapes.buf[idx];
                 }
-                regions[x+width*y] = r;
+
+                regions[x+width*y] = data.shapes.size - 1;
                 prev = color;
             }
+
+            data.shapes.add(data.shapes.size + 1);
         }
+
+        int start = 0;
+        int end = height-1;
+        int dir = 1;
+        boolean anySwaps;
+        do {
+            anySwaps = false;
+            start ^= height-1;
+            end ^= height-1;
+            dir *= -1;
+            for (int y = start; y != end; y += dir) {
+                for (int x = 0; x < width; x++) {
+                    int idx = regions[x+width*y];
+                    if ((image[x+width*y] ^ image[x+width*(y+dir)]) >= 0) {
+                        int nextIdx = regions[x+width*(y+dir)];
+                        if (data.shapes.buf[idx] > data.shapes.buf[nextIdx]) {
+                            data.shapes.buf[idx] = data.shapes.buf[nextIdx];
+                            anySwaps = true;
+                        }
+                        else if (data.shapes.buf[idx] < data.shapes.buf[nextIdx]) {
+                            data.shapes.buf[nextIdx] = data.shapes.buf[idx];
+                            anySwaps = true;
+                        }
+                    }
+                }
+            }
+        } while (anySwaps);
 
         /*
         for (int x = 0; x < width; x++) {
@@ -76,7 +102,7 @@ public class Particles
 
         byte[] shapeOutput = ByteBufferPool.acquireAsIs(area * 3);
         for (int i = 0; i < area; i++) {
-            int v = regions[i];
+            int v = data.shapes.buf[regions[i]];
             v = ((v >>> 16) ^ v) * 0x45d9f3b;
             v = ((v >>> 16) ^ v) * 0x45d9f3b;
             v = (v >>> 16) ^ v;
