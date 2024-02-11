@@ -8,6 +8,7 @@ package Batch;
 public class <bigtype>Vector {
     public <type>[] buf;
     public int size;
+    public int sp;
 
     public <bigtype>Vector(int initialCap) {
         this.buf = new <type>[initialCap];
@@ -26,45 +27,22 @@ public class <bigtype>Vector {
             newCap = (int)((float)newCap * 1.7f) + 1;
 
         if (newCap > oldCap) {
-            <type>[] newBuf = new <type>[newCap];
+            <type>[] newBuf = new <type>[newCap-sp];
             if (buf != null && oldCap > 0)
-                System.arraycopy(buf, 0, newBuf, 0, oldCap);
+                System.arraycopy(buf, sp, newBuf, 0, oldCap-sp);
             buf = newBuf;
+            newSize -= sp;
+            sp = 0;
         }
 
         size = newSize;
         return oldSize;
     }
 
-    public int resizeExactly(int newSize, int roundingFactor) {
-        int oldSize = size;
-        int s;
-        if (roundingFactor > 0) {
-            s = (newSize + roundingFactor - 1) / roundingFactor;
-            s *= roundingFactor;
-        }
-        else {
-            s = newSize;
-        }
-
-        if (buf == null) {
-            buf = new <type>[s];
-        }
-        else if (s > buf.length) {
-            <type>[] newBuf = new <type>[s];
-            System.arraycopy(buf, 0, newBuf, 0, buf.length);
-            buf = newBuf;
-        }
-
-        size = s;
-        return oldSize;
-    }
-
     public int add(<type> v) {
-        int pos = size;
-        resize(pos + 1);
-        buf[pos] = v;
-        return pos;
+        resize(size + 1);
+        buf[size-1] = v;
+        return size-1;
     }
 
     public int add(<type>[] data) {
@@ -72,39 +50,35 @@ public class <bigtype>Vector {
     }
 
     public int add(<type>[] data, int off, int len) {
-        int pos = this.size;
         if (off >= 0 && len > 0 && off+len <= data.length) {
-            resize(pos + len);
-            System.arraycopy(data, off, this.buf, pos, len);
+            resize(this.size + len);
+            System.arraycopy(data, off, this.buf, this.size-len, len);
         }
-        return pos;
+        return this.size - len;
     }
 
     public int addTwo(<type> a, <type> b) {
-        int pos = size;
-        resize(pos + 2);
-        buf[pos] = a;
-        buf[pos+1] = b;
-        return pos;
+        resize(size + 2);
+        buf[size-2] = a;
+        buf[size-1] = b;
+        return size-2;
     }
 
     public int addThree(<type> a, <type> b, <type> c) {
-        int pos = size;
-        resize(pos + 3);
-        buf[pos] = a;
-        buf[pos+1] = b;
-        buf[pos+2] = c;
-        return pos;
+        resize(size + 3);
+        buf[size-3] = a;
+        buf[size-2] = b;
+        buf[size-1] = c;
+        return size-3;
     }
 
     public int addFour(<type> a, <type> b, <type> c, <type> d) {
-        int pos = size;
-        resize(pos + 4);
-        buf[pos] = a;
-        buf[pos+1] = b;
-        buf[pos+2] = c;
-        buf[pos+3] = d;
-        return pos;
+        resize(size + 4);
+        buf[size-4] = a;
+        buf[size-3] = b;
+        buf[size-2] = c;
+        buf[size-1] = d;
+        return size-4;
     }
 
     public <type> popOr(int defaultValue) {
@@ -116,9 +90,9 @@ public class <bigtype>Vector {
     }
 
     public <type>[] copy() {
-        <type>[] array = new <type>[size];
+        <type>[] array = new <type>[size-sp];
         if (size > 0)
-            System.arraycopy(this.buf, 0, array, 0, size);
+            System.arraycopy(this.buf, sp, array, 0, size-sp);
         return array;
     }
 }

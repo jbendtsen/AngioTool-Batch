@@ -1623,14 +1623,16 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       Filters.filterMin(tempImage, thresholdedPixels, width, height);
       Filters.filterMin(thresholdedPixels, tempImage, width, height);
 
-      int[] particlesScratch = new int[width * height];
+      Particles.Scratch particles = new Particles.Scratch();
+      int[] shapeRegions = new int[width * height];
+      Particles.computeShapes(particles, shapeRegions, thresholdedPixels, width, height);
 
       if (this.smallParticlesCheckBox.isSelected()) {
-         Particles.fillHoles(thresholdedPixels, particlesScratch, width, height, (int)this.smallParticlesRangeSlider2.getValue(), (byte)0xff, (byte)0);
+         Particles.fillShapes(particles, shapeRegions, thresholdedPixels, width, height, (int)this.smallParticlesRangeSlider2.getValue(), true);
       }
 
       if (this.fillHolesCheckBox.isSelected()) {
-         Particles.fillHoles(thresholdedPixels, particlesScratch, width, height, (int)this.fillHolesRangeSlider2.getValue(), (byte)0, (byte)0xff);
+         Particles.fillShapes(particles, shapeRegions, thresholdedPixels, width, height, (int)this.fillHolesRangeSlider2.getValue(), false);
       }
 
       if (this.allantoisOverlay == null || this.allantoisOverlay.length != width * height)
@@ -1643,6 +1645,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             this.allantoisOverlay,
             this.outlineRoundedPanel.getBackground().getRGB(),
             getSpinnerValueDouble(this.outlineSpinner),
+            particles.shapes,
+            shapeRegions,
             thresholdedPixels,
             width,
             height

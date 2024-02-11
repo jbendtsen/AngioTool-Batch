@@ -6,6 +6,10 @@ import ij.ImageStack;
 import ij.measure.Calibration;
 import ij.process.ImageProcessor;
 import ij.process.ColorProcessor;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.FileSystems;
+import java.nio.file.StandardOpenOption;
 import javax.swing.ImageIcon;
 
 public class ImageUtils
@@ -140,6 +144,29 @@ public class ImageUtils
                 java.nio.file.StandardOpenOption.CREATE,
                 java.nio.file.StandardOpenOption.WRITE
             );
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public static void writePpm24(byte[] pixels24, int width, int height, String title)
+    {
+        byte[] header = ("P6\n" + width + " " + height + "\n255\n").getBytes();
+        try {
+            OutputStream out = Files.newOutputStream(
+                FileSystems.getDefault().getPath("", title),
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE
+            );
+            try {
+                out.write(header);
+                out.write(pixels24, 0, width * height * 3);
+            }
+            finally {
+                out.close();
+            }
         }
         catch (Exception ex) {
             ex.printStackTrace();
