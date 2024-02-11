@@ -44,12 +44,18 @@ public class Outline
 
         for (int y = -1; y < height; y++) {
             int topLeft = 0, topRight = 0, bottomLeft = 0, bottomRight = 0;
+            int topLeftIdx = 0, topRightIdx = 0, bottomLeftIdx = 0, bottomRightIdx = 0;
             for (int x = -1; x < width; x++) {
                 topLeft = topRight;
+                topLeftIdx = topRightIdx;
                 bottomLeft = bottomRight;
+                bottomLeftIdx = bottomRightIdx;
 
-                topRight    = (x < width-1 && y >= 0)       ? (image[(x+1) + width * y] >> 31)     : 0;
-                bottomRight = (x < width-1 && y < height-1) ? (image[(x+1) + width * (y+1)] >> 31) : 0;
+                topRightIdx = (x < width-1 && y >= 0)       ? (x+1) + width * y     : 0;
+                bottomRightIdx = (x < width-1 && y < height-1) ? (x+1) + width * (y+1) : 0;
+
+                topRight    = image[topRightIdx] >> 31;
+                bottomRight = image[bottomRightIdx] >> 31;
 
                 // If this pixel is black and surrounded by white pixels, then it is part of a hole.
                 // Therefore it is not included in the outline.
@@ -74,15 +80,15 @@ public class Outline
                 */
 
                 int p1 =
-                    (topLeft & firstPointIsTopLeft[type]) |
-                    (topRight & firstPointIsTopRight[type]) |
-                    (bottomRight & firstPointIsBottomRight[type]) |
-                    (bottomLeft & firstPointIsBottomLeft[type]);
+                    (topLeftIdx & firstPointIsTopLeft[type]) |
+                    (topRightIdx & firstPointIsTopRight[type]) |
+                    (bottomRightIdx & firstPointIsBottomRight[type]) |
+                    (bottomLeftIdx & firstPointIsBottomLeft[type]);
 
                 int p2 =
-                    (topRight & secondPointIsTopRight[type]) |
-                    (bottomRight & secondPointIsBottomRight[type]) |
-                    (bottomLeft & secondPointIsBottomLeft[type]);
+                    (topRightIdx & secondPointIsTopRight[type]) |
+                    (bottomRightIdx & secondPointIsBottomRight[type]) |
+                    (bottomLeftIdx & secondPointIsBottomLeft[type]);
 
                 if (p1 == 0 && p2 == 0)
                     continue;

@@ -31,97 +31,48 @@ public class Particles
         int area = width * height;
         Arrays.fill(regions, 0, width * height, 0);
 
-        int occ = 0;
+        int startColor = image[0];
+        int startIdx = 0;
+        for (int y = 0; y < height; y++) {
+            int color = image[y*width];
+            if ((color ^ startColor) < 0)
+                startIdx++;
 
-        for (int i = 0; i < area; i++) {
-            if (regions[i] != 0)
-                continue;
+            startColor = color;
+            int prev = startColor;
+            int r = startIdx;
+            regions[y*width] = r;
 
-            occ++;
-            regions[i] = occ;
-            int color = image[i];
-
-            int flags = (color >> 31) & FLAG_IS_WHITE;
-            int pixelCount = 1;
-            int firstX = i % width;
-            int firstY = i / width;
-
-            IntVector stack = data.ffStack;
-            stack.sp = 0;
-            stack.size = 0;
-            stack.addFour(firstX, firstX, firstY, 1);
-            stack.addFour(firstX, firstX, firstY - 1, 1);
-
-            boolean isSurroundedByOtherShape = true;
-            while (stack.sp < stack.size) {
-                int x1 = stack.buf[stack.sp];
-                int x2 = stack.buf[stack.sp+1];
-                int y  = stack.buf[stack.sp+2];
-                int dy = stack.buf[stack.sp+3];
-                stack.sp += 4;
-
-                int x = x1;
-                if (x < 0 || y < 0 || x >= width || y >= height) {
-                    isSurroundedByOtherShape = false;
+            for (int x = 1; x < width; x++) {
+                color = image[x+width*y];
+                if ((color ^ prev) < 0) {
+                    r++;
+                    /*
+                    if (y > 0 && (image[x+width*(y-1)] ^ color) >= 0)
+                        r = regions[x+width*(y-1)];
+                    else
+                        r++;
+                    */
                 }
-                else {
-                    while (
-                        --x >= 0 &&
-                        (regions[x + width * y] == 0 || regions[x + width * y] == occ) &&
-                        (image[x + width * y] ^ color) >= 0
-                    ) {
-                        regions[x + width * y] = occ;
-                    }
-
-                    isSurroundedByOtherShape = isSurroundedByOtherShape && x >= 0;
-                    x++;
-                }
-
-                if (x < x1)
-                    stack.addFour(x, x1 - 1, y - dy, -dy);
-
-                while (x1 <= x2) {
-                    if (x1 < 0 || y < 0 || x1 >= width || y >= height) {
-                        isSurroundedByOtherShape = false;
-                    }
-                    else {
-                        while (
-                            x1 < width &&
-                            (regions[x1 + width * y] == 0 || regions[x1 + width * y] == occ) &&
-                            (image[x1 + width * y] ^ color) >= 0
-                        ) {
-                            regions[x1 + width * y] = occ;
-                            x1++;
-                        }
-                        isSurroundedByOtherShape = isSurroundedByOtherShape && x1 < width;
-                    }
-
-                    if (x1 > x)
-                        stack.addFour(x, x1 - 1, y + dy, dy);
-                    if (x1 - 1 > x2)
-                        stack.addFour(x2 + 1, x1 - 1, y - dy, -dy);
-
-                    x1++;
-                    while (x1 < x2 &&
-                        !(
-                            x1 >= 0 && x1 < width && y >= 0 && y < height &&
-                            (regions[x1 + width * y] == 0 || regions[x1 + width * y] == occ) &&
-                            (image[x1 + width * y] ^ color) >= 0
-                        )
-                    ) {
-                        x1++;
-                    }
-
-                    isSurroundedByOtherShape = isSurroundedByOtherShape && x1 < width;
-                    x = x1;
-                }
+                regions[x+width*y] = r;
+                prev = color;
             }
-
-            if (isSurroundedByOtherShape)
-                flags |= FLAG_SURROUNDED;
-
-            data.shapes.addFour(flags, pixelCount, firstX, firstY);
         }
+
+        /*
+        for (int x = 0; x < width; x++) {
+            int prev = image[x];
+            int region = regions[x];
+            for (int y = 1; y < height; y++) {
+                int color = image[x+width*y];
+                if ((color ^ prev) < 0)
+                    region = regions[x+width*y];
+                else
+                    regions[x+width*y] = region;
+                prev = color;
+            }
+        }
+        */
 
         byte[] shapeOutput = ByteBufferPool.acquireAsIs(area * 3);
         for (int i = 0; i < area; i++) {
