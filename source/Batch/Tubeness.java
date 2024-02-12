@@ -65,16 +65,30 @@ public class Tubeness
         float factor = maxResult > 0.0 ? (float)(256.0 / maxResult) : 1.0f;
         //System.out.println("maxResult: " + maxResult + ", factor: " + factor);
 
-        for (int y = 0; y < height; y++) {
-            int yy = y;
-            if (y == 0) yy = 1;
-            if (y == width-1) yy = width-2;
-            for (int x = 0; x < width; x++) {
-                int xx = x;
-                if (x == 0) xx = 1;
-                if (x == width-1) xx = width-2;
-                output[x+width*y] = (byte)(Math.min(data.maxEigenOutput[xx+width*yy] * factor, 255.0f));
+        for (int y = 1; y < height-1; y++) {
+            for (int x = 1; x < width-1; x++)
+                output[x+width*y] = (byte)(Math.min(data.maxEigenOutput[x+width*y] * factor, 255.0f));
+        }
+
+        if (width >= 2) {
+            for (int y = 1; y < height-1; y++) {
+                output[width*y] = output[1+width*y];
+                output[width*(y+1)-1] = output[width*(y+1)-2];
             }
+        }
+
+        if (height >= 2) {
+            for (int x = 1; x < width-1; x++)
+                output[x] = output[x+width];
+            for (int x = 1; x < width-1; x++)
+                output[x+width*(height-1)] = output[x+width*(height-2)];
+        }
+
+        if (width >= 2 && height >= 2) {
+            output[0] = output[width+1];
+            output[width-1] = output[2*width-2];
+            output[width*(height-1)] = output[1+width*(height-2)];
+            output[width*height-1] = output[width*(height-1)-2];
         }
     }
 
