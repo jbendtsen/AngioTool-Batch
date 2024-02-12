@@ -2,6 +2,7 @@ package Batch;
 
 import java.util.Arrays;
 
+// TODO: Add width and height to Shape "struct"
 public class Particles
 {
     /*
@@ -14,7 +15,7 @@ public class Particles
     public static final int N_SHAPE_MEMBERS = 2;
 
     public static final int FLAG_IS_WHITE = 1;
-    public static final int FLAG_SURROUNDED = 2;
+    public static final int FLAG_NOT_SURROUNDED = 2;
 
     public static class Scratch
     {
@@ -62,9 +63,9 @@ public class Particles
         int start = 0;
         int end = height-1;
         int dir = 1;
-        int nUnique = 0;
-        while (true) {
-            boolean anyCaptures = false;
+        boolean anyCaptures;
+        do {
+            anyCaptures = false;
 
             start ^= height-1;
             end ^= height-1;
@@ -83,23 +84,17 @@ public class Particles
                             anyCaptures = true;
                         }
                     }
-
-                    if (!anyCaptures && spans.buf[idx+1] == 0) {
-                        spans.buf[idx+1] = ++nUnique;
-                        // This is where you'd record firstX and firstY, but since
-                        // we don't use any seed-filling algorithm there's not much point
-                    }
                 }
             }
+        } while (anyCaptures);
 
-            if (anyCaptures) {
-                nUnique = 0;
-                for (int i = 0; i < spans.size; i += 2)
-                    spans.buf[i*2+1] = 0;
-            }
-            else {
-                break;
-            }
+        int nUnique = 0;
+        for (int i = 0; i < spans.size; i += 2) {
+            int startingSpan = spans.buf[i];
+            if (spans.buf[startingSpan+1] == 0)
+                spans.buf[startingSpan+1] = ++nUnique;
+
+            //spans.buf[i+1] = spans.buf[startingSpan+1];
         }
 
         data.shapes.resize(nUnique * N_SHAPE_MEMBERS);
@@ -107,20 +102,16 @@ public class Particles
 
         for (int i = 0; i < area; i++) {
             int x = i % width;
-            int r = spans.buf[regions[i] + 1];
-            if (dir < 0)
-                r = (nUnique+1) - r;
-
+            int r = spans.buf[spans.buf[regions[i]] + 1];
             int idx = (r-1) * N_SHAPE_MEMBERS;
 
             int flags = data.shapes.buf[idx];
             flags |= (image[i] >> 31) & FLAG_IS_WHITE;
             if (i < width || i >= area-width || x == 0 || x == width-1)
-                flags |= FLAG_SURROUNDED;
+                flags |= FLAG_NOT_SURROUNDED;
 
             data.shapes.buf[idx] = flags;
             data.shapes.buf[idx+1]++; // pixelCount
-
             regions[i] = r;
         }
     }

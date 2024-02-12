@@ -154,8 +154,17 @@ public class Analyzer
         }
     }
 
+    static boolean decideShapeComputation(AnalyzerParameters params) {
+        return
+            params.shouldRemoveSmallParticles ||
+            params.shouldFillHoles ||
+            (params.shouldDrawOutline && params.shouldSaveResultImages);
+    }
+
     static int determineUpdateCountPerImage(AnalyzerParameters params) {
         int count = 5;
+        if (decideShapeComputation(params))
+            count++;
         if (params.shouldDrawOutline && params.shouldSaveResultImages)
             count++;
         if (params.shouldComputeLacunarity)
@@ -304,13 +313,21 @@ public class Analyzer
     ) {
         String outFolder = outputPathMap.getBack(inFile.getParent());
         File outFolderPath = new File(resultImagesPath, outFolder);
+        boolean shouldCreateFolder = false;
+
         if (outFolderPath.exists()) {
-            if (outFolderPath.isFile())
+            if (outFolderPath.isFile()) {
                 outFolderPath.delete();
+                shouldCreateFolder = true;
+            }
         }
         else {
-            outFolderPath.mkdirs();
+            shouldCreateFolder = true;
         }
+
+        if (shouldCreateFolder)
+            outFolderPath.mkdirs();
+
         return new File(outFolderPath, inFile.getName()).getAbsolutePath();
     }
 
@@ -453,14 +470,19 @@ public class Analyzer
 
         //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " filtered.pgm");
 
-        int[] particleBuf = data.i1.buf;
-        Particles.computeShapes(
-            data.particleScratch,
-            particleBuf,
-            analysisImage,
-            inputImage.width,
-            inputImage.height
-        );
+        int[] particleBuf = null;
+        if (decideShapeComputation(params)) {
+            uiToken.updateImageProgress("Identifying shapes...");
+
+            particleBuf = data.i1.buf;
+            Particles.computeShapes(
+                data.particleScratch,
+                particleBuf,
+                analysisImage,
+                inputImage.width,
+                inputImage.height
+            );
+        }
 
         if (params.shouldRemoveSmallParticles)
             Particles.fillShapes(

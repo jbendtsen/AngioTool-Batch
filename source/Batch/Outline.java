@@ -36,7 +36,9 @@ public class Outline
         int width,
         int height
     ) {
-        // this cuts out the need for branching
+        int area = width * height;
+        int holeThreshold = area / 50;
+
         byte firstInputPixel = image[0];
         int firstOutputPixel = outline[0];
         image[0] = 0;
@@ -51,7 +53,7 @@ public class Outline
                 bottomLeft = bottomRight;
                 bottomLeftIdx = bottomRightIdx;
 
-                topRightIdx = (x < width-1 && y >= 0)       ? (x+1) + width * y     : 0;
+                topRightIdx    = (x < width-1 && y >= 0)       ? (x+1) + width * y     : 0;
                 bottomRightIdx = (x < width-1 && y < height-1) ? (x+1) + width * (y+1) : 0;
 
                 topRight    = image[topRightIdx] >> 31;
@@ -61,12 +63,12 @@ public class Outline
                 // Therefore it is not included in the outline.
                 if (topRight == 0 && x < width-1 && y >= 0) {
                     int idx = Particles.N_SHAPE_MEMBERS * (shapeRegions[(x+1) + width * y] - 1);
-                    if (idx >= 0 && (~shapes.buf[idx+1] & Particles.FLAG_SURROUNDED) == 0)
+                    if (idx >= 0 && (shapes.buf[idx] & Particles.FLAG_NOT_SURROUNDED) == 0 && shapes.buf[idx+1] < holeThreshold)
                         topRight = -1;
                 }
                 if (bottomRight == 0 && x < width-1 && y < height-1) {
                     int idx = Particles.N_SHAPE_MEMBERS * (shapeRegions[(x+1) + width * (y+1)] - 1);
-                    if (idx >= 0 && (~shapes.buf[idx+1] & Particles.FLAG_SURROUNDED) == 0)
+                    if (idx >= 0 && (shapes.buf[idx] & Particles.FLAG_NOT_SURROUNDED) == 0 && shapes.buf[idx+1] < holeThreshold)
                         bottomRight = -1;
                 }
 
