@@ -12,29 +12,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class <bigtype>BufferPool
 {
-    public static final int N_QUEUES = 4;
-
-    static final ConcurrentLinkedQueue[] queues = new ConcurrentLinkedQueue[N_QUEUES];
-
-    static
-    {
-        for (int i = 0; i < N_QUEUES; i++)
-            queues[i] = new ConcurrentLinkedQueue<<type>[]>();
-    }
-
-    public static int findQueueNumber(int allocSize)
-    {
-        return 0;
-        //return Math.min((32 - Integer.numberOfLeadingZeros(allocSize)) / 6, N_QUEUES - 1);
-    }
+    private static final ConcurrentLinkedQueue<<type>[]> q = new ConcurrentLinkedQueue<>();
 
     public static <type>[] acquireAsIs(int minSize)
     {
         if (minSize <= 0)
             return null;
-
-        ConcurrentLinkedQueue<<type>[]> q =
-            (ConcurrentLinkedQueue<<type>[]>)queues[findQueueNumber(minSize)];
 
         <type>[] buffer;
         do {
@@ -59,7 +42,7 @@ public class <bigtype>BufferPool
     public static <type>[] release(<type>[] buffer)
     {
         if (buffer != null)
-            queues[findQueueNumber(buffer.length)].add(buffer);
+            q.add(buffer);
         return null;
     }
 }
