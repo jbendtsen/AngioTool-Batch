@@ -97,8 +97,8 @@ public class SpreadsheetWriter {
         byte[] buf = new byte[16];
         int idx = buf.length;
 
-        n--;
         while (n > 0) {
+            n--;
             buf[--idx] = (byte)(0x41 + (n % 26));
             n /= 26;
         }
