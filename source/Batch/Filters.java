@@ -61,15 +61,15 @@ public class Filters
             int top = y > 0 ? y-1 : 0;
             int bottom = y < height-1 ? y+1 : height-1;
 
-            p1 = inputPixels[left + width * top];
-            p2 = inputPixels[x + width * top];
-            p3 = inputPixels[right + width * top];
-            p4 = inputPixels[left + width * y];
-            p5 = inputPixels[x + width * y];
-            p6 = inputPixels[right + width * y];
-            p7 = inputPixels[left + width * bottom];
-            p8 = inputPixels[x + width * bottom];
-            p9 = inputPixels[right + width * bottom];
+            p1 = inputPixels[left + width * top] & 0xff;
+            p2 = inputPixels[x + width * top] & 0xff;
+            p3 = inputPixels[right + width * top] & 0xff;
+            p4 = inputPixels[left + width * y] & 0xff;
+            p5 = inputPixels[x + width * y] & 0xff;
+            p6 = inputPixels[right + width * y] & 0xff;
+            p7 = inputPixels[left + width * bottom] & 0xff;
+            p8 = inputPixels[x + width * bottom] & 0xff;
+            p9 = inputPixels[right + width * bottom] & 0xff;
 
             min = p5;
             if (p1<min) min = p1;
@@ -146,15 +146,15 @@ public class Filters
             int top = y > 0 ? y-1 : 0;
             int bottom = y < height-1 ? y+1 : height-1;
 
-            p1 = inputPixels[left + width * top];
-            p2 = inputPixels[x + width * top];
-            p3 = inputPixels[right + width * top];
-            p4 = inputPixels[left + width * y];
-            p5 = inputPixels[x + width * y];
-            p6 = inputPixels[right + width * y];
-            p7 = inputPixels[left + width * bottom];
-            p8 = inputPixels[x + width * bottom];
-            p9 = inputPixels[right + width * bottom];
+            p1 = inputPixels[left + width * top] & 0xff;
+            p2 = inputPixels[x + width * top] & 0xff;
+            p3 = inputPixels[right + width * top] & 0xff;
+            p4 = inputPixels[left + width * y] & 0xff;
+            p5 = inputPixels[x + width * y] & 0xff;
+            p6 = inputPixels[right + width * y] & 0xff;
+            p7 = inputPixels[left + width * bottom] & 0xff;
+            p8 = inputPixels[x + width * bottom] & 0xff;
+            p9 = inputPixels[right + width * bottom] & 0xff;
 
             max = p5;
             if (p1>max) max = p1;

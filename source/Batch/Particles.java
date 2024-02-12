@@ -93,8 +93,6 @@ public class Particles
             int startingSpan = spans.buf[i];
             if (spans.buf[startingSpan+1] == 0)
                 spans.buf[startingSpan+1] = ++nUnique;
-
-            //spans.buf[i+1] = spans.buf[startingSpan+1];
         }
 
         data.shapes.resize(nUnique * N_SHAPE_MEMBERS);
