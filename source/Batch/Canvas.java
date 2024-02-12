@@ -124,6 +124,7 @@ public class Canvas
         int startOff = -pixDiameter / 2;
 
         int idxJump = index != null ? 1 : pointSize;
+        radius += 0.5;
 
         for (int i = 0; i < arraySize; i += idxJump) {
             int idx = index != null ? index[i] : i;
@@ -143,7 +144,7 @@ public class Canvas
                     double dx = xx - x;
                     double dy = yy - y;
                     double distance = Math.sqrt(dx*dx + dy*dy);
-                    double weight = Math.min(1.0, Math.max(0.0, 20.0 * (1.0 - (distance / radius))));
+                    double weight = Math.min(1.0, Math.max(0.0, 3.0 * (1.0 - (distance / radius))));
                     double a1 = weight * alpha;
 
                     int p = image[xx + width * yy];

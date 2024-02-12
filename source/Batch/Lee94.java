@@ -69,11 +69,9 @@ public class Lee94 {
             int reservedCap = Math.max(width * height / 32, 384);
             if (finalSimplePoints.buf == null)
                 finalSimplePoints.buf = new int[reservedCap];
-
-            finalSimplePoints.size = 0;
         }
 
-        public void setBorder(int border) {
+        public void prepare(int border) {
             offs[0] = 0;
             offs[1] = 0;
             offs[2] = 0;
@@ -84,6 +82,8 @@ public class Lee94 {
                 offs[0] = 1 - ((border-3) * 2);
             else if (border == 5 || border == 6)
                 offs[2] = 1 - ((border-5) * 2);
+
+            finalSimplePoints.size = 0;
         }
 
         @Override
@@ -120,7 +120,7 @@ public class Lee94 {
                             ((planes[(x + offs[0]) + width * (y + offs[1])] >>> (z + offs[2])) & 1) == 0
                         ) {
                             int neighborBits = AnalyzeSkeleton2.getBooleanNeighborBits(planes, width, height, breadth, x, y, z);
-                            if (Integer.bitCount(neighborBits) != 1 && isSimplePoint(neighborBits) && isEulerInvariant(neighborBits)) {
+                            if (Integer.bitCount(neighborBits) != 1 && isSimplePoint(neighborBits) == 1 && isEulerInvariant(neighborBits)) {
                                 vertices.add(x);
                                 vertices.add(y);
                                 vertices.add(z);
@@ -180,21 +180,21 @@ public class Lee94 {
         do {
             anyChanged = false;
             for (int border = 1; border <= 6; border++) {
-                boolean wasThinned = thin(data, planes, runner, maxWorkers, border);
+                boolean wasThinned = thin(data, runner, maxWorkers, border);
                 anyChanged = anyChanged || wasThinned;
             }
         } while (anyChanged);
+
+        data.params.planes = null;
     }
 
     static boolean thin(
         Scratch data,
-        byte[] planes,
         ISliceRunner runner,
         int maxWorkers,
         int border
     ) {
-        data.params.setBorder(border);
-        data.params.planes = planes;
+        data.params.prepare(border);
 
         try {
             runner.runSlices(
@@ -208,12 +208,11 @@ public class Lee94 {
             ex.printStackTrace();
         }
 
-        data.params.planes = null;
-
         final IntVector results = data.params.finalSimplePoints;
         final int width = data.params.width;
         final int height = data.params.height;
         final int breadth = data.params.breadth;
+        final byte[] planes = data.params.planes;
 
         boolean anyChange = false;
         for (int i = 0; i < results.size; i += 3) {
@@ -221,10 +220,10 @@ public class Lee94 {
             int y = results.buf[i+1];
             int z = results.buf[i+2];
             int pos = x + y*width;
-            boolean isSimple = isSimplePoint(AnalyzeSkeleton2.getBooleanNeighborBits(planes, width, height, breadth, x, y, z));
+            int simple = isSimplePoint(AnalyzeSkeleton2.getBooleanNeighborBits(planes, width, height, breadth, x, y, z));
 
-            planes[pos] = (byte)((planes[pos] & ~(1 << z)) | (isSimple ? 0 : (1 << z)));
-            anyChange = anyChange || isSimple;
+            planes[pos] = (byte)((planes[pos] & ~(1 << z)) | ((simple ^ 1) << z));
+            anyChange = anyChange || (simple == 1);
         }
 
         return anyChange;
@@ -244,8 +243,8 @@ public class Lee94 {
         return euler == 0;
     }
 
-    static boolean isSimplePoint(int neighborBits) {
-        return ((simplePointsLut[neighborBits >> 3] >> (7 - (neighborBits & 7))) & 1) == 1;
+    static int isSimplePoint(int neighborBits) {
+        return (simplePointsLut[neighborBits >> 3] >> (7 - (neighborBits & 7))) & 1;
     }
 
     static byte[] loadSimplePointsLut() {

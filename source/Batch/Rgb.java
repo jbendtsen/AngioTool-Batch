@@ -27,6 +27,10 @@ public class Rgb {
         value = (c.getRed() & 0xff) << 16 | (c.getGreen() & 0xff) << 8 | (c.getBlue() & 0xff);
     }
 
+    public int getARGB() {
+        return 0xff000000 | value;
+    }
+
     public String toString() {
         byte[] buf = new byte[7];
         buf[0] = '#';

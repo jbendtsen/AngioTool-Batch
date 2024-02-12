@@ -513,7 +513,7 @@ public class Analyzer
             // TODO: implement strokeWidth
             Outline.drawOutline(
                 overlayImage,
-                params.outlineColor.value,
+                params.outlineColor.getARGB(),
                 params.outlineSize,
                 data.particleScratch.shapes,
                 particleBuf,
@@ -548,7 +548,7 @@ public class Analyzer
                 data.convexHull.buf,
                 data.convexHull.size,
                 2,
-                params.convexHullColor.value,
+                params.convexHullColor.getARGB(),
                 params.convexHullSize
             );
         }
@@ -622,7 +622,7 @@ public class Analyzer
                 data.skelResult.slabList.buf,
                 data.skelResult.slabList.size,
                 3,
-                params.skeletonColor.value,
+                params.skeletonColor.getARGB(),
                 params.skeletonSize
             );
             Canvas.drawCircles(
@@ -633,7 +633,7 @@ public class Analyzer
                 data.skelResult.junctionVoxels.buf,
                 data.skelResult.removedJunctions.size,
                 3,
-                params.skeletonColor.value,
+                params.skeletonColor.getARGB(),
                 params.skeletonSize
             );
         }
@@ -650,7 +650,7 @@ public class Analyzer
                 data.skelResult.junctionVoxels.buf,
                 data.skelResult.isolatedJunctions.size,
                 3,
-                params.branchingPointsColor.value,
+                params.branchingPointsColor.getARGB(),
                 params.branchingPointsSize
             );
         }
