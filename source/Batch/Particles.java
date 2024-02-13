@@ -9,10 +9,12 @@ public class Particles
     struct Shape {
         int perimeter;
         int area;
+        int skelIterations;
     }
     */
 
-    public static final int N_SHAPE_MEMBERS = 2;
+    public static final int N_SHAPE_MEMBERS = 3;
+    public static final int MAX_SKEL_ITERATIONS = 16;
 
     public static class Scratch
     {
@@ -136,6 +138,68 @@ public class Particles
                 }
             }
         }
+
+        int[] scratch = IntBufferPool.acquireAsIs(area);
+        int[] a = null, b = null;
+
+        int nRemovals;
+        int totalPasses = 0;
+        do {
+            a = regions;
+            b = scratch;
+
+            nRemovals = 0;
+            for (int pass = 1; pass <= 2; pass++) {
+                for (int y = 1; y < height-1; y++) {
+                    for (int x = 1; x < width-1; x++) {
+                        int idx = x+width*y;
+                        int r = a[idx];
+                        if (r > 0) {
+                            int value = Zha84.lut[
+                                (((Integer.bitCount(a[idx-width-1] - r) - 1) >> 31) & 1) |
+                                (((Integer.bitCount(a[idx-width]   - r) - 1) >> 31) & 2) |
+                                (((Integer.bitCount(a[idx-width+1] - r) - 1) >> 31) & 4) |
+                                (((Integer.bitCount(a[idx+1]       - r) - 1) >> 31) & 8) |
+                                (((Integer.bitCount(a[idx+width+1] - r) - 1) >> 31) & 16) |
+                                (((Integer.bitCount(a[idx+width]   - r) - 1) >> 31) & 32) |
+                                (((Integer.bitCount(a[idx+width-1] - r) - 1) >> 31) & 64) |
+                                (((Integer.bitCount(a[idx-1]       - r) - 1) >> 31) & 128)
+                            ];
+
+                            //boolean shouldTrim = value == 3 || value == pass
+                            int shouldTrim = (Integer.bitCount(value - 3) * Integer.bitCount(value - pass) - 1) >> 31;
+
+                            nRemovals -= shouldTrim;
+                            data.shapes.buf[N_SHAPE_MEMBERS * (r - 1) + 2] |= shouldTrim & (1 << 31);
+                            r = (r ^ shouldTrim) - shouldTrim;
+                        }
+                        b[idx] = r;
+                    }
+                }
+                int[] temp = a;
+                a = b;
+                b = temp;
+            }
+
+            // if the removal flag is set, clear it and add one
+            for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS)
+                data.shapes.buf[i+2] = (data.shapes.buf[i+2] & 0x7fffFFFF) + (data.shapes.buf[i+2] >>> 31);
+
+            totalPasses++;
+        } while (nRemovals > 0 && totalPasses <= MAX_SKEL_ITERATIONS);
+
+        System.out.println("totalPasses: " + totalPasses);
+
+        /*
+        String[] names = new String[] {"perimeter", "area", "iterations"};
+        String msg = "";
+        for (int i = 0; i < data.shapes.size; i++) {
+            msg += "" + (i / 3) + ": " + names[i % 3] + " = " + data.shapes.buf[i] + "\n";
+        }
+        System.out.println(msg);
+        */
+
+        IntBufferPool.release(scratch);
     }
 
     public static void fillShapes(Scratch data, int[] regions, byte[] image, int width, int height, double maxSize, boolean lookingForWhite)
