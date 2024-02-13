@@ -1,5 +1,8 @@
 package Batch;
 
+// Using "a = Math.min(a, b)" is faster than "if (b<a) a = b"
+// See FiltersBenchmark.java for details
+
 public class Filters
 {
     public static void filterMin(byte[] outputPixels, byte[] inputPixels, int width, int height)
@@ -30,14 +33,14 @@ public class Filters
                 p9 = inputPixels[offset+width+x+1] & 0xff;
 
                 min = p5;
-                if (p1<min) min = p1;
-                if (p2<min) min = p2;
-                if (p3<min) min = p3;
-                if (p4<min) min = p4;
-                if (p6<min) min = p6;
-                if (p7<min) min = p7;
-                if (p8<min) min = p8;
-                if (p9<min) min = p9;
+                min = Math.min(min, p1);
+                min = Math.min(min, p2);
+                min = Math.min(min, p3);
+                min = Math.min(min, p4);
+                min = Math.min(min, p6);
+                min = Math.min(min, p7);
+                min = Math.min(min, p8);
+                min = Math.min(min, p9);
 
                 outputPixels[offset+x] = (byte)min;
             }
@@ -72,14 +75,14 @@ public class Filters
             p9 = inputPixels[right + width * bottom] & 0xff;
 
             min = p5;
-            if (p1<min) min = p1;
-            if (p2<min) min = p2;
-            if (p3<min) min = p3;
-            if (p4<min) min = p4;
-            if (p6<min) min = p6;
-            if (p7<min) min = p7;
-            if (p8<min) min = p8;
-            if (p9<min) min = p9;
+            min = Math.min(min, p1);
+            min = Math.min(min, p2);
+            min = Math.min(min, p3);
+            min = Math.min(min, p4);
+            min = Math.min(min, p6);
+            min = Math.min(min, p7);
+            min = Math.min(min, p8);
+            min = Math.min(min, p9);
 
             outputPixels[x+y*width] = (byte)min;
             x += xinc;
@@ -115,14 +118,14 @@ public class Filters
                 p9 = inputPixels[offset+width+x+1] & 0xff;
 
                 max = p5;
-                if (p1>max) max = p1;
-                if (p2>max) max = p2;
-                if (p3>max) max = p3;
-                if (p4>max) max = p4;
-                if (p6>max) max = p6;
-                if (p7>max) max = p7;
-                if (p8>max) max = p8;
-                if (p9>max) max = p9;
+                max = Math.max(max, p1);
+                max = Math.max(max, p2);
+                max = Math.max(max, p3);
+                max = Math.max(max, p4);
+                max = Math.max(max, p6);
+                max = Math.max(max, p7);
+                max = Math.max(max, p8);
+                max = Math.max(max, p9);
 
                 outputPixels[offset+x] = (byte)max;
             }
@@ -157,14 +160,14 @@ public class Filters
             p9 = inputPixels[right + width * bottom] & 0xff;
 
             max = p5;
-            if (p1>max) max = p1;
-            if (p2>max) max = p2;
-            if (p3>max) max = p3;
-            if (p4>max) max = p4;
-            if (p6>max) max = p6;
-            if (p7>max) max = p7;
-            if (p8>max) max = p8;
-            if (p9>max) max = p9;
+            max = Math.max(max, p1);
+            max = Math.max(max, p2);
+            max = Math.max(max, p3);
+            max = Math.max(max, p4);
+            max = Math.max(max, p6);
+            max = Math.max(max, p7);
+            max = Math.max(max, p8);
+            max = Math.max(max, p9);
 
             outputPixels[x+y*width] = (byte)max;
             x += xinc;

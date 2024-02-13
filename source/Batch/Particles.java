@@ -7,15 +7,12 @@ public class Particles
 {
     /*
     struct Shape {
-        unsigned int flags;
-        int pixelCount;
+        int perimeter;
+        int area;
     }
     */
 
     public static final int N_SHAPE_MEMBERS = 2;
-
-    public static final int FLAG_IS_WHITE = 1;
-    public static final int FLAG_NOT_SURROUNDED = 2;
 
     public static class Scratch
     {
@@ -101,16 +98,43 @@ public class Particles
         for (int i = 0; i < area; i++) {
             int x = i % width;
             int r = spans.buf[spans.buf[regions[i]] + 1];
-            int idx = (r-1) * N_SHAPE_MEMBERS;
+            int idx = N_SHAPE_MEMBERS * (r-1);
 
-            int flags = data.shapes.buf[idx];
-            flags |= (image[i] >> 31) & FLAG_IS_WHITE;
-            if (i < width || i >= area-width || x == 0 || x == width-1)
-                flags |= FLAG_NOT_SURROUNDED;
-
-            data.shapes.buf[idx] = flags;
-            data.shapes.buf[idx+1]++; // pixelCount
+            data.shapes.buf[idx+1]++; // area++
             regions[i] = r;
+
+            // use marching squares to determine the perimeter
+            if (i >= width+1 && x > 0) {
+                int edges =
+                    ((image[i-width-1] >> 31) & 8) |
+                    ((image[i-width]   >> 31) & 4) |
+                    ((image[i]         >> 31) & 2) |
+                    ((image[i-1]       >> 31) & 1);
+
+                if (edges != 0 && edges != 15) {
+                    int nw = regions[i-width-1];
+                    int ne = regions[i-width];
+                    //int se = r;
+                    int sw = regions[i-1];
+
+                    if (nw > 0 && edges != 2 && edges != 13) {
+                        data.shapes.buf[N_SHAPE_MEMBERS * (nw-1)]++; // perimeter++
+                        regions[i-width-1] = -nw;
+                    }
+                    if (ne > 0 && edges != 1 && edges != 14) {
+                        data.shapes.buf[N_SHAPE_MEMBERS * (ne-1)]++; // perimeter++
+                        regions[i-width] = -ne;
+                    }
+                    if (r > 0 && edges != 7 && edges != 8) {
+                        data.shapes.buf[idx]++; // perimeter++
+                        regions[i] = -r;
+                    }
+                    if (sw > 0 && edges != 4 && edges != 11) {
+                        data.shapes.buf[N_SHAPE_MEMBERS * (sw-1)]++; // perimeter++
+                        regions[i-1] = -sw;
+                    }
+                }
+            }
         }
     }
 
@@ -121,14 +145,14 @@ public class Particles
         int area = width * height;
 
         for (int i = 0; i < area; i++) {
-            int idx = N_SHAPE_MEMBERS * (regions[i] - 1);
+            int idx = N_SHAPE_MEMBERS * (Math.abs(regions[i]) - 1);
             if (idx < 0)
                 continue;
 
-            int flags = data.shapes.buf[idx];
-            int pixelCount = data.shapes.buf[idx+1];
+            //int perimeter = data.shapes.buf[idx];
+            int shapeArea = data.shapes.buf[idx+1];
 
-            if (pixelCount <= maxPixelCount && (image[i] ^ colorToMatch) >= 0)
+            if (shapeArea <= maxPixelCount && (image[i] ^ colorToMatch) >= 0)
                 image[i] = (byte)(~colorToMatch);
         }
     }

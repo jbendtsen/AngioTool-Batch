@@ -59,18 +59,29 @@ public class Outline
                 topRight    = image[topRightIdx] >> 31;
                 bottomRight = image[bottomRightIdx] >> 31;
 
-                // If this pixel is black and surrounded by white pixels, then it is part of a hole.
-                // Therefore it is not included in the outline.
+                // If this pixel is black and it belongs to a thin shape,
+                // it is considered white such that it can be ignored.
+                // Thinness = perimeter / sqrt(area)
+                /*
                 if (topRight == 0 && x < width-1 && y >= 0) {
-                    int idx = Particles.N_SHAPE_MEMBERS * (shapeRegions[(x+1) + width * y] - 1);
-                    if (idx >= 0 && (shapes.buf[idx] & Particles.FLAG_NOT_SURROUNDED) == 0 && shapes.buf[idx+1] < holeThreshold)
-                        topRight = -1;
+                    int region = Math.abs(shapeRegions[(x+1) + width * y]);
+                    if (region != 0) {
+                        int idx = Particles.N_SHAPE_MEMBERS * (region - 1);
+                        double thinness = (double)shapes.buf[idx] / Math.sqrt((double)shapes.buf[idx+1]);
+                        if (thinness >= 10.0 || shapes.buf[idx+1] <= 9)
+                            topRight = -1;
+                    }
                 }
                 if (bottomRight == 0 && x < width-1 && y < height-1) {
-                    int idx = Particles.N_SHAPE_MEMBERS * (shapeRegions[(x+1) + width * (y+1)] - 1);
-                    if (idx >= 0 && (shapes.buf[idx] & Particles.FLAG_NOT_SURROUNDED) == 0 && shapes.buf[idx+1] < holeThreshold)
-                        bottomRight = -1;
+                    int region = Math.abs(shapeRegions[(x+1) + width * (y+1)]);
+                    if (region != 0) {
+                        int idx = Particles.N_SHAPE_MEMBERS * (region - 1);
+                        double thinness = (double)shapes.buf[idx] / Math.sqrt((double)shapes.buf[idx+1]);
+                        if (thinness >= 10.0 || shapes.buf[idx+1] <= 9)
+                            bottomRight = -1;
+                    }
                 }
+                */
 
                 int type = (topLeft & 8) | (topRight & 4) | (bottomRight & 2) | (bottomLeft & 1);
 
