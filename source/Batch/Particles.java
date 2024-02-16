@@ -8,7 +8,7 @@ public class Particles
     /*
     struct Shape {
         int areaAndColor;
-        int firstPoint;
+        int firstPointOrReplacement;
         int minX;
         int minY;
         int maxX;
@@ -108,27 +108,34 @@ public class Particles
                 if (data.shapes.buf[idx] == 0)
                     data.shapes.buf[idx + 1] = pos; // firstPoint
 
-                data.shapes.buf[idx] = (data.shapes.buf[idx] | (int)image[i] & 0x80000000) + 1; // areaAndColor
+                data.shapes.buf[idx] = (data.shapes.buf[idx] | (int)image[pos] & 0x80000000) + 1; // areaAndColor
 
                 data.shapes.buf[idx + 2] = Math.min(data.shapes.buf[idx + 2], x);
                 data.shapes.buf[idx + 3] = Math.min(data.shapes.buf[idx + 3], y);
                 data.shapes.buf[idx + 4] = Math.max(data.shapes.buf[idx + 4], x);
                 data.shapes.buf[idx + 5] = Math.max(data.shapes.buf[idx + 5], y);
 
-                regions[i] = r;
+                regions[pos] = r;
             }
         }
     }
 
     public static void removeVesselVoids(Scratch data, int[] regions, byte[] image, int width, int height)
     {
-        int maxShapeArea = (width * height) / 20;
+        int maxShapeArea = (width * height) / 32;
 
         for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS) {
             // if this shape is white, then skip
             int shapeArea = data.shapes.buf[i] & 0x7fffFFFF;
             if (data.shapes.buf[i] <= 0 || shapeArea > maxShapeArea)
                 continue;
+
+            // TODO:
+            // if the bounding box resembles a square and the filled area is greater than a certain fraction of the bounding box area
+            // given that the area of that bounding box is above a certain threshold
+            // or the bounding box does not resemble a square, yet the bounding width or bounding height is too large
+            // etc.
+            // then skip this shape
 
             int x = (data.shapes.buf[i + 2] + data.shapes.buf[i + 4]) / 2;
             int y = (data.shapes.buf[i + 3] + data.shapes.buf[i + 5]) / 2;
@@ -175,6 +182,9 @@ public class Particles
                     }
 
                     pos = enterVoidPoint;
+                    if (pos < 0)
+                        pos = x + width * y;
+
                     inc *= -1;
                 } while (inc < 0);
 
@@ -185,8 +195,13 @@ public class Particles
                 voidH = voidCounter;
             }
 
+            System.out.println(
+                "" + i + ": shapeArea = " + shapeArea + ", voidW = " + voidW +
+                ", voidH = " + voidH + ", pinchW = " + pinchW + ", pinchH = " + pinchH
+            );
+
             // decide if shape should be filled with white
-            if (pinchW <= voidW / 3 || pinchH <= voidH / 3) {
+            if ((voidW <= width / 16 && pinchW <= voidW / 4) || (voidH <= height / 16 && pinchH <= voidH / 4)) {
                 int firstPoint = data.shapes.buf[i + 1];
                 int neighbor;
                 if ((firstPoint % width) > 0)
