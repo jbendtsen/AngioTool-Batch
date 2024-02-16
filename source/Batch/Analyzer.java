@@ -154,17 +154,8 @@ public class Analyzer
         }
     }
 
-    static boolean decideShapeComputation(AnalyzerParameters params) {
-        return
-            params.shouldRemoveSmallParticles ||
-            params.shouldFillHoles ||
-            (params.shouldDrawOutline && params.shouldSaveResultImages);
-    }
-
     static int determineUpdateCountPerImage(AnalyzerParameters params) {
-        int count = 5;
-        if (decideShapeComputation(params))
-            count++;
+        int count = 6;
         if (params.shouldDrawOutline && params.shouldSaveResultImages)
             count++;
         if (params.shouldComputeLacunarity)
@@ -470,19 +461,24 @@ public class Analyzer
 
         //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " filtered.pgm");
 
-        int[] particleBuf = null;
-        if (decideShapeComputation(params)) {
-            uiToken.updateImageProgress("Identifying shapes...");
+        int[] particleBuf = data.i1.buf;
+        uiToken.updateImageProgress("Identifying shapes...");
 
-            particleBuf = data.i1.buf;
-            Particles.computeShapes(
-                data.particleScratch,
-                particleBuf,
-                analysisImage,
-                inputImage.width,
-                inputImage.height
-            );
-        }
+        Particles.computeShapes(
+            data.particleScratch,
+            particleBuf,
+            analysisImage,
+            inputImage.width,
+            inputImage.height
+        );
+
+        Particles.removeVesselVoids(
+            data.particleScratch,
+            particleBuf,
+            analysisImage,
+            inputImage.width,
+            inputImage.height
+        );
 
         if (params.shouldRemoveSmallParticles)
             Particles.fillShapes(

@@ -7,14 +7,16 @@ public class Particles
 {
     /*
     struct Shape {
-        int perimeter;
-        int area;
-        int skelIterations;
+        int areaAndColor;
+        int firstPoint;
+        int minX;
+        int minY;
+        int maxX;
+        int maxY;
     }
     */
 
-    public static final int N_SHAPE_MEMBERS = 3;
-    public static final int MAX_SKEL_ITERATIONS = 16;
+    public static final int N_SHAPE_MEMBERS = 6;
 
     public static class Scratch
     {
@@ -97,109 +99,115 @@ public class Particles
         data.shapes.resize(nUnique * N_SHAPE_MEMBERS);
         Arrays.fill(data.shapes.buf, 0, data.shapes.size, 0);
 
-        for (int i = 0; i < area; i++) {
-            int x = i % width;
-            int r = spans.buf[spans.buf[regions[i]] + 1];
-            int idx = N_SHAPE_MEMBERS * (r-1);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pos = x + width * y;
+                int r = spans.buf[spans.buf[regions[pos]] + 1];
+                int idx = N_SHAPE_MEMBERS * (r-1);
 
-            data.shapes.buf[idx+1]++; // area++
-            regions[i] = r;
+                if (data.shapes.buf[idx] == 0)
+                    data.shapes.buf[idx + 1] = pos; // firstPoint
 
-            // use marching squares to determine the perimeter
-            if (i >= width+1 && x > 0) {
-                int edges =
-                    ((image[i-width-1] >> 31) & 8) |
-                    ((image[i-width]   >> 31) & 4) |
-                    ((image[i]         >> 31) & 2) |
-                    ((image[i-1]       >> 31) & 1);
+                data.shapes.buf[idx] = (data.shapes.buf[idx] | (int)image[i] & 0x80000000) + 1; // areaAndColor
 
-                if (edges != 0 && edges != 15) {
-                    int nw = regions[i-width-1];
-                    int ne = regions[i-width];
-                    //int se = r;
-                    int sw = regions[i-1];
+                data.shapes.buf[idx + 2] = Math.min(data.shapes.buf[idx + 2], x);
+                data.shapes.buf[idx + 3] = Math.min(data.shapes.buf[idx + 3], y);
+                data.shapes.buf[idx + 4] = Math.max(data.shapes.buf[idx + 4], x);
+                data.shapes.buf[idx + 5] = Math.max(data.shapes.buf[idx + 5], y);
 
-                    if (nw > 0 && edges != 2 && edges != 13) {
-                        data.shapes.buf[N_SHAPE_MEMBERS * (nw-1)]++; // perimeter++
-                        regions[i-width-1] = -nw;
-                    }
-                    if (ne > 0 && edges != 1 && edges != 14) {
-                        data.shapes.buf[N_SHAPE_MEMBERS * (ne-1)]++; // perimeter++
-                        regions[i-width] = -ne;
-                    }
-                    if (r > 0 && edges != 7 && edges != 8) {
-                        data.shapes.buf[idx]++; // perimeter++
-                        regions[i] = -r;
-                    }
-                    if (sw > 0 && edges != 4 && edges != 11) {
-                        data.shapes.buf[N_SHAPE_MEMBERS * (sw-1)]++; // perimeter++
-                        regions[i-1] = -sw;
-                    }
-                }
+                regions[i] = r;
             }
         }
+    }
 
-        int[] scratch = IntBufferPool.acquireAsIs(area);
-        int[] a = null, b = null;
+    public static void removeVesselVoids(Scratch data, int[] regions, byte[] image, int width, int height)
+    {
+        int maxShapeArea = (width * height) / 20;
 
-        int nRemovals;
-        int totalPasses = 0;
-        do {
-            a = regions;
-            b = scratch;
+        for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS) {
+            // if this shape is white, then skip
+            int shapeArea = data.shapes.buf[i] & 0x7fffFFFF;
+            if (data.shapes.buf[i] <= 0 || shapeArea > maxShapeArea)
+                continue;
 
-            nRemovals = 0;
-            for (int pass = 1; pass <= 2; pass++) {
-                for (int y = 1; y < height-1; y++) {
-                    for (int x = 1; x < width-1; x++) {
-                        int idx = x+width*y;
-                        int r = a[idx];
-                        if (r > 0) {
-                            int value = Zha84.lut[
-                                (((Integer.bitCount(a[idx-width-1] - r) - 1) >> 31) & 1) |
-                                (((Integer.bitCount(a[idx-width]   - r) - 1) >> 31) & 2) |
-                                (((Integer.bitCount(a[idx-width+1] - r) - 1) >> 31) & 4) |
-                                (((Integer.bitCount(a[idx+1]       - r) - 1) >> 31) & 8) |
-                                (((Integer.bitCount(a[idx+width+1] - r) - 1) >> 31) & 16) |
-                                (((Integer.bitCount(a[idx+width]   - r) - 1) >> 31) & 32) |
-                                (((Integer.bitCount(a[idx+width-1] - r) - 1) >> 31) & 64) |
-                                (((Integer.bitCount(a[idx-1]       - r) - 1) >> 31) & 128)
-                            ];
+            int x = (data.shapes.buf[i + 2] + data.shapes.buf[i + 4]) / 2;
+            int y = (data.shapes.buf[i + 3] + data.shapes.buf[i + 5]) / 2;
+            int s = (i / N_SHAPE_MEMBERS) + 1;
 
-                            //boolean shouldTrim = value == 3 || value == pass
-                            int shouldTrim = (Integer.bitCount(value - 3) * Integer.bitCount(value - pass) - 1) >> 31;
+            int voidW = 0;
+            int voidH = 0;
+            int pinchW = 0;
+            int pinchH = 0;
 
-                            nRemovals -= shouldTrim;
-                            data.shapes.buf[N_SHAPE_MEMBERS * (r - 1) + 2] |= shouldTrim & (1 << 31);
-                            r = (r ^ shouldTrim) - shouldTrim;
+            for (int axis = 0; axis < 2; axis++) {
+                int min = axis * x + (axis ^ 1) * y * width;
+                int max = axis * ((y-1)*width + x) + (axis ^ 1) * ((y+1) * width - 1);
+                int inc = axis * width + (axis ^ 1);
+                int pos = x + width * y;
+
+                int enterVoidPoint = regions[pos] == s ? pos : -1;
+                int voidCounter = 0;
+                int pinchCounter = 0;
+
+                do {
+                    boolean exitedVoid = false;
+
+                    while (true) {
+                        int c = image[pos];
+                        if (c >= 0) {
+                            if (exitedVoid)
+                                break;
+                            if (enterVoidPoint < 0 && regions[pos] == s)
+                                enterVoidPoint = pos;
+                            if (enterVoidPoint >= 0)
+                                voidCounter++;
                         }
-                        b[idx] = r;
+                        else {
+                            if (enterVoidPoint >= 0)
+                                exitedVoid = true;
+                            if (exitedVoid)
+                                pinchCounter++;
+                        }
+
+                        pos += inc;
+                        if ((inc < 0 && pos < min) || (inc > 0 && pos > max))
+                            break;
                     }
-                }
-                int[] temp = a;
-                a = b;
-                b = temp;
+
+                    pos = enterVoidPoint;
+                    inc *= -1;
+                } while (inc < 0);
+
+                pinchW = pinchH;
+                pinchH = pinchCounter;
+
+                voidW = voidH;
+                voidH = voidCounter;
             }
 
-            // if the removal flag is set, clear it and add one
-            for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS)
-                data.shapes.buf[i+2] = (data.shapes.buf[i+2] & 0x7fffFFFF) + (data.shapes.buf[i+2] >>> 31);
+            // decide if shape should be filled with white
+            if (pinchW <= voidW / 3 || pinchH <= voidH / 3) {
+                int firstPoint = data.shapes.buf[i + 1];
+                int neighbor;
+                if ((firstPoint % width) > 0)
+                    neighbor = regions[firstPoint-1];
+                else if (firstPoint >= width)
+                    neighbor = regions[firstPoint-width];
+                else
+                    neighbor = 2;
 
-            totalPasses++;
-        } while (nRemovals > 0 && totalPasses <= MAX_SKEL_ITERATIONS);
-
-        System.out.println("totalPasses: " + totalPasses);
-
-        /*
-        String[] names = new String[] {"perimeter", "area", "iterations"};
-        String msg = "";
-        for (int i = 0; i < data.shapes.size; i++) {
-            msg += "" + (i / 3) + ": " + names[i % 3] + " = " + data.shapes.buf[i] + "\n";
+                data.shapes.buf[i + 1] = -neighbor;
+            }
         }
-        System.out.println(msg);
-        */
 
-        IntBufferPool.release(scratch);
+        int nShapes = data.shapes.size / N_SHAPE_MEMBERS;
+        for (int i = 0; i < width * height; i++) {
+            int s = N_SHAPE_MEMBERS * (regions[i] - 1);
+            if (s >= 0 && data.shapes.buf[s + 1] < 0) {
+                regions[i] = -data.shapes.buf[s + 1];
+                image[i] = -1;
+            }
+        }
     }
 
     public static void fillShapes(Scratch data, int[] regions, byte[] image, int width, int height, double maxSize, boolean lookingForWhite)
@@ -213,8 +221,7 @@ public class Particles
             if (idx < 0)
                 continue;
 
-            //int perimeter = data.shapes.buf[idx];
-            int shapeArea = data.shapes.buf[idx+1];
+            int shapeArea = data.shapes.buf[idx];
 
             if (shapeArea <= maxPixelCount && (image[i] ^ colorToMatch) >= 0)
                 image[i] = (byte)(~colorToMatch);
