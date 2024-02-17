@@ -2,7 +2,6 @@ package Batch;
 
 import java.util.Arrays;
 
-// TODO: Add width and height to Shape "struct"
 public class Particles
 {
     /*
@@ -10,13 +9,17 @@ public class Particles
         int areaAndColor;
         int firstPointOrReplacement;
         int minX;
+        int yMinX;
         int minY;
+        int xMinY;
         int maxX;
+        int yMaxX;
         int maxY;
+        int xMaxY;
     }
     */
 
-    public static final int N_SHAPE_MEMBERS = 6;
+    public static final int N_SHAPE_MEMBERS = 10;
 
     public static class Scratch
     {
@@ -105,18 +108,34 @@ public class Particles
                 int r = spans.buf[spans.buf[regions[pos]] + 1];
                 int idx = N_SHAPE_MEMBERS * (r-1);
 
+                // TODO: Use image index instead of x,y pair for min x, min y, max x, max y
+
                 if (data.shapes.buf[idx] == 0) {
                     data.shapes.buf[idx + 1] = pos; // firstPoint
                     data.shapes.buf[idx + 2] = x;
                     data.shapes.buf[idx + 3] = y;
+                    data.shapes.buf[idx + 4] = y;
+                    data.shapes.buf[idx + 5] = x;
                 }
 
                 data.shapes.buf[idx] = (data.shapes.buf[idx] | ((int)image[pos] & 0x80000000)) + 1; // areaAndColor
 
-                data.shapes.buf[idx + 2] = Math.min(data.shapes.buf[idx + 2], x);
-                data.shapes.buf[idx + 3] = Math.min(data.shapes.buf[idx + 3], y);
-                data.shapes.buf[idx + 4] = Math.max(data.shapes.buf[idx + 4], x);
-                data.shapes.buf[idx + 5] = Math.max(data.shapes.buf[idx + 5], y);
+                if (x < data.shapes.buf[idx + 2]) {
+                    data.shapes.buf[idx + 2] = x;
+                    data.shapes.buf[idx + 3] = y;
+                }
+                if (y < data.shapes.buf[idx + 4]) {
+                    data.shapes.buf[idx + 4] = y;
+                    data.shapes.buf[idx + 5] = x;
+                }
+                if (x > data.shapes.buf[idx + 6]) {
+                    data.shapes.buf[idx + 6] = x;
+                    data.shapes.buf[idx + 7] = y;
+                }
+                if (y > data.shapes.buf[idx + 8]) {
+                    data.shapes.buf[idx + 8] = y;
+                    data.shapes.buf[idx + 9] = x;
+                }
 
                 regions[pos] = r;
             }
@@ -140,8 +159,27 @@ public class Particles
             // etc.
             // then skip this shape
 
-            int x = (data.shapes.buf[i + 2] + data.shapes.buf[i + 4]) / 2;
-            int y = (data.shapes.buf[i + 3] + data.shapes.buf[i + 5]) / 2;
+            int xMin = data.shapes.buf[i+2];
+            int yMin = data.shapes.buf[i+4];
+            int xMax = data.shapes.buf[i+6];
+            int yMax = data.shapes.buf[i+8];
+
+            // TODO: Use image index instead of x,y pair for min x, min y, max x, max y
+
+            int shapeW = (xMax - xMin + 1);
+            int shapeH = (yMax - yMin + 1);
+            double occupied = (double)shapeArea / (double)(shapeW * shapeH);
+            double sdr = shapeW > shapeH ?
+                (double)shapeH / (double)shapeW :
+                (double)shapeW / (double)shapeH;
+
+            System.out.println(
+                "" + (i / N_SHAPE_MEMBERS) + ": dimensions = " + shapeW + "x" + shapeH +
+                ", occupied = " + occupied + ", sdr = " + sdr
+            );
+
+            int x = (xMin + xMax) / 2;
+            int y = (yMin + yMax) / 2;
             int s = (i / N_SHAPE_MEMBERS) + 1;
 
             int voidW = 0;
@@ -206,23 +244,16 @@ public class Particles
                 voidH = voidCounter;
             }
 
-            int xMin = data.shapes.buf[i+2];
-            int yMin = data.shapes.buf[i+3];
-            int xMax = data.shapes.buf[i+4];
-            int yMax = data.shapes.buf[i+5];
-            int shapeW = (xMax - xMin + 1);
-            int shapeH = (yMax - yMin + 1);
-            String bounds =
-                "" + xMin + "," + yMin + " to " + xMax + "," + yMax +
-                " = " + shapeW + "x" + shapeH + " = " + (shapeW * shapeH);
-
             System.out.println(
-                "" + (i / N_SHAPE_MEMBERS) + ": bounds = {" + bounds + "}, shapeArea = " + shapeArea + ", voidW = " + voidW +
-                ", voidH = " + voidH + ", pinchW = " + pinchW + ", pinchH = " + pinchH
+                "" + (i / N_SHAPE_MEMBERS) + ": voidW = " + voidW + ", voidH = " + voidH +
+                ", pinchW = " + pinchW + ", pinchH = " + pinchH
             );
 
             // decide if shape should be filled with white
-            if ((voidW <= width / 16 && pinchW <= voidW / 4) || (voidH <= height / 16 && pinchH <= voidH / 4)) {
+            if (
+                (pinchW <= 3 * voidW) ||
+                (pinchH <= 3 * voidH)
+            ) {
                 int firstPoint = data.shapes.buf[i + 1];
                 int neighbor;
                 if ((firstPoint % width) > 0)
