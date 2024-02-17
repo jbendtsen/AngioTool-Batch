@@ -204,6 +204,7 @@ public class Analyzer
         }
 
         double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
+        double imageResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
 
         uiToken.startProgressBars(inputs.size(), determineUpdateCountPerImage(params));
         boolean startedAnyImages = false;
@@ -224,7 +225,7 @@ public class Analyzer
                 ImageUtils.openImage(
                     inputImage,
                     inFile.getAbsolutePath(),
-                    params.resizingFactor,
+                    imageResizeFactor,
                     outputImage,
                     useSingleChannelInOutputImage
                 );

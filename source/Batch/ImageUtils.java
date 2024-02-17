@@ -20,10 +20,9 @@ public class ImageUtils
         if (iplus == null)
             return null;
 
-        int width = iplus.getWidth();
-        int height = iplus.getHeight();
-        int area = width * height;
-        if (width <= 0 || height <= 0)
+        int originalWidth = iplus.getWidth();
+        int originalHeight = iplus.getHeight();
+        if (originalWidth <= 0 || originalHeight <= 0)
             return null;
 
         Calibration calibration = iplus.getCalibration();
@@ -33,7 +32,13 @@ public class ImageUtils
 
         ImageProcessor ip = iplus.getProcessor();
         ColorProcessor fullScaleProc = ip instanceof ColorProcessor ? (ColorProcessor)ip : (ColorProcessor)ip.convertToRGB();
-        ColorProcessor proc = resizeFactor == 1.0 ? fullScaleProc : (ColorProcessor)fullScaleProc.resize((int)((double)width / resizeFactor));
+        ColorProcessor proc = resizeFactor == 1.0 ?
+            fullScaleProc :
+            (ColorProcessor)fullScaleProc.resize((int)((double)originalWidth * resizeFactor));
+
+        int width = proc.getWidth();
+        int height = proc.getHeight();
+        int area = width * height;
         int[] pixels = (int[])proc.getPixels();
 
         Bitmap.SplitLayer layer = (Bitmap.SplitLayer)image.reallocate(new Bitmap.SplitLayer(), width, height);

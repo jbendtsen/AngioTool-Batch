@@ -105,10 +105,13 @@ public class Particles
                 int r = spans.buf[spans.buf[regions[pos]] + 1];
                 int idx = N_SHAPE_MEMBERS * (r-1);
 
-                if (data.shapes.buf[idx] == 0)
+                if (data.shapes.buf[idx] == 0) {
                     data.shapes.buf[idx + 1] = pos; // firstPoint
+                    data.shapes.buf[idx + 2] = x;
+                    data.shapes.buf[idx + 3] = y;
+                }
 
-                data.shapes.buf[idx] = (data.shapes.buf[idx] | (int)image[pos] & 0x80000000) + 1; // areaAndColor
+                data.shapes.buf[idx] = (data.shapes.buf[idx] | ((int)image[pos] & 0x80000000)) + 1; // areaAndColor
 
                 data.shapes.buf[idx + 2] = Math.min(data.shapes.buf[idx + 2], x);
                 data.shapes.buf[idx + 3] = Math.min(data.shapes.buf[idx + 3], y);
@@ -147,11 +150,19 @@ public class Particles
             int pinchH = 0;
 
             for (int axis = 0; axis < 2; axis++) {
-                int min = axis * x + (axis ^ 1) * y * width;
-                int max = axis * ((y-1)*width + x) + (axis ^ 1) * ((y+1) * width - 1);
-                int inc = axis * width + (axis ^ 1);
-                int pos = x + width * y;
+                int min, max, inc;
+                if (axis == 0) {
+                    min = y * width;
+                    max = min + width - 1;
+                    inc = 1;
+                }
+                else {
+                    min = x;
+                    max = x + (height-1) * width;
+                    inc = width;
+                }
 
+                int pos = x + width * y;
                 int enterVoidPoint = regions[pos] == s ? pos : -1;
                 int voidCounter = 0;
                 int pinchCounter = 0;
@@ -195,8 +206,18 @@ public class Particles
                 voidH = voidCounter;
             }
 
+            int xMin = data.shapes.buf[i+2];
+            int yMin = data.shapes.buf[i+3];
+            int xMax = data.shapes.buf[i+4];
+            int yMax = data.shapes.buf[i+5];
+            int shapeW = (xMax - xMin + 1);
+            int shapeH = (yMax - yMin + 1);
+            String bounds =
+                "" + xMin + "," + yMin + " to " + xMax + "," + yMax +
+                " = " + shapeW + "x" + shapeH + " = " + (shapeW * shapeH);
+
             System.out.println(
-                "" + i + ": shapeArea = " + shapeArea + ", voidW = " + voidW +
+                "" + (i / N_SHAPE_MEMBERS) + ": bounds = {" + bounds + "}, shapeArea = " + shapeArea + ", voidW = " + voidW +
                 ", voidH = " + voidH + ", pinchW = " + pinchW + ", pinchH = " + pinchH
             );
 
