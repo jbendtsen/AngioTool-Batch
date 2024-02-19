@@ -8,18 +8,14 @@ public class Particles
     struct Shape {
         int areaAndColor;
         int firstPointOrReplacement;
-        int minX;
-        int yMinX;
-        int minY;
-        int xMinY;
-        int maxX;
-        int yMaxX;
-        int maxY;
-        int xMaxY;
+        int pointMinX;
+        int pointMinY;
+        int pointMaxX;
+        int pointMaxY;
     }
     */
 
-    public static final int N_SHAPE_MEMBERS = 10;
+    public static final int N_SHAPE_MEMBERS = 6;
 
     public static class Scratch
     {
@@ -112,30 +108,20 @@ public class Particles
 
                 if (data.shapes.buf[idx] == 0) {
                     data.shapes.buf[idx + 1] = pos; // firstPoint
-                    data.shapes.buf[idx + 2] = x;
-                    data.shapes.buf[idx + 3] = y;
-                    data.shapes.buf[idx + 4] = y;
-                    data.shapes.buf[idx + 5] = x;
+                    data.shapes.buf[idx + 2] = pos;
+                    data.shapes.buf[idx + 3] = pos;
                 }
 
                 data.shapes.buf[idx] = (data.shapes.buf[idx] | ((int)image[pos] & 0x80000000)) + 1; // areaAndColor
 
-                if (x < data.shapes.buf[idx + 2]) {
-                    data.shapes.buf[idx + 2] = x;
-                    data.shapes.buf[idx + 3] = y;
-                }
-                if (y < data.shapes.buf[idx + 4]) {
-                    data.shapes.buf[idx + 4] = y;
-                    data.shapes.buf[idx + 5] = x;
-                }
-                if (x > data.shapes.buf[idx + 6]) {
-                    data.shapes.buf[idx + 6] = x;
-                    data.shapes.buf[idx + 7] = y;
-                }
-                if (y > data.shapes.buf[idx + 8]) {
-                    data.shapes.buf[idx + 8] = y;
-                    data.shapes.buf[idx + 9] = x;
-                }
+                if (x < (data.shapes.buf[idx + 2] % width))
+                    data.shapes.buf[idx + 2] = pos;
+                if (y < (data.shapes.buf[idx + 3] / width))
+                    data.shapes.buf[idx + 3] = pos;
+                if (x > (data.shapes.buf[idx + 4] % width))
+                    data.shapes.buf[idx + 4] = pos;
+                if (y > (data.shapes.buf[idx + 5] / width))
+                    data.shapes.buf[idx + 5] = pos;
 
                 regions[pos] = r;
             }
@@ -144,12 +130,10 @@ public class Particles
 
     public static void removeVesselVoids(Scratch data, int[] regions, byte[] image, int width, int height)
     {
-        int maxShapeArea = (width * height) / 32;
-
         for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS) {
             // if this shape is white, then skip
             int shapeArea = data.shapes.buf[i] & 0x7fffFFFF;
-            if (data.shapes.buf[i] <= 0 || shapeArea > maxShapeArea)
+            if (data.shapes.buf[i] <= 0)
                 continue;
 
             // TODO:
@@ -159,10 +143,10 @@ public class Particles
             // etc.
             // then skip this shape
 
-            int xMin = data.shapes.buf[i+2];
-            int yMin = data.shapes.buf[i+4];
-            int xMax = data.shapes.buf[i+6];
-            int yMax = data.shapes.buf[i+8];
+            int xMin = data.shapes.buf[i+2] % width;
+            int yMin = data.shapes.buf[i+3] / width;
+            int xMax = data.shapes.buf[i+4] % width;
+            int yMax = data.shapes.buf[i+5] / width;
 
             // TODO: Use image index instead of x,y pair for min x, min y, max x, max y
 
@@ -175,9 +159,13 @@ public class Particles
 
             System.out.println(
                 "" + (i / N_SHAPE_MEMBERS) + ": dimensions = " + shapeW + "x" + shapeH +
-                ", occupied = " + occupied + ", sdr = " + sdr
+                ", shapeArea = " + shapeArea + ", occupied = " + occupied + ", sdr = " + sdr
             );
 
+            if (occupied + sdr > 1.0)
+                continue;
+
+            /*
             int x = (xMin + xMax) / 2;
             int y = (yMin + yMax) / 2;
             int s = (i / N_SHAPE_MEMBERS) + 1;
@@ -186,6 +174,10 @@ public class Particles
             int voidH = 0;
             int pinchW = 0;
             int pinchH = 0;
+            int leftW = 0;
+            int leftH = 0;
+            int rightW = 0;
+            int rightH = 0;
 
             for (int axis = 0; axis < 2; axis++) {
                 int min, max, inc;
@@ -242,18 +234,96 @@ public class Particles
 
                 voidW = voidH;
                 voidH = voidCounter;
+
+                leftW = leftH;
+                rightW = rightH;
+
+                for (int side = 0; side < 2; side++) {
+                    pinchCounter = 0;
+
+                    int edge = 2*side + (axis^1);
+                    int start = data.shapes.buf[i+2+edge];
+
+                    switch (edge) {
+                        case 0:
+                            if (start % width == 0)
+                                continue;
+                            start--;
+                            break;
+                        case 1:
+                            if (start / width == 0)
+                                continue;
+                            start -= width;
+                            break;
+                        case 2:
+                            if (start % width == width-1)
+                                continue;
+                            start++;
+                            break;
+                        case 3:
+                            if (start / width == height-1)
+                                continue;
+                            start += width;
+                            break;
+                    }
+
+                    pos = start;
+                    while (pos >= min) {
+                        if (image[pos] < 0)
+                            pinchCounter++;
+                        else
+                            break;
+                        pos -= inc;
+                    }
+
+                    pos = start;
+                    while (pos <= max) {
+                        if (image[pos] < 0)
+                            pinchCounter++;
+                        else
+                            break;
+                        pos += inc;
+                    }
+
+                    leftH = rightH;
+                    rightH = pinchCounter;
+                }
+            }
+
+            if (leftW == 0)
+                leftW = rightW;
+            if (rightW == 0)
+                rightW = leftW;
+            if (leftH == 0)
+                leftH = rightH;
+            if (rightH == 0)
+                rightH = leftH;
+
+            double lengthsRatio = 0.0;
+            if (leftW > 0 && rightW > 0 && (voidW + pinchW) > 0) {
+                double a = voidW + pinchW;
+                double b = leftW;
+                double c = rightW;
+                lengthsRatio = (a < b ? a / b : b / a) * (a < c ? a / c : c / a);
+            }
+            if (leftH > 0 && rightH > 0 && (voidH + pinchH) > 0) {
+                double a = voidH + pinchH;
+                double b = leftH;
+                double c = rightH;
+                lengthsRatio = Math.max(lengthsRatio, (a < b ? a / b : b / a) * (a < c ? a / c : c / a));
             }
 
             System.out.println(
                 "" + (i / N_SHAPE_MEMBERS) + ": voidW = " + voidW + ", voidH = " + voidH +
-                ", pinchW = " + pinchW + ", pinchH = " + pinchH
+                ", pinchW = " + pinchW + ", pinchH = " + pinchH + ", leftW = " + leftW +
+                ", rightW = " + rightW + ", leftH = " + leftH + ", rightH = " + rightH
             );
 
+            */
+            double lengthsRatio = 1.0;
+
             // decide if shape should be filled with white
-            if (
-                (pinchW <= 3 * voidW) ||
-                (pinchH <= 3 * voidH)
-            ) {
+            if (lengthsRatio > 0.5) {
                 int firstPoint = data.shapes.buf[i + 1];
                 int neighbor;
                 if ((firstPoint % width) > 0)
