@@ -1643,6 +1643,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (params.shouldDrawOutline) {
          Outline.drawOutline(
             this.allantoisOverlay,
+            new int[width * height],
+            new int[width * height],
             this.outlineRoundedPanel.getBackground().getRGB(),
             getSpinnerValueDouble(this.outlineSpinner),
             particles.shapes,

@@ -1,8 +1,9 @@
 package Batch;
 
+import java.util.Arrays;
+
 public class Outline
 {
-    // TODO: Add LUT for stroke direction
     static final int[] firstPointIsTopLeft = new int[] {
         0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, 0, -1, 0
     };
@@ -25,9 +26,10 @@ public class Outline
         0, 0, 0, 0, 0, -1, 0, -1, 0, -1, 0, 0, 0, -1, 0, 0
     };
 
-    // TODO: implement strokeWidth
     public static void drawOutline(
         int[] outline,
+        int[] outlineScratch1,
+        int[] outlineScratch2,
         int rgbColor,
         double strokeWidth,
         IntVector shapes,
@@ -36,55 +38,78 @@ public class Outline
         int width,
         int height
     ) {
+        rgbColor &= 0xFFFfff;
+
         int area = width * height;
-        double holeThreshold = area / 50.0;
+        int iterations = (int)Math.ceil(strokeWidth);
+
+        System.out.println("Outline: " + iterations + " iterations");
+
+        int[] readingScratch = outlineScratch1;
+        int[] writingScratch = outlineScratch2;
+
+        Arrays.fill(writingScratch, 0, area, 0);
 
         byte firstInputPixel = image[0];
         int firstOutputPixel = outline[0];
         image[0] = 0;
         outline[0] = 0;
+        readingScratch[0] = 0;
 
-        for (int y = -1; y < height; y++) {
-            int topLeft = 0, topRight = 0, bottomLeft = 0, bottomRight = 0;
-            int topLeftIdx = 0, topRightIdx = 0, bottomLeftIdx = 0, bottomRightIdx = 0;
-            for (int x = -1; x < width; x++) {
-                topLeft = topRight;
-                topLeftIdx = topRightIdx;
-                bottomLeft = bottomRight;
-                bottomLeftIdx = bottomRightIdx;
+        for (int i = 0; i < iterations; i++) {
+            int shouldReadMask = (-iterations) >> 31;
 
-                topRightIdx    = (x < width-1 && y >= 0)       ? (x+1) + width * y     : 0;
-                bottomRightIdx = (x < width-1 && y < height-1) ? (x+1) + width * (y+1) : 0;
+            for (int y = -1; y < height; y++) {
+                int topLeft = 0, topRight = 0, bottomLeft = 0, bottomRight = 0;
+                int topLeftIdx = 0, topRightIdx = 0, bottomLeftIdx = 0, bottomRightIdx = 0;
+                readingScratch[0] = 0;
 
-                topRight    = image[topRightIdx] >> 31;
-                bottomRight = image[bottomRightIdx] >> 31;
+                for (int x = -1; x < width; x++) {
+                    topLeft = topRight;
+                    topLeftIdx = topRightIdx;
+                    bottomLeft = bottomRight;
+                    bottomLeftIdx = bottomRightIdx;
 
-                int type = (topLeft & 8) | (topRight & 4) | (bottomRight & 2) | (bottomLeft & 1);
+                    topRightIdx    = (x < width-1 && y >= 0)       ? (x+1) + width * y     : 0;
+                    bottomRightIdx = (x < width-1 && y < height-1) ? (x+1) + width * (y+1) : 0;
 
-                /*
-                outline[topLeft]     = type >= 1 && type <= 14 && (type & 8) == 0 ? rgbColor : 0;
-                outline[topRight]    = type >= 1 && type <= 14 && (type & 4) == 0 ? rgbColor : 0;
-                outline[bottomRight] = type >= 1 && type <= 14 && (type & 2) == 0 ? rgbColor : 0;
-                outline[bottomLeft]  = type >= 1 && type <= 14 && (type & 1) == 0 ? rgbColor : 0;
-                */
+                    topRight    = (image[topRightIdx]    ^ (-readingScratch[topRightIdx]    & shouldReadMask)) >> 31;
+                    bottomRight = (image[bottomRightIdx] ^ (-readingScratch[bottomRightIdx] & shouldReadMask)) >> 31;
 
-                int p1 =
-                    (topLeftIdx & firstPointIsTopLeft[type]) |
-                    (topRightIdx & firstPointIsTopRight[type]) |
-                    (bottomRightIdx & firstPointIsBottomRight[type]) |
-                    (bottomLeftIdx & firstPointIsBottomLeft[type]);
+                    int type = (topLeft & 8) | (topRight & 4) | (bottomRight & 2) | (bottomLeft & 1);
 
-                int p2 =
-                    (topRightIdx & secondPointIsTopRight[type]) |
-                    (bottomRightIdx & secondPointIsBottomRight[type]) |
-                    (bottomLeftIdx & secondPointIsBottomLeft[type]);
+                    if (type == 0 || type == 15)
+                        continue;
 
-                if (p1 == 0 && p2 == 0)
-                    continue;
+                    int p1 =
+                        (topLeftIdx & firstPointIsTopLeft[type]) |
+                        (topRightIdx & firstPointIsTopRight[type]) |
+                        (bottomRightIdx & firstPointIsBottomRight[type]) |
+                        (bottomLeftIdx & firstPointIsBottomLeft[type]);
 
-                outline[p1] = rgbColor;
-                outline[p2] = rgbColor;
+                    int p2 =
+                        (topRightIdx & secondPointIsTopRight[type]) |
+                        (bottomRightIdx & secondPointIsBottomRight[type]) |
+                        (bottomLeftIdx & secondPointIsBottomLeft[type]);
+
+                    int p3 =
+                        (topLeftIdx & (-(((type - 13) | (13 - type)) >> 31) - 1)) |
+                        (topRightIdx & (-(((type - 14) | (14 - type)) >> 31) - 1)) |
+                        (bottomRightIdx & (-(((type - 7) | (7 - type)) >> 31) - 1)) |
+                        (bottomLeftIdx & (-(((type - 11) | (11 - type)) >> 31) - 1));
+
+                    outline[p1] = rgbColor;
+                    outline[p2] = rgbColor;
+                    outline[p3] = rgbColor;
+                    writingScratch[p1] = rgbColor;
+                    writingScratch[p2] = rgbColor;
+                    writingScratch[p3] = rgbColor;
+                }
             }
+
+            int[] temp = readingScratch;
+            readingScratch = writingScratch;
+            writingScratch = temp;
         }
 
         image[0] = firstInputPixel;

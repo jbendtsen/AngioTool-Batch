@@ -506,10 +506,14 @@ public class Analyzer
         if (params.shouldDrawOutline && params.shouldSaveResultImages)
         {
             uiToken.updateImageProgress("Drawing outline...");
+            int[] outlineScratch1 = data.i2.buf;
+            int[] outlineScratch2 = data.iv1.buf;
 
             // TODO: implement strokeWidth
             Outline.drawOutline(
                 overlayImage,
+                outlineScratch1,
+                outlineScratch2,
                 params.outlineColor.getARGB(),
                 params.outlineSize,
                 data.particleScratch.shapes,
