@@ -460,7 +460,7 @@ public class Analyzer
         Filters.filterMin(skeletonImage, analysisImage, inputImage.width, inputImage.height); // dilate
         Filters.filterMin(analysisImage, skeletonImage, inputImage.width, inputImage.height); // dilate
 
-        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " filtered.pgm");
+        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, "filtered.pgm");
 
         int[] particleBuf = data.i1.buf;
         uiToken.updateImageProgress("Identifying shapes...");
