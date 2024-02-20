@@ -7,13 +7,13 @@ public class VesselThickness
         int maxWorkers,
         float[] output,
         byte[] input,
-        float[] scratch,
+        int[] scratch,
         int width,
         int height
     ) {
         final int thresh = 200;
 
-        step1(input, scratch, width, height, thresh);
+        step1(scratch, input, width, height, thresh);
 
         try {
             runner.runSlices(new Step2(output, scratch, width, height), maxWorkers, width, Step2.IN_PLACE_THRESHOLD - 1);
@@ -48,7 +48,7 @@ public class VesselThickness
         */
     }
 
-    static void step1(byte[] input, float[] output, int width, int height, int thresh)
+    static void step1(int[] output, byte[] input, int width, int height, int thresh)
     {
         final int maxDimension = Math.max(width, height);
         final int maxResult = 3 * (maxDimension + 1) * (maxDimension + 1);
@@ -71,7 +71,7 @@ public class VesselThickness
                     }
                 }
 
-                output[i + width * j] = (float)min;
+                output[i + width * j] = min;
             }
         }
     }
@@ -82,10 +82,10 @@ public class VesselThickness
 
         private final int width;
         private final int height;
-        private final float[] src;
+        private final int[] src;
         private final float[] dst;
 
-        public Step2(float[] dst, float[] src, int width, int height)
+        public Step2(float[] dst, int[] src, int width, int height)
         {
             this.dst = dst;
             this.src = src;
@@ -106,16 +106,19 @@ public class VesselThickness
                 boolean empty = true;
 
                 for(int y = 0; empty && y < height; ++y)
-                    empty = empty && (int)src[x + width * y] == 0;
+                    empty = empty && src[x + width * y] == 0;
 
-                if (empty)
+                if (empty) {
+                    for (int y = 0; y < height; y++)
+                        dst[x + width * y] = src[x + width * y];
                     continue;
+                }
 
                 for(int y1 = 0; y1 < height; ++y1) {
                     int min = maxResult;
 
                     for(int y2 = 0; y2 < height; ++y2) {
-                        min = Math.min((int)src[x + width * y2] + (y1-y2)*(y1-y2), min);
+                        min = Math.min(src[x + width * y2] + (y1-y2)*(y1-y2), min);
                     }
 
                     dst[x + width * y1] = min;

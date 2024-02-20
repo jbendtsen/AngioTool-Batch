@@ -2184,7 +2184,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (params.shouldComputeThickness) {
          int area = skelWidth * skelHeight;
          float[] thicknessImage = new float[area];
-         float[] thicknessScratch = new float[area];
+         int[] thicknessScratch = new int[area];
          VesselThickness.computeThickness(
             sliceRunner,
             Analyzer.MAX_WORKERS,
