@@ -25,10 +25,10 @@ public class ImageUtils
         if (originalWidth <= 0 || originalHeight <= 0)
             return null;
 
-        Calibration calibration = iplus.getCalibration();
-        double pixelWidth = calibration.pixelWidth;
-        double pixelHeight = calibration.pixelHeight;
-        double pixelBreadth = calibration.pixelDepth;
+        //Calibration calibration = iplus.getCalibration();
+        double pixelWidth = 1.0; // calibration.pixelWidth;
+        double pixelHeight = 1.0; // calibration.pixelHeight;
+        double pixelBreadth = 1.0; // calibration.pixelDepth;
 
         ImageProcessor ip = iplus.getProcessor();
         ColorProcessor fullScaleProc = ip instanceof ColorProcessor ? (ColorProcessor)ip : (ColorProcessor)ip.convertToRGB();
@@ -97,7 +97,7 @@ public class ImageUtils
         proc = null;
         fullScaleProc = null;
         ip = null;
-        calibration = null;
+        //calibration = null;
         iplus = null;
 
         image.width = width;
