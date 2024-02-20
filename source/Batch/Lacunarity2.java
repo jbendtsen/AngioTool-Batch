@@ -21,7 +21,7 @@ public class Lacunarity2
         public double flMean;
     }
 
-    public static void computeLacunarity(Statistics stats, byte[] image, int width, int height, int numberOfBins, int minSize, int boxMov)
+    public static void computeLacunarity(Statistics stats, byte[] image, int width, int height, int numberOfBins, int minSize, int inc)
     {
         int minX = width;
         int minY = height;
@@ -30,21 +30,16 @@ public class Lacunarity2
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                int pixel = image[x + width * y]; // no AND with 0xff
-                int isWhite = (pixel ^ (pixel + 1)) >> 31;
-                int isSmallerX = isWhite & ((x - minX) >> 31);
-                int isSmallerY = isWhite & ((y - minY) >> 31);
-                int isLargerX  = isWhite & ((maxX - x) >> 31);
-                int isLargerY  = isWhite & ((maxY - y) >> 31);
-                minX = (x & isSmallerX) | (minX & ~isSmallerX);
-                minY = (y & isSmallerY) | (minY & ~isSmallerY);
-                maxX = (x & isLargerX)  | (maxX & ~isLargerX);
-                maxY = (y & isLargerY)  | (maxY & ~isLargerY);
+                int isWhite = image[x + width * y] >> 31; // no AND with 0xff
+                minX = Math.min(minX, (x & isWhite) | (width & ~isWhite));
+                minY = Math.min(minY, (y & isWhite) | (height & ~isWhite));
+                maxX = Math.max(maxX, x & isWhite);
+                maxY = Math.max(maxY, y & isWhite);
             }
         }
 
-        final int selWidth = maxX - minX;
-        final int selHeight = maxY - minY;
+        final int selWidth = maxX - minX + 1;
+        final int selHeight = maxY - minY + 1;
         final int smallDimension = Math.min(selWidth, selHeight);
         final int factor = (smallDimension - minSize) / numberOfBins;
 
@@ -69,71 +64,74 @@ public class Lacunarity2
                 medialBox = i;
             }
 
-            int numXBox = (int)Math.ceil((double)selWidth / (double)boxMov - (double)boxSize / (double)boxMov + 1.0);
-            int numYBox = (int)Math.ceil((double)selHeight / (double)boxMov - (double)boxSize / (double)boxMov + 1.0);
+            int numXBox = (int)Math.ceil((double)selWidth / (double)inc - (double)boxSize / (double)inc + 1.0);
+            int numYBox = (int)Math.ceil((double)selHeight / (double)inc - (double)boxSize / (double)inc + 1.0);
             stats.boxTable.resize(numXBox * numYBox * 2);
 
             // 00 case
-            int topLeftSlice  = countWhitePixels(image, width, height, minX, minY, boxMov, boxMov);
-            int topMainSlice  = countWhitePixels(image, width, height, minX + boxMov, minY, boxSize - boxMov, boxMov);
-            int mainLeftSlice = countWhitePixels(image, width, height, minX, minY + boxMov, boxMov, boxSize - boxMov);
-            int mainMainSlice = countWhitePixels(image, width, height, minX, minY + boxMov, boxSize - boxMov, boxSize - boxMov);
+            int topLeftSlice  = countWhitePixels(image, width, height, minX, minY, inc, inc);
+            int topMainSlice  = countWhitePixels(image, width, height, minX + inc, minY, boxSize - inc, inc);
+            int mainLeftSlice = countWhitePixels(image, width, height, minX, minY + inc, inc, boxSize - inc);
+            int mainMainSlice = countWhitePixels(image, width, height, minX + inc, minY + inc, boxSize - inc, boxSize - inc);
 
-            stats.boxTable.addTwo(
-                topLeftSlice + topMainSlice + mainLeftSlice + mainMainSlice,
-                topLeftSlice + topMainSlice
-            );
+            stats.boxTable.buf[0] = topLeftSlice + topMainSlice + mainLeftSlice + mainMainSlice;
+            stats.boxTable.buf[1] = topLeftSlice + topMainSlice;
 
             for (int col = 1; col < numXBox; col++) {
                 // 0j case
-                int x = minX + col * boxMov;
-                int topRightSlice  = countWhitePixels(image, width, height, x + boxSize - boxMov, minY, boxMov, boxMov);
-                int mainRightSlice = countWhitePixels(image, width, height, x + boxSize - boxMov, minY + boxMov, boxMov, boxSize - boxMov);
+                int x = minX + col * inc;
+                int topRightSlice  = countWhitePixels(image, width, height, x + boxSize - inc, minY, inc, inc);
+                int mainRightSlice = countWhitePixels(image, width, height, x + boxSize - inc, minY + inc, inc, boxSize - inc);
 
                 stats.boxTable.buf[2*col]     = stats.boxTable.buf[2*(col-1)] + (topRightSlice + mainRightSlice) - (topLeftSlice + mainLeftSlice);
                 stats.boxTable.buf[2*col + 1] = stats.boxTable.buf[2*(col-1) + 1] + topRightSlice - topLeftSlice;
 
                 if (col < numXBox - 1) {
-                    topLeftSlice  = countWhitePixels(image, width, height, x, minY, boxMov, boxMov);
-                    mainLeftSlice = countWhitePixels(image, width, height, x, minY + boxMov, boxMov, boxSize - boxMov);
+                    topLeftSlice  = countWhitePixels(image, width, height, x, minY, inc, inc);
+                    mainLeftSlice = countWhitePixels(image, width, height, x, minY + inc, inc, boxSize - inc);
                 }
             }
 
             for (int row = 1; row < numYBox; row++) {
                 // i0 case
-                int y = minY + row * boxMov;
-                int bottomLeftSlice = countWhitePixels(image, width, height, minX, y + boxSize - boxMov, boxMov, boxMov);
-                int bottomMainSlice = countWhitePixels(image, width, height, minX + boxMov, y + boxSize - boxMov, boxSize - boxMov, boxMov);
+                int y = minY + row * inc;
+                int bottomLeftSlice = countWhitePixels(image, width, height, minX, y + boxSize - inc, inc, inc);
+                int bottomMainSlice = countWhitePixels(image, width, height, minX + inc, y + boxSize - inc, boxSize - inc, inc);
+
+                topLeftSlice = countWhitePixels(image, width, height, minX, y, inc, inc);
+                topMainSlice = countWhitePixels(image, width, height, minX + inc, y, boxSize - inc, inc);
+
+                int bottomSlice = bottomMainSlice + bottomLeftSlice;
+                int topSlice = topLeftSlice + topMainSlice;
 
                 stats.boxTable.buf[2*row*numXBox] =
                     stats.boxTable.buf[2*(row-1)*numXBox] +
-                    (bottomLeftSlice + bottomMainSlice) -
+                    bottomSlice -
                     stats.boxTable.buf[2*(row-1)*numXBox + 1];
 
-                topLeftSlice = countWhitePixels(image, width, height, minX, y, boxMov, boxMov);
-                topMainSlice = countWhitePixels(image, width, height, minX + boxMov, y, boxMov - boxSize, boxMov);
-
-                stats.boxTable.buf[2*row*numXBox + 1] = topLeftSlice + topMainSlice;
+                stats.boxTable.buf[2*row*numXBox + 1] = topSlice;
 
                 for (int col = 1; col < numXBox; col++) {
                     // ij case
-                    int x = minX + col * boxMov;
-                    int bottomRightSlice = countWhitePixels(image, width, height, x + boxSize - boxMov, y + boxSize - boxMov, boxMov, boxMov);
-                    int bottomSlice = bottomMainSlice + bottomRightSlice - bottomLeftSlice;
+                    int x = minX + col * inc;
+                    int bottomRightSlice = countWhitePixels(image, width, height, x + boxSize - inc, y + boxSize - inc, inc, inc);
+                    int topRightSlice = countWhitePixels(image, width, height, x + boxSize - inc, y, inc, inc);
 
-                    stats.boxTable.buf[2*(row*numXBox+col)] =
-                        stats.boxTable.buf[2*((row-1)*numXBox+col)] +
+                    bottomSlice += bottomRightSlice - bottomLeftSlice;
+                    topSlice += topRightSlice - topLeftSlice;
+
+                    int pos = row * numXBox + col;
+
+                    stats.boxTable.buf[2*pos] =
+                        stats.boxTable.buf[2*(pos-numXBox)] +
                         bottomSlice -
-                        stats.boxTable.buf[2*((row-1)*numXBox+col) + 1];
+                        stats.boxTable.buf[2*(pos-numXBox) + 1];
 
-                    int topRightSlice = countWhitePixels(image, width, height, x + boxSize - boxMov, y, boxMov, boxMov);
-
-                    int topSlice = topMainSlice + topRightSlice - topLeftSlice;
-                    stats.boxTable.buf[2*(row*numXBox+col) + 1] = topSlice;
+                    stats.boxTable.buf[2*pos + 1] = topSlice;
 
                     if (col < numXBox - 1) {
-                        topLeftSlice  = countWhitePixels(image, width, height, x, minY, boxMov, boxMov);
-                        topMainSlice = topSlice - topLeftSlice;
+                        bottomLeftSlice = countWhitePixels(image, width, height, x, y + boxSize - inc, inc, inc);
+                        topLeftSlice  = countWhitePixels(image, width, height, x, y, inc, inc);
                     }
                 }
             }
@@ -178,7 +176,7 @@ public class Lacunarity2
         for (int y = yStart; y <= yLast; y++) {
             for (int x = xStart; x <= xLast; x++) {
                 int pixel = image[x + width * y]; // no AND with 0xff
-                count -= (pixel ^ (pixel + 1)) >> 31; // -1 if the pixel is white, 0 if not
+                count -= pixel >> 31; // -1 if the pixel is white, 0 if not
             }
         }
 
@@ -187,18 +185,22 @@ public class Lacunarity2
 
     public static double computeCoefficientOfVariationSquared(int[] buf, int n)
     {
-        int total = 0;
+        if (n <= 0)
+            return 0.0;
+
+        double total = 0;
         for (int i = 0; i < n; i++)
             total += buf[i];
 
-        double avg = (double)total / (double)n;
-        double stddev = 0.0;
+        double avg = total / (double)n;
+        double variation = 0.0;
         for (int i = 0; i < n; i++) {
             double dAvg = (double)buf[i] - avg;
-            stddev += dAvg * dAvg;
+            variation += dAvg * dAvg;
         }
 
-        double cv = stddev / avg;
+        double stdDev = Math.sqrt(variation / (double)n);
+        double cv = stdDev / avg;
         return cv * cv;
     }
 

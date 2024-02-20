@@ -694,7 +694,7 @@ public class Analyzer
 
         double averageLength = 0.0;
         if (nTrees > 0)
-            averageLength = totalLength / (double)nTrees * linearScalingFactor;
+            averageLength = totalLength * linearScalingFactor / (double)nTrees;
 
         stats.totalLength = totalLength * linearScalingFactor;
         stats.averageBranchLength = averageLength;
