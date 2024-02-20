@@ -31,7 +31,7 @@ public class VesselThickness
             float dist = 0.0f;
             if ((input[i] & 255) >= thresh) {
                 dist = (float)Math.sqrt(output[i]);
-                if (dist > distMax) distMax = dist;
+                distMax = Math.max(dist, distMax);
             }
             output[i] = dist;
         }
@@ -110,7 +110,7 @@ public class VesselThickness
 
                 if (empty) {
                     for (int y = 0; y < height; y++)
-                        dst[x + width * y] = src[x + width * y];
+                        dst[x + width * y] = 0;
                     continue;
                 }
 
