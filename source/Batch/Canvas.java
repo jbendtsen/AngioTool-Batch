@@ -1,5 +1,49 @@
 package Batch;
 
+/*
+const int N_POINTS = 8;
+const ivec2 POINT[] = ivec2[](
+    ivec2(200, 200),
+    ivec2(100, 150),
+    ivec2(200, 100),
+    ivec2(150, 150),
+    ivec2(250, 200),
+    ivec2(350, 150),
+    ivec2(250, 100),
+    ivec2(300, 150)
+);
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    // Normalized pixel coordinates (from 0 to 1)
+    vec2 uv = fragCoord/iResolution.xy;
+    vec3 col = vec3(0.0, 0.0, 0.0);
+
+    int x = int(fragCoord.x);
+    int y = int(fragCoord.y);
+
+    // Time varying pixel color
+    int i;
+    for (i = 0; i < N_POINTS; i++) {
+        int next = (i+1) % N_POINTS;
+        int x1 = POINT[i].x;
+        int x2 = POINT[next].x;
+        int y1 = POINT[i].y;
+        int y2 = POINT[next].y;
+        int gy = (x2 - x1) * (y2 - y);
+        int gx = (y2 - y1) * (x2 - x);
+        int dist = 16 - abs(gx - gy);
+        dist *= int((x1 < x2 && x >= x1 && x <= x2) || (x1 >= x2 && x >= x2 && x <= x1));
+        col += max(float(dist), 0.0) * (0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)));
+        if (false && abs(POINT[i].x - x) < 5 && abs(POINT[i].y - y) < 5)
+            col = vec3(1.0, 1.0, 1.0);
+    }
+
+    // Output to screen
+    fragColor = vec4(col,1.0);
+}
+*/
+
 public class Canvas
 {
     public static void drawLines(
@@ -20,8 +64,7 @@ public class Canvas
         double g1 = ((rgbColor >> 8) & 0xff) / 255.0;
         double b1 = (rgbColor & 0xff) / 255.0;
 
-        int lanes = (int)Math.ceil(strokeWidth);
-        double halfLaneCount = Math.floor(lanes * 0.5);
+        double strokeDistance = 0.5 + strokeWidth * 0.5;
 
         int idxJump = index != null ? 1 : pointSize;
 
@@ -42,58 +85,64 @@ public class Canvas
             int x2 = points[next];
             int y2 = points[next+1];
 
-            double dx = x2 - x1;
-            double dy = y2 - y1;
-            double distance = Math.sqrt(dx*dx + dy*dy);
+            int firstX, lastX;
+            if (x1 < x2) {
+                firstX = x1;
+                lastX = x2;
+            }
+            else {
+                firstX = x2;
+                lastX = x1;
+            }
 
-            double xDir = dx / distance;
-            double yDir = dy / distance;
+            int firstY, lastY;
+            if (y1 < y2) {
+                firstY = y1;
+                lastY = y2;
+            }
+            else {
+                firstY = y2;
+                lastY = y1;
+            }
 
-            double x = x1 + 0.5;
-            double y = y1 + 0.5;
-            int plots = (int)Math.ceil(distance);
+            firstX = Math.min(Math.max(firstX - (int)strokeWidth, 0), width - 1);
+            lastX  = Math.min(Math.max(lastX + (int)strokeWidth,  0), width - 1);
+            firstY = Math.min(Math.max(firstY - (int)strokeWidth, 0), height - 1);
+            lastY  = Math.min(Math.max(lastY + (int)strokeWidth,  0), height - 1);
 
-            for (int j = 0; j < plots; j++) {
-                for (int k = 0; k < lanes; k++) {
-                    double xx = x + (k - halfLaneCount) * yDir;
-                    double yy = y - (k - halfLaneCount) * xDir;
+            int dx = x2 - x1;
+            int dy = y2 - y1;
+            double maxDistance = (dx*dx + dy*dy) * strokeDistance * strokeDistance;
 
-                    double xSub = xx - Math.floor(xx) - 0.5;
-                    double ySub = yy - Math.floor(yy) - 0.5;
-                    int xAdj = (int)xSub * 2 + 1;
-                    int yAdj = (int)ySub * 2 + 1;
+            for (int y = firstY; y <= lastY; y++) {
+                for (int x = firstX; x <= lastX; x++) {
+                    double distance =
+                        dx * (y2 - y) -
+                        dy * (x2 - x);
 
-                    for (int l = 0; l < 4; l++) {
-                        int px = (int)xx + xAdj * (l % 2);
-                        int py = (int)yy + yAdj * (l / 2);
+                    distance *= distance;
+                    if (distance >= maxDistance)
+                        continue;
 
-                        if (px >= 0 && py >= 0 && px < width && py < height) {
-                            int p = image[px + width * py];
-                            double a2 = ((p >> 24) & 0xff) / 255.0;
-                            double r2 = ((p >> 16) & 0xff) / 255.0;
-                            double g2 = ((p >> 8) & 0xff) / 255.0;
-                            double b2 = (p & 0xff) / 255.0;
+                    double a1 = alpha * (1.0 - (distance / maxDistance));
 
-                            double a1 = alpha * (
-                                (0.5 - Math.abs(xSub)) +
-                                (0.5 - Math.abs(ySub))
-                            );
-                            a2 = 1.0 - ((1.0 - a1) * (1.0 - a2));
-                            r2 = (1.0 - a1) * r2 + a1 * r1;
-                            g2 = (1.0 - a1) * g2 + a1 * g1;
-                            b2 = (1.0 - a1) * b2 + a1 * b1;
+                    int p = image[x + width * y];
+                    double a2 = ((p >> 24) & 0xff) / 255.0;
+                    double r2 = ((p >> 16) & 0xff) / 255.0;
+                    double g2 = ((p >> 8) & 0xff) / 255.0;
+                    double b2 = (p & 0xff) / 255.0;
 
-                            image[px + width * py] =
-                                ((int)(a2 * 255.0) << 24 & 0xff000000) |
-                                ((int)(r2 * 255.0) << 16 & 0xff0000) |
-                                ((int)(g2 * 255.0) << 8 & 0xff00) |
-                                ((int)(b2 * 255.0) & 0xff);
-                        }
-                    }
+                    a2 = 1.0 - ((1.0 - a1) * (1.0 - a2));
+                    r2 = (1.0 - a1) * r2 + a1 * r1;
+                    g2 = (1.0 - a1) * g2 + a1 * g1;
+                    b2 = (1.0 - a1) * b2 + a1 * b1;
+
+                    image[x + width * y] =
+                        ((int)(a2 * 255.0) << 24 & 0xff000000) |
+                        ((int)(r2 * 255.0) << 16 & 0xff0000) |
+                        ((int)(g2 * 255.0) << 8 & 0xff00) |
+                        ((int)(b2 * 255.0) & 0xff);
                 }
-
-                x += xDir;
-                y += yDir;
             }
         }
     }

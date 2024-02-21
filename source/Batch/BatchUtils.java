@@ -10,28 +10,6 @@ import javax.swing.JOptionPane;
 
 public class BatchUtils
 {
-    public static double computeMedianThickness(IntVector slabList, float[] distanceMap, int width, int height)
-    {
-        int nPoints = slabList.size / 3;
-        double[] vesselThickness = DoubleBufferPool.acquireAsIs(nPoints);
-
-        for (int i = 0; i < slabList.size; i += 3) {
-            int x = slabList.buf[i];
-            int y = slabList.buf[i+1];
-            vesselThickness[i/3] = (double)distanceMap[x + width * y] * 2.0;
-        }
-
-        Arrays.sort(vesselThickness, 0, nPoints);
-        int middle = nPoints / 2;
-
-        double thickness = nPoints % 2 == 1 ?
-            vesselThickness[middle] :
-            (vesselThickness[middle - 1] + vesselThickness[middle]) / 2.0;
-
-        DoubleBufferPool.release(vesselThickness);
-        return thickness;
-    }
-
     public static void thresholdFlexible(byte[] image, int width, int height, int low, int high)
     {
         if (low > high) {
