@@ -5,6 +5,9 @@ public class VesselThickness
     public static void computeThickness(
         ISliceRunner runner,
         int maxWorkers,
+        int[] points,
+        int arraySize,
+        int pointSize,
         float[] output,
         byte[] input,
         int[] scratch,
@@ -48,49 +51,21 @@ public class VesselThickness
         */
     }
 
-    static void step1(int[] output, byte[] input, int width, int height, int thresh)
+    static class Step1 implements ISliceCompute
     {
-        final int maxDimension = Math.max(width, height);
-        final int maxResult = 3 * (maxDimension + 1) * (maxDimension + 1);
+        final int[] output;
+        final byte[] input;
+        final int width;
+        final int height;
+        final int thresh;
 
-        for (int j = 0; j < height; j++) {
-            for(int i = 0; i < width; ++i) {
-                int min = maxResult;
-
-                for(int x = i; x < width; ++x) {
-                    if ((input[x + width * j] & 255) < thresh) {
-                        min = (i-x)*(i-x);
-                        break;
-                    }
-                }
-
-                for(int x = i - 1; x >= 0; --x) {
-                    if ((input[x + width * j] & 255) < thresh) {
-                        min = Math.min((i-x)*(i-x), min);
-                        break;
-                    }
-                }
-
-                output[i + width * j] = min;
-            }
-        }
-    }
-
-    static class Step2 implements ISliceCompute
-    {
-        static final int IN_PLACE_THRESHOLD = 250;
-
-        private final int width;
-        private final int height;
-        private final int[] src;
-        private final float[] dst;
-
-        public Step2(float[] dst, int[] src, int width, int height)
+        public Step1(int[] output, byte[] input, int width, int height, int thresh)
         {
-            this.dst = dst;
-            this.src = src;
+            this.output = output;
+            this.input = input;
             this.width = width;
             this.height = height;
+            this.thresh = thresh;
         }
 
         @Override
@@ -102,7 +77,70 @@ public class VesselThickness
             final int maxDimension = Math.max(width, height);
             final int maxResult = 3 * (maxDimension + 1) * (maxDimension + 1);
 
-            for(int x = start; x < start + length; ++x) {
+            for (int j = start; j < start + length; j++) {
+                for (int i = 0; i < width; ++i) {
+                    int min = maxResult;
+
+                    for (int x = i; x < width; ++x) {
+                        if ((input[x + width * j] & 255) < thresh) {
+                            min = (i-x)*(i-x);
+                            break;
+                        }
+                    }
+
+                    for(int x = i - 1; x >= 0; --x) {
+                        if ((input[x + width * j] & 255) < thresh) {
+                            min = Math.min((i-x)*(i-x), min);
+                            break;
+                        }
+                    }
+
+                    // invert X and Y to improve locatlity in the next step
+                    output[j + height * i] = min;
+                }
+            }
+
+            return null;
+        }
+
+        @Override
+        public void finishSlice(ISliceCompute.Result res) {}
+    }
+
+    static class Step2 implements ISliceCompute
+    {
+        static final int IN_PLACE_THRESHOLD = 250;
+
+        final int width;
+        final int height;
+        final int[] src;
+        final float[] dst;
+        final int[] points;
+        final int arraySize;
+        final int pointsSize;
+
+        public Step2(float[] dst, int[] src, int width, int height, int[] points, int arraySize, int pointsSize)
+        {
+            this.dst = dst;
+            this.src = src;
+            this.width = width;
+            this.height = height;
+            this.points = points;
+            this.arraySize = arraySize;
+            this.pointsSize = pointsSize;
+        }
+
+        @Override
+        public void initSlices(int nSlices) {}
+
+        @Override
+        public Object computeSlice(int sliceIdx, int start, int length)
+        {
+            final int maxDimension = Math.max(width, height);
+            final int maxResult = 3 * (maxDimension + 1) * (maxDimension + 1);
+
+            for(int i = start; i < start + length; ++i) {
+                /*
                 boolean empty = true;
 
                 for(int y = 0; empty && y < height; ++y)
@@ -113,16 +151,17 @@ public class VesselThickness
                         dst[x + width * y] = 0;
                     continue;
                 }
+                */
+                int x  = points[i*pointSize];
+                int y1 = points[i*pointSize + 1];
 
-                for(int y1 = 0; y1 < height; ++y1) {
-                    int min = maxResult;
+                int min = maxResult;
 
-                    for(int y2 = 0; y2 < height; ++y2) {
-                        min = Math.min(src[x + width * y2] + (y1-y2)*(y1-y2), min);
-                    }
+                // the X and Y of src were flipped in the previous step
+                for (int y2 = 0; y2 < height; ++y2)
+                    min = Math.min(src[y2 + height * x] + (y1-y2)*(y1-y2), min);
 
-                    dst[x + width * y1] = min;
-                }
+                dst[x + width * y1] = min;
             }
 
             return null;
