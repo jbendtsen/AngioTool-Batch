@@ -596,13 +596,15 @@ public class Analyzer
         {
             uiToken.updateImageProgress("Computing thickness...");
 
-            float[] thicknessImage = data.f1.buf;
             int[] thicknessScratch = data.i2.buf;
-            VesselThickness.computeThickness(sliceRunner, MAX_WORKERS, thicknessImage, analysisImage, thicknessScratch, inputImage.width, inputImage.height);
-
-            averageVesselDiameter = linearScalingFactor * BatchUtils.computeMedianThickness(
-                data.skelResult.slabList,
-                thicknessImage,
+            averageVesselDiameter = linearScalingFactor * VesselThickness.computeMedianVesselThickness(
+                sliceRunner,
+                MAX_WORKERS,
+                data.skelResult.slabList.buf,
+                data.skelResult.slabList.size,
+                3,
+                thicknessScratch,
+                analysisImage,
                 inputImage.width,
                 inputImage.height
             );

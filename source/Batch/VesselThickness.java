@@ -1,54 +1,64 @@
 package Batch;
 
+import java.util.Arrays;
+
 public class VesselThickness
 {
-    public static void computeThickness(
+    public static double computeMedianVesselThickness(
         ISliceRunner runner,
         int maxWorkers,
         int[] points,
         int arraySize,
         int pointSize,
-        float[] output,
-        byte[] input,
         int[] scratch,
+        byte[] input,
         int width,
         int height
     ) {
         final int thresh = 200;
 
-        step1(scratch, input, width, height, thresh);
-
         try {
-            runner.runSlices(new Step2(output, scratch, width, height), maxWorkers, width, Step2.IN_PLACE_THRESHOLD - 1);
+            runner.runSlices(new Step1(scratch, input, width, height, thresh), maxWorkers, width, (width / 4) + 1);
         }
         catch (Throwable ex) {
             ex.printStackTrace();
         }
 
-        // There was a step 3, but since it only iterated over the depth of the image, it was entirely redundant
+        final int nPoints = arraySize / pointSize;
+        double[] vesselThickness = DoubleBufferPool.acquireAsIs(nPoints);
 
-        float distMax = 0.0f;
-        int area = width * height;
+        final int maxDimension = Math.max(width, height);
+        final int maxResult = 3 * (maxDimension + 1) * (maxDimension + 1);
 
-        for (int i = 0; i < area; i++) {
-            float dist = 0.0f;
-            if ((input[i] & 255) >= thresh) {
-                dist = (float)Math.sqrt(output[i]);
-                distMax = Math.max(dist, distMax);
+        for(int i = 0; i < nPoints; i++) {
+            int x  = points[i*pointSize];
+            int y1 = points[i*pointSize + 1];
+
+            if ((input[x + width * y1] & 255) < thresh) {
+                vesselThickness[i] = 0.0;
+                continue;
             }
-            output[i] = dist;
+
+            int min = maxResult;
+
+            // the X and Y of 'scratch' were flipped in step 1
+            for (int y2 = 0; y2 < height; ++y2)
+                min = Math.min(scratch[y2 + height * x] + (y1-y2)*(y1-y2), min);
+
+            double result = Math.sqrt(min);
+            vesselThickness[i] = result;
         }
 
-        float factor = distMax > 0.0f ? 256.0f / distMax : 1.0f;
-        for (int i = 0; i < area; i++)
-            output[i] = Math.min(output[i] * factor, 255.0f);
+        Arrays.sort(vesselThickness, 0, nPoints);
+        int middle = nPoints / 2;
 
-        /*
-        String title = this.stripExtension(this.imp.getTitle());
-        this.impOut = new ImagePlus(title + "EDT", sStack);
-        this.impOut.getProcessor().setMinAndMax(0.0, (double)distMax);
-        long end = System.currentTimeMillis();
-        */
+        double thickness = nPoints % 2 == 1 ?
+            vesselThickness[middle] :
+            (vesselThickness[middle - 1] + vesselThickness[middle]) / 2.0;
+
+        DoubleBufferPool.release(vesselThickness);
+
+        return thickness * 2.0;
     }
 
     static class Step1 implements ISliceCompute
@@ -95,73 +105,9 @@ public class VesselThickness
                         }
                     }
 
-                    // invert X and Y to improve locatlity in the next step
+                    // swap X and Y to improve memory locality in the next step
                     output[j + height * i] = min;
                 }
-            }
-
-            return null;
-        }
-
-        @Override
-        public void finishSlice(ISliceCompute.Result res) {}
-    }
-
-    static class Step2 implements ISliceCompute
-    {
-        static final int IN_PLACE_THRESHOLD = 250;
-
-        final int width;
-        final int height;
-        final int[] src;
-        final float[] dst;
-        final int[] points;
-        final int arraySize;
-        final int pointsSize;
-
-        public Step2(float[] dst, int[] src, int width, int height, int[] points, int arraySize, int pointsSize)
-        {
-            this.dst = dst;
-            this.src = src;
-            this.width = width;
-            this.height = height;
-            this.points = points;
-            this.arraySize = arraySize;
-            this.pointsSize = pointsSize;
-        }
-
-        @Override
-        public void initSlices(int nSlices) {}
-
-        @Override
-        public Object computeSlice(int sliceIdx, int start, int length)
-        {
-            final int maxDimension = Math.max(width, height);
-            final int maxResult = 3 * (maxDimension + 1) * (maxDimension + 1);
-
-            for(int i = start; i < start + length; ++i) {
-                /*
-                boolean empty = true;
-
-                for(int y = 0; empty && y < height; ++y)
-                    empty = empty && src[x + width * y] == 0;
-
-                if (empty) {
-                    for (int y = 0; y < height; y++)
-                        dst[x + width * y] = 0;
-                    continue;
-                }
-                */
-                int x  = points[i*pointSize];
-                int y1 = points[i*pointSize + 1];
-
-                int min = maxResult;
-
-                // the X and Y of src were flipped in the previous step
-                for (int y2 = 0; y2 < height; ++y2)
-                    min = Math.min(src[y2 + height * x] + (y1-y2)*(y1-y2), min);
-
-                dst[x + width * y1] = min;
             }
 
             return null;

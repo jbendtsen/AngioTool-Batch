@@ -14,18 +14,12 @@ public interface ISliceRunner
         @Override
         public void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws Throwable
         {
-            int nSlices = (length + largestAtom - 1) / largestAtom;
-            work.initSlices(nSlices);
+            work.initSlices(1);
 
             ISliceCompute.Result res = new ISliceCompute.Result();
-
-            int idx = 0;
-            for (int i = 0; i < length; i += largestAtom) {
-                res.idx = idx;
-                res.result = work.computeSlice(idx, i, Math.min(length - i, largestAtom));
-                work.finishSlice(res);
-                idx++;
-            }
+            res.idx = 0;
+            res.result = work.computeSlice(0, 0, length);
+            work.finishSlice(res);
         }
     }
 

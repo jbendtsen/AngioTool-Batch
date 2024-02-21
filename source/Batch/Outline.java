@@ -43,8 +43,6 @@ public class Outline
         int area = width * height;
         int iterations = (int)Math.ceil(strokeWidth);
 
-        System.out.println("Outline: " + iterations + " iterations");
-
         int[] readingScratch = outlineScratch1;
         int[] writingScratch = outlineScratch2;
 
