@@ -670,8 +670,8 @@ public class Analyzer
         stats.thresholdLow = params.thresholdLow;
         stats.thresholdHigh = params.thresholdHigh;
         stats.sigmas = params.sigmas;
-        stats.removeSmallParticlesThreshold = params.removeSmallParticlesThreshold;
-        stats.fillHolesValue = (int)params.fillHolesValue;
+        stats.removeSmallParticlesThreshold = params.shouldRemoveSmallParticles ? params.removeSmallParticlesThreshold : 0;
+        stats.fillHolesValue = params.shouldFillHoles ? (int)params.fillHolesValue : 0;
         stats.linearScalingFactor = linearScalingFactor;
         //stats.allantoisPixelsArea = data.convexHullArea;
         stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;
