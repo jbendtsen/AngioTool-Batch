@@ -15,7 +15,11 @@ public class Planes
 
         for (int i = 0; i < area; i += BLOCK_SIZE) {
             int block = Math.min(BLOCK_SIZE, area - i);
-            for (int j = 0; j < breadth; j++) {
+
+            for (int k = 0; k < block; k++)
+                output[i+k] = (byte)(slices[0][i+k] >>> 31 | -slices[0][i+k] >>> 31);
+
+            for (int j = 1; j < breadth; j++) {
                 for (int k = 0; k < block; k++)
                     output[i+k] |= (slices[j][i+k] >>> 31 | -slices[j][i+k] >>> 31) << j;
             }
@@ -35,7 +39,11 @@ public class Planes
 
         for (int i = 0; i < area; i += BLOCK_SIZE) {
             int block = Math.min(BLOCK_SIZE, area - i);
-            for (int j = 0; j < breadth; j++) {
+
+            for (int k = 0; k < block; k++)
+                output[i+k] = (byte)(slices[0][i+k] >>> 31 | -slices[0][i+k] >>> 31);
+
+            for (int j = 1; j < breadth; j++) {
                 for (int k = 0; k < block; k++)
                     output[i+k] |= (slices[j][i+k] >>> 31 | -slices[j][i+k] >>> 31) << j;
             }
@@ -76,7 +84,13 @@ public class Planes
 
         for (int i = 0; i < area; i += BLOCK_SIZE) {
             int block = Math.min(BLOCK_SIZE, area - i);
-            for (int j = 0; j < breadth; j++) {
+
+            for (int k = 0; k < block; k++) {
+                int exp = (Float.floatToRawIntBits(slices[0][i+k]) >> 23) & 0xff;
+                output[i+k] |= -(exp - 0x76) >>> 31;
+            }
+
+            for (int j = 1; j < breadth; j++) {
                 for (int k = 0; k < block; k++) {
                     int exp = (Float.floatToRawIntBits(slices[j][i+k]) >> 23) & 0xff;
                     output[i+k] |= (-(exp - 0x76) >>> 31) << j;

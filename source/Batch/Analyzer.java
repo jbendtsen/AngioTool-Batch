@@ -503,6 +503,8 @@ public class Analyzer
                 false
             );
 
+        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, "clarified.pgm");
+
         if (params.shouldDrawOutline && params.shouldSaveResultImages)
         {
             uiToken.updateImageProgress("Drawing outline...");

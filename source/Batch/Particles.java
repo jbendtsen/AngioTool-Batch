@@ -198,7 +198,7 @@ public class Particles
             if (idx < 0)
                 continue;
 
-            int shapeArea = data.shapes.buf[idx];
+            int shapeArea = data.shapes.buf[idx] & 0x7fffFFFF;
 
             if (shapeArea <= maxPixelCount && (image[i] ^ colorToMatch) >= 0)
                 image[i] = (byte)(~colorToMatch);
