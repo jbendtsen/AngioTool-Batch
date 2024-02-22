@@ -8,11 +8,11 @@ public class Tubeness
 
     public static class Scratch
     {
-        Params params = new Params();
-        float[] image;
-        float[] maxEigenOutput;
-        float[] gaussianOutput;
-        float[] scratchBuf;
+        public Params params = new Params();
+        public float[] image;
+        public float[] maxEigenOutput;
+        public float[] gaussianOutput;
+        public float[] scratchBuf;
 
         public void useBuffers(float[] image, float[] maxEigenOutput, float[] gaussianOutput, float[] scratchBuf)
         {

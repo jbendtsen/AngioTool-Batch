@@ -117,6 +117,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ImageProcessor ipOriginal;
    private ImageProcessor ipThresholded;
    private ImageProcessor tubenessIp;
+   private Tubeness.Scratch tubeness;
    private int minSigma;
    private int maxSigma;
    private double[] firstSigma = new double[]{5.0};
@@ -124,7 +125,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
    private ArrayList<Double> currentSigmas;
    private ArrayList<AngioToolGUI.sigmaImages> sI;
    private ArrayList<int[]> al;
-   private IntVector convexHull;
+   private IntVector convexHull = new IntVector();
    private double convexHullArea;
    private int[] allantoisOverlay;
    //private Roi outlineRoi;
@@ -947,27 +948,26 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          if (this.imageFile != null) {
             this.results.image = this.imageFile;
             this.imageOriginal = this.openImageAndIsolateDominantChannel(this.imageFile.getAbsolutePath());
-            if (this.imageOriginal != null) {
-               if (this.resizeImageCheckBox.isSelected()) {
-                  ImageProcessor resized = this.imageOriginal.getProcessor().resize((int)((double)this.imageOriginal.getWidth() / params.resizingFactor));
-                  this.imageOriginal.setProcessor(resized);
-               }
 
-               this.resizeImageCheckBox.setEnabled(false);
-               this.resizingFactorSpinner.setEnabled(false);
-               this.resizingFactorLabel.setEnabled(false);
-               this.unlockButton.setText(this.resizeImageCheckBox.isEnabled() ? "Lock" : "Unlock");
-               this.unlockButton.setSelected(true);
-               this.AnalyzeButton.setEnabled(true);
-               this.imageOriginal.show();
-               this.ipOriginal = this.imageOriginal.getProcessor().convertToByte(params.shouldScalePixelValues);
-               this.imageResult = this.imageOriginal;
-               this.imageResult.getWindow().setLocation(this.getX() + this.getWidth(), this.getY());
-               this.imageResult.getWindow().setIconImage(this.imgIcon);
-               this.initControls();
-               this.computeFirstOutline(this.firstSigma);
-               this.updateOverlay();
+            if (this.resizeImageCheckBox.isSelected()) {
+               ImageProcessor resized = this.imageOriginal.getProcessor().resize((int)((double)this.imageOriginal.getWidth() / params.resizingFactor));
+               this.imageOriginal.setProcessor(resized);
             }
+
+            this.resizeImageCheckBox.setEnabled(false);
+            this.resizingFactorSpinner.setEnabled(false);
+            this.resizingFactorLabel.setEnabled(false);
+            this.unlockButton.setText(this.resizeImageCheckBox.isEnabled() ? "Lock" : "Unlock");
+            this.unlockButton.setSelected(true);
+            this.AnalyzeButton.setEnabled(true);
+            this.imageResult.setProcessor(this.imageOriginal.getProcessor().duplicate());
+            this.ipOriginal = this.imageOriginal.getProcessor().convertToByte(params.shouldScalePixelValues);
+            this.imageResult.show();
+            this.imageResult.getWindow().setLocation(this.getX() + this.getWidth(), this.getY());
+            this.imageResult.getWindow().setIconImage(this.imgIcon);
+            this.initControls();
+            this.computeFirstOutline(this.firstSigma);
+            this.updateOverlay();
          }
       }
    }
@@ -1362,6 +1362,37 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       return marks;
    }
 
+   private void reallocateTubeness() {
+      if (this.tubeness == null)
+         this.tubeness = new Tubeness.Scratch();
+
+      int width = this.ipOriginal.getWidth();
+      int height = this.ipOriginal.getHeight();
+      if (tubeness.image == null || tubeness.image.length < width * height)
+         tubeness.useBuffers(
+            new float[width * height],
+            new float[width * height],
+            new float[width * height],
+            new float[width * height]
+         );
+   }
+
+   private void reallocateSkeletonResult() {
+      if (this.skelResult == null)
+         this.skelResult = new SkeletonResult2();
+
+      int width = this.ipOriginal.getWidth();
+      int height = this.ipOriginal.getHeight();
+      if (skelResult.imageInfo == null || skelResult.imageInfo.length < width * height)
+         skelResult.useBuffers(
+            new int[width * height],
+            new int[width * height],
+            new int[width * height],
+            new int[width * height],
+            new int[width * height]
+         );
+   }
+
    private void populateResults() {
       double areaScalingFactor = 1.0;
       if (!this.distanceInMMNumberTextField.getText().equals("") && !this.distanceInPixelsNumberTextField.getText().equals("")) {
@@ -1492,7 +1523,14 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
    public void updateOverlay() {
       if (this.imageResult != null) {
+         int width = this.imageResult.getWidth();
+         int height = this.imageResult.getHeight();
+
          //Arrays.fill(this.allantoisOverlay, 0);
+         /*
+         if (this.allantoisOverlay == null || this.allantoisOverlay.length < width * height)
+            this.allantoisOverlay = new int[width * height];
+         */
 
          params.shouldShowOverlayOrGallery = this.showOverlayCheckBox.isSelected();
          params.shouldDrawOutline = this.showOutlineCheckBox.isSelected();
@@ -1505,13 +1543,11 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          params.convexHullColor = new Rgb(this.convexHullRoundedPanel.getBackground());
 
          if (params.shouldShowOverlayOrGallery) {
-            int width = this.imageOriginal.getWidth();
-            int height = this.imageOriginal.getWidth();
             if (this.skelResult != null) {
 
                if (params.shouldDrawSkeleton) {
                   params.skeletonSize = getSpinnerValueInt(this.skeletonSpinner);
-                  int skelColor = params.skeletonColor.value;
+                  int skelColor = params.skeletonColor.getARGB();
 
                   Canvas.drawCircles(
                      allantoisOverlay,
@@ -1521,7 +1557,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
                      this.skelResult.slabList.buf,
                      this.skelResult.slabList.size,
                      3,
-                     params.skeletonColor.value,
+                     skelColor,
                      params.skeletonSize
                   );
                   Canvas.drawCircles(
@@ -1532,7 +1568,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
                      this.skelResult.junctionVoxels.buf,
                      this.skelResult.removedJunctions.size,
                      3,
-                     params.skeletonColor.value,
+                     skelColor,
                      params.skeletonSize
                   );
                }
@@ -1547,7 +1583,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
                      this.skelResult.junctionVoxels.buf,
                      this.skelResult.isolatedJunctions.size,
                      3,
-                     params.branchingPointsColor.value,
+                     params.branchingPointsColor.getARGB(),
                      branchingPointsSize
                   );
                }
@@ -1563,13 +1599,14 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
                   this.convexHull.buf,
                   this.convexHull.size,
                   2,
-                  params.convexHullColor.value,
+                  params.convexHullColor.getARGB(),
                   params.convexHullSize
                );
             }
          }
 
-         this.imageResult = applyOverlayToResult(this.imageResult, this.imageOriginal, this.allantoisOverlay);
+         applyOverlayToResult(this.imageResult, this.imageOriginal, this.allantoisOverlay);
+         this.imageResult.updateAndDraw();
       }
    }
 
@@ -1626,6 +1663,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       Particles.Scratch particles = new Particles.Scratch();
       int[] shapeRegions = new int[width * height];
       Particles.computeShapes(particles, shapeRegions, thresholdedPixels, width, height);
+      Particles.removeVesselVoids(particles, shapeRegions, thresholdedPixels, width, height);
 
       if (this.smallParticlesCheckBox.isSelected()) {
          Particles.fillShapes(particles, shapeRegions, thresholdedPixels, width, height, (int)this.smallParticlesRangeSlider2.getValue(), true);
@@ -1635,7 +1673,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          Particles.fillShapes(particles, shapeRegions, thresholdedPixels, width, height, (int)this.fillHolesRangeSlider2.getValue(), false);
       }
 
-      if (this.allantoisOverlay == null || this.allantoisOverlay.length != width * height)
+      if (this.allantoisOverlay == null || this.allantoisOverlay.length < width * height)
          this.allantoisOverlay = new int[width * height];
       else
          Arrays.fill(this.allantoisOverlay, 0);
@@ -1645,7 +1683,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             this.allantoisOverlay,
             new int[width * height],
             new int[width * height],
-            this.outlineRoundedPanel.getBackground().getRGB(),
+            0xff000000 | this.outlineRoundedPanel.getBackground().getRGB(),
             getSpinnerValueDouble(this.outlineSpinner),
             particles.shapes,
             shapeRegions,
@@ -1655,7 +1693,8 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          );
       }
 
-      this.imageResult = applyOverlayToResult(this.imageResult, this.imageOriginal, this.allantoisOverlay);
+      applyOverlayToResult(this.imageResult, this.imageOriginal, this.allantoisOverlay);
+      this.imageResult.updateAndDraw();
 
       /*
       ImagePlus iplus = new ImagePlus("tubenessIp", this.imageThresholded.getProcessor());
@@ -1688,11 +1727,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.thresholdRangeSliderHigh.setValue(255);
       this.fillHolesCheckBox.setSelected(params.shouldFillHoles);
       this.smallParticlesCheckBox.setSelected(params.shouldRemoveSmallParticles);
-      if (this.imageOriginal != null) {
-         this.imageOriginal.close();
-         this.imageOriginal.flush();
-      }
-
       if (this.imageResult != null) {
          this.imageResult.close();
          this.imageResult.flush();
@@ -1801,7 +1835,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (this.ipOriginal == null)
          return;
 
-      Tubeness.Scratch t = new Tubeness.Scratch();
+      reallocateTubeness();
 
       for(int i = 0; i < s.length; ++i) {
          double sigma = s[i];
@@ -1810,7 +1844,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             double[] sigmaDouble = new double[]{sigma};
             this.imageTubeness = new ImagePlus("", this.ipOriginal);
             Tubeness.computeTubenessImage(
-               t,
+               this.tubeness,
                sliceRunner,
                (byte[])this.imageTubeness.getProcessor().getPixels(),
                (byte[])this.ipOriginal.getPixels(),
@@ -1846,14 +1880,14 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       if (this.ipOriginal == null)
          return;
 
-      Tubeness.Scratch t = new Tubeness.Scratch();
+      reallocateTubeness();
 
       if (!this.allSigmas.contains((double)low)) {
          this.allSigmas.add((double)low);
          double[] s = new double[]{(double)low};
          this.imageTubeness = new ImagePlus("", this.ipOriginal);
          Tubeness.computeTubenessImage(
-            t,
+            this.tubeness,
             sliceRunner,
             (byte[])this.imageTubeness.getProcessor().getPixels(),
             (byte[])this.ipOriginal.getPixels(),
@@ -1870,7 +1904,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
          double[] s = new double[]{(double)high};
          this.imageTubeness = new ImagePlus("", this.ipOriginal);
          Tubeness.computeTubenessImage(
-            t,
+            this.tubeness,
             sliceRunner,
             (byte[])this.imageTubeness.getProcessor().getPixels(),
             (byte[])this.ipOriginal.getPixels(),
@@ -1955,8 +1989,9 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       this.imageTubeness = new ImagePlus("imageTubeness", this.ipOriginal);
       this.tubenessIp = this.imageTubeness.getProcessor();
       Calibration c = this.imageTubeness.getCalibration();
+      reallocateTubeness();
       Tubeness.computeTubenessImage(
-         new Tubeness.Scratch(),
+         this.tubeness,
          sliceRunner,
          (byte[])this.tubenessIp.getPixels(),
          (byte[])this.ipOriginal.getPixels(),
@@ -2169,7 +2204,7 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       progress += 33;
       updateStatus(progress, "Computing convex hull... ");
       Calibration c = iplusSkeleton.getCalibration();
-      this.skelResult = new SkeletonResult2();
+      reallocateSkeletonResult();
       AnalyzeSkeleton2.analyze(
          this.skelResult,
          skelImage,
@@ -2249,11 +2284,9 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
       return image;
    }
 
-   ImagePlus applyOverlayToResult(ImagePlus result, ImagePlus original, int[] overlay) {
-      int width = original.getWidth();
-      int height = original.getHeight();
-      if (result == original || result == null)
-         result = new ImagePlus("Result", new ColorProcessor(width, height));
+   void applyOverlayToResult(ImagePlus result, ImagePlus original, int[] overlay) {
+      int width = result.getWidth();
+      int height = result.getHeight();
 
       int[] output = (int[])result.getProcessor().getPixels();
       int[] input = (int[])original.getProcessor().getPixels();
@@ -2276,8 +2309,6 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
             ((int)(255.0 * ((1.0 - a1) * g2 + a1 * g1)) << 8 & 0xff00) |
             ((int)(255.0 * ((1.0 - a1) * b2 + a1 * b1)) & 0xff);
       }
-
-      return result;
    }
 
    class AngioToolWorker extends SwingWorker<Object, Object> {

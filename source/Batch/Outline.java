@@ -38,8 +38,6 @@ public class Outline
         int width,
         int height
     ) {
-        rgbColor &= 0xFFFfff;
-
         int area = width * height;
         int iterations = (int)Math.ceil(strokeWidth);
 
@@ -99,9 +97,9 @@ public class Outline
                     outline[p1] = rgbColor;
                     outline[p2] = rgbColor;
                     outline[p3] = rgbColor;
-                    writingScratch[p1] = rgbColor;
-                    writingScratch[p2] = rgbColor;
-                    writingScratch[p3] = rgbColor;
+                    writingScratch[p1] = 1;
+                    writingScratch[p2] = 1;
+                    writingScratch[p3] = 1;
                 }
             }
 
