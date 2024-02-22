@@ -7,20 +7,23 @@ public class ConvexHull
         points.size = 0;
 
         boolean hasEqualLowestHeight = false;
-        int firstY = -1;
+        int firstY = height;
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 if (image[x + width * y] == -1) {
                     hasEqualLowestHeight = hasEqualLowestHeight || y == firstY;
-                    // if firstY has not been set then set it to y, else keep its current value
-                    firstY = ((firstY >> 31) & y) | (~(firstY >> 31) & firstY);
+                    firstY = Math.min(y, firstY);
                     points.addTwo(x, y);
                 }
             }
         }
 
         final int n = points.size;
+
+        if (n >= 2)
+            points.addTwo(points.buf[0], points.buf[1]);
+
         int[] xy = points.buf;
 
         int min = 0;
@@ -38,7 +41,7 @@ public class ConvexHull
 
             min = n;
             double v = minAngle;
-            minAngle = 360.0;
+            minAngle = 4.0;
             int h2 = 0;
 
             for (int i = m + 2; i < n + 2; i += 2) {
@@ -61,14 +64,13 @@ public class ConvexHull
                     t += 4.0;
                 }
 
-                double th = t * 90.0;
-                if (th > v) {
-                    if (th < minAngle) {
+                if (t > v) {
+                    if (t < minAngle) {
                         min = i;
-                        minAngle = th;
+                        minAngle = t;
                         h2 = dx * dx + dy * dy;
                     }
-                    else if (th == minAngle) {
+                    else if (t == minAngle) {
                         int h = dx * dx + dy * dy;
                         if (h > h2) {
                             min = i;
@@ -79,7 +81,7 @@ public class ConvexHull
             }
         }
 
-        points.resize(m);
+        points.resize(m + 2);
 
         double signedArea = 0.0;
         for (int i = 0; i < points.size; i += 2) {
