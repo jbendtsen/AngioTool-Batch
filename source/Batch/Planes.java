@@ -87,7 +87,7 @@ public class Planes
 
             for (int k = 0; k < block; k++) {
                 int exp = (Float.floatToRawIntBits(slices[0][i+k]) >> 23) & 0xff;
-                output[i+k] |= -(exp - 0x76) >>> 31;
+                output[i+k] = -(exp - 0x76) >>> 31;
             }
 
             for (int j = 1; j < breadth; j++) {
