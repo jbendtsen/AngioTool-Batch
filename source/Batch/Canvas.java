@@ -1,52 +1,5 @@
 package Batch;
 
-/*
-// range check within bounds of line
-// |a^2x + aby - (c+d)(a^2+b^2)/2| < |c-d|(a^2+b^2)/2
-
-const int N_POINTS = 8;
-const ivec2 POINT[] = ivec2[](
-    ivec2(600, 500),
-    ivec2(300, 300),
-    ivec2(600, 100),
-    ivec2(450, 300),
-    ivec2(750, 500),
-    ivec2(1050, 300),
-    ivec2(750, 100),
-    ivec2(900, 300)
-);
-
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
-{
-    // Normalized pixel coordinates (from 0 to 1)
-    vec2 uv = fragCoord/iResolution.xy;
-    vec3 col = vec3(0.0, 0.0, 0.0);
-
-    int x = int(fragCoord.x);
-    int y = int(fragCoord.y);
-
-    // Time varying pixel color
-    int i;
-    for (i = 0; i < N_POINTS; i++) {
-        int next = (i+1) % N_POINTS;
-        int x1 = POINT[i].x;
-        int x2 = POINT[next].x;
-        int y1 = POINT[i].y;
-        int y2 = POINT[next].y;
-        int gy = (x2 - x1) * (y2 - y);
-        int gx = (y2 - y1) * (x2 - x);
-        int dist = 4096 - abs(gx - gy);
-        dist *= int((x1 < x2 && x >= x1 && x <= x2) || (x1 >= x2 && x >= x2 && x <= x1));
-        col += max(float(dist) / 2048.0, 0.0) * (0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)));
-        if (false && abs(POINT[i].x - x) < 5 && abs(POINT[i].y - y) < 5)
-            col = vec3(1.0, 1.0, 1.0);
-    }
-
-    // Output to screen
-    fragColor = vec4(col,1.0);
-}
-*/
-
 public class Canvas
 {
     public static void drawLines(
@@ -89,18 +42,13 @@ public class Canvas
             int y2 = points[next+1];
 
             int firstX, lastX;
-            int yAtFirstX, yAtLastX;
             if (x1 < x2) {
                 firstX = x1;
-                yAtFirstX = y1;
                 lastX = x2;
-                yAtLastX = y2;
             }
             else {
                 firstX = x2;
-                yAtFirstX = y2;
                 lastX = x1;
-                yAtLastX = y1;
             }
 
             int firstY, lastY;
@@ -126,23 +74,18 @@ public class Canvas
                 for (int x = startX; x <= endX; x++) {
                     double distance = 0;
                     if (dx == 0) {
-                        int gapSq = (x1 - x) * (x1 - x);
-                        if (y <= firstY)
-                            distance = (firstY - y) * (firstY - y) + gapSq;
-                        else if (y >= lastY)
-                            distance = (lastY - y) * (lastY - y) + gapSq;
+                        if (y < firstY || y > lastY)
+                            distance = maxDistance;
                         else
-                            distance = dy * dy * gapSq;
+                            distance = dy * dy * (x1 - x) * (x1 - x);
                     }
                     else {
-                        if (x <= firstX) {
-                            distance = (firstX - x) * (firstX - x) + (yAtFirstX - y) * (yAtFirstX - y);
-                        }
-                        else if (x >= lastX) {
-                            distance = (lastX - x) * (lastX - x) + (yAtLastX - y) * (yAtLastX - y);
+                        // using <= and >= for y covers the horizontal line case
+                        if ((x < firstX || x > lastX) && (y <= firstY || y >= lastY)) {
+                            distance = maxDistance;
                         }
                         else {
-                            distance = dx * (y2 - y) - dy * (x2 - x);
+                            distance = dx * (double)(y2 - y) - dy * (double)(x2 - x);
                             distance *= distance;
                         }
                     }
