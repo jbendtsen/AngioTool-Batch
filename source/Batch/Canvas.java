@@ -1,16 +1,19 @@
 package Batch;
 
 /*
+// range check within bounds of line
+// |a^2x + aby - (c+d)(a^2+b^2)/2| < |c-d|(a^2+b^2)/2
+
 const int N_POINTS = 8;
 const ivec2 POINT[] = ivec2[](
-    ivec2(200, 200),
-    ivec2(100, 150),
-    ivec2(200, 100),
-    ivec2(150, 150),
-    ivec2(250, 200),
-    ivec2(350, 150),
-    ivec2(250, 100),
-    ivec2(300, 150)
+    ivec2(600, 500),
+    ivec2(300, 300),
+    ivec2(600, 100),
+    ivec2(450, 300),
+    ivec2(750, 500),
+    ivec2(1050, 300),
+    ivec2(750, 100),
+    ivec2(900, 300)
 );
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
@@ -32,9 +35,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         int y2 = POINT[next].y;
         int gy = (x2 - x1) * (y2 - y);
         int gx = (y2 - y1) * (x2 - x);
-        int dist = 16 - abs(gx - gy);
+        int dist = 4096 - abs(gx - gy);
         dist *= int((x1 < x2 && x >= x1 && x <= x2) || (x1 >= x2 && x >= x2 && x <= x1));
-        col += max(float(dist), 0.0) * (0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)));
+        col += max(float(dist) / 2048.0, 0.0) * (0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)));
         if (false && abs(POINT[i].x - x) < 5 && abs(POINT[i].y - y) < 5)
             col = vec3(1.0, 1.0, 1.0);
     }
@@ -86,13 +89,18 @@ public class Canvas
             int y2 = points[next+1];
 
             int firstX, lastX;
+            int yAtFirstX, yAtLastX;
             if (x1 < x2) {
                 firstX = x1;
+                yAtFirstX = y1;
                 lastX = x2;
+                yAtLastX = y2;
             }
             else {
                 firstX = x2;
+                yAtFirstX = y2;
                 lastX = x1;
+                yAtLastX = y1;
             }
 
             int firstY, lastY;
@@ -105,22 +113,40 @@ public class Canvas
                 lastY = y1;
             }
 
-            firstX = Math.min(Math.max(firstX - (int)strokeWidth, 0), width - 1);
-            lastX  = Math.min(Math.max(lastX + (int)strokeWidth,  0), width - 1);
-            firstY = Math.min(Math.max(firstY - (int)strokeWidth, 0), height - 1);
-            lastY  = Math.min(Math.max(lastY + (int)strokeWidth,  0), height - 1);
+            int startX = Math.min(Math.max(firstX - (int)strokeWidth, 0), width - 1);
+            int startY = Math.min(Math.max(firstY - (int)strokeWidth, 0), height - 1);
+            int endX   = Math.min(Math.max(lastX + (int)strokeWidth,  0), width - 1);
+            int endY   = Math.min(Math.max(lastY + (int)strokeWidth,  0), height - 1);
 
             int dx = x2 - x1;
             int dy = y2 - y1;
             double maxDistance = (dx*dx + dy*dy) * strokeDistance * strokeDistance;
 
-            for (int y = firstY; y <= lastY; y++) {
-                for (int x = firstX; x <= lastX; x++) {
-                    double distance =
-                        dx * (y2 - y) -
-                        dy * (x2 - x);
+            for (int y = startY; y <= endY; y++) {
+                for (int x = startX; x <= endX; x++) {
+                    double distance = 0;
+                    if (dx == 0) {
+                        int gapSq = (x1 - x) * (x1 - x);
+                        if (y <= firstY)
+                            distance = (firstY - y) * (firstY - y) + gapSq;
+                        else if (y >= lastY)
+                            distance = (lastY - y) * (lastY - y) + gapSq;
+                        else
+                            distance = dy * dy * gapSq;
+                    }
+                    else {
+                        if (x <= firstX) {
+                            distance = (firstX - x) * (firstX - x) + (yAtFirstX - y) * (yAtFirstX - y);
+                        }
+                        else if (x >= lastX) {
+                            distance = (lastX - x) * (lastX - x) + (yAtLastX - y) * (yAtLastX - y);
+                        }
+                        else {
+                            distance = dx * (y2 - y) - dy * (x2 - x);
+                            distance *= distance;
+                        }
+                    }
 
-                    distance *= distance;
                     if (distance >= maxDistance)
                         continue;
 
