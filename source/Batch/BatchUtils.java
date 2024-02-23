@@ -2,6 +2,10 @@ package Batch;
 
 import java.awt.Font;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -247,6 +251,50 @@ public class BatchUtils
             newPath = path + ".bak" + (++counter) + "." + ext;
 
         return newPath;
+    }
+
+    public static String addSeparator(String path)
+    {
+        if (path == null || path.length() == 0)
+            return path;
+
+        // Not sure why this method was designed to modify the input then return it as the output.
+        // Since String is an Object, thus a reference type,
+        // the return value will always be the same as the input after this method is called, because it *is* the input, now modified.
+        if (!path.endsWith(File.separator) && !path.endsWith("/"))
+            path += path.contains(File.separator) ? File.separator : "/";
+
+        return path;
+    }
+
+    public static ByteBuffer loadFileAsByteBuffer(String path) throws IOException
+    {
+        FileChannel channel = null;
+        FileInputStream fis = new FileInputStream(path);
+        try {
+            channel = fis.getChannel();
+            long size = channel.size();
+            if (size >= (1L << 31))
+                return null;
+
+            ByteBuffer buffer = ByteBuffer.allocate((int)size);
+            channel.read(buffer);
+            return buffer;
+        }
+        finally {
+            if (channel != null)
+                channel.close();
+            fis.close();
+        }
+    }
+
+    public static double parseDouble(String text, double defaultValue)
+    {
+        try {
+            return Double.parseDouble(text);
+        }
+        catch (Exception ignored) {}
+        return 0.0;
     }
 
     public static void setNewFontSizeOn(JComponent ui, int newSize)
