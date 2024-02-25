@@ -1,5 +1,8 @@
-package Batch;
+package Tiff;
+
 import java.io.*;
+
+// Modified version of ij.io.TiffEncoder and ij.io.ImageWriter
 
 /**Saves an image described by a ImageInfo object as an uncompressed TIFF file.*/
 public class TiffEncoder {

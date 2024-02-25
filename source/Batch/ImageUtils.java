@@ -1,11 +1,5 @@
 package Batch;
 
-import ij.IJ;
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.measure.Calibration;
-import ij.process.ImageProcessor;
-import ij.process.ColorProcessor;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.FileSystems;
@@ -14,21 +8,39 @@ import javax.swing.ImageIcon;
 
 public class ImageUtils
 {
-    public static Bitmap openImage(Bitmap image, String absPath, double resizeFactor, Bitmap outCombinedCopy, boolean outUseSingleChannel)
+    public static Bitmap openImage(
+        Bitmap image,
+        String absPath,
+        double resizeFactor,
+        Bitmap outCombinedCopy,
+        boolean outUseSingleChannel
+    ) throws Exception
     {
-        ImagePlus iplus = IJ.openImage(absPath);
-        if (iplus == null)
-            return null;
+        int width = 0;
+        int height = 0;
+        int[] inputPixels = null;
+        File file = new File(absPath);
+        Image javaImage = ImageIO.read(file);
+
+        if (javaImage != null) {
+            width = javaImage.getWidth();
+            height = javaImage.getHeight();
+            if (width <= 0 || height <= 0)
+                return null;
+
+            inputPixels = new int[width * height];
+            image.getRGB(0, 0, width, height, inputPixels, 0, width);
+        }
+        else {
+            byte[] firstBytes = new byte[4];
+            FileInputStream fis = new FileInputStream(file);
+            fis.read(firstBytes);
+        }
 
         int originalWidth = iplus.getWidth();
         int originalHeight = iplus.getHeight();
         if (originalWidth <= 0 || originalHeight <= 0)
             return null;
-
-        //Calibration calibration = iplus.getCalibration();
-        double pixelWidth = 1.0; // calibration.pixelWidth;
-        double pixelHeight = 1.0; // calibration.pixelHeight;
-        double pixelBreadth = 1.0; // calibration.pixelDepth;
 
         ImageProcessor ip = iplus.getProcessor();
         ColorProcessor fullScaleProc = ip instanceof ColorProcessor ? (ColorProcessor)ip : (ColorProcessor)ip.convertToRGB();
@@ -168,6 +180,77 @@ public class ImageUtils
             try {
                 out.write(header);
                 out.write(pixels24, 0, width * height * 3);
+            }
+            finally {
+                out.close();
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public static void writePpm24(byte[] reds, byte[] greens, byte[] blues, int width, int height, String title)
+    {
+        byte[] header = ("P6\n" + width + " " + height + "\n255\n").getBytes();
+        byte[] buffer = new byte[12288];
+        try {
+            OutputStream out = Files.newOutputStream(
+                FileSystems.getDefault().getPath("", title),
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE
+            );
+            try {
+                out.write(header);
+
+                int offset = 0;
+                do {
+                    int chunkSize = Math.min(4096, width * height - offset);
+                    for (int b = 0, p = 0; p < chunkSize; b += 3, p++) {
+                        buffer[b]   = reds[offset + p];
+                        buffer[b+1] = greens[offset + p];
+                        buffer[b+2] = blues[offset + p];
+                    }
+                    out.write(buffer, 0, chunkSize * 3);
+                    offset += chunkSize;
+                } while (offset < width * height);
+            }
+            finally {
+                out.close();
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public static void writePpm24(int[] argb, int width, int height, String title)
+    {
+        byte[] header = ("P6\n" + width + " " + height + "\n255\n").getBytes();
+        byte[] buffer = new byte[12288];
+        try {
+            OutputStream out = Files.newOutputStream(
+                FileSystems.getDefault().getPath("", title),
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE
+            );
+            try {
+                out.write(header);
+
+                int offset = 0;
+                do {
+                    int chunkSize = Math.min(4096, width * height - offset);
+                    for (int b = 0, p = 0; p < chunkSize; b += 3, p++) {
+                        int color = argb[offset + p];
+                        buffer[b]   = (byte)((color >>> 16) & 0xff);
+                        buffer[b+1] = (byte)((color >>> 8) & 0xff);
+                        buffer[b+2] = (byte)(color & 0xff);
+                    }
+                    out.write(buffer, 0, chunkSize * 3);
+                    offset += chunkSize;
+                } while (offset < width * height);
             }
             finally {
                 out.close();

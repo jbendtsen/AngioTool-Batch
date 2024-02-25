@@ -109,9 +109,6 @@ public class Bitmap
     public RefVector<Layer> layers = new RefVector<Layer>(Layer.class);
     public int width;
     public int height;
-    public double pixelWidth;
-    public double pixelHeight;
-    public double pixelBreadth;
 
     public byte[] getDefaultChannel()
     {

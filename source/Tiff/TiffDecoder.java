@@ -1,4 +1,5 @@
-package Batch;
+package Tiff;
+
 import java.io.*;
 import java.nio.*;
 import java.util.*;
