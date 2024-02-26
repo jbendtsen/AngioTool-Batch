@@ -32,9 +32,20 @@ public class ImageUtils
             image.getRGB(0, 0, width, height, inputPixels, 0, width);
         }
         else {
-            byte[] firstBytes = new byte[4];
             FileInputStream fis = new FileInputStream(file);
-            fis.read(firstBytes);
+            FileChannel fc = fis.getChannel();
+            byte[] magic = new byte[2];
+            fc.read(magic);
+            fc.position(0);
+
+            if (magic[0] == 'P' && magic[1] >= '0' && magic[1] <= '6') {
+                inputPixels = PgmReader.read(fc);
+                width  = inputPixels[inputPixels.length - 2];
+                height = inputPixels[inputPixels.length - 1];
+            }
+            else if ((magic[0] == 'M' && magic[1] == 'M') || (magic[0] == 'I' && magic[1] == 'I')) {
+                TiffDecoder td = new TiffDecoder();
+            }
         }
 
         int originalWidth = iplus.getWidth();

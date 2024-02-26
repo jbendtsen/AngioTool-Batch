@@ -74,22 +74,12 @@ public class TiffDecoder {
 	private String dInfo;
 	private int ifdCount;
 	private int[] metaDataCounts;
-	private String tiffMetadata;
 	private int photoInterp;
 		
-	public TiffDecoder(String directory, String name) {
-		if (directory==null)
-			directory = "";
-		directory = BatchUtils.addSeparator(directory);
-		this.directory = directory;
-		this.name = name;
-	}
-
-	public TiffDecoder(ByteBuffer buffer, String name) {
-		directory = "";
+	public TiffDecoder(File file, FileChannel fc) {
+		directory = file.getParent();
 		this.name = name;
 		url = "";
-		this.in = buffer;
 	}
 
 	final int getInt() throws IOException {
@@ -517,13 +507,6 @@ public class TiffDecoder {
 							"compressed in this fashion ("+value+")");
 					}
 					break;
-				case SOFTWARE: case DATE_TIME: case HOST_COMPUTER: case ARTIST:
-					if (ifdCount==1) {
-						byte[] bytes = getString(count, lvalue);
-						String s = bytes!=null?new String(bytes):null;
-						saveMetadata(getName(tag), s);
-					}
-					break;
 				case PREDICTOR:
 					if (value==2) {
 						if (fi.compression==ImageInfo.LZW)
@@ -597,8 +580,6 @@ public class TiffDecoder {
 		fi.fileFormat = fi.TIFF;
 		fi.fileName = name;
 		fi.directory = directory;
-		if (url!=null)
-			fi.url = url;
 		return fi;
 	}
 
@@ -812,22 +793,19 @@ public class TiffDecoder {
 		debugMode = true;
 	}
 		
-	public ImageInfo[] getTiffInfo() throws IOException {
-		int ifdOffset;
-		ArrayList list = new ArrayList();
-		if (in==null)
-			in = BatchUtils.loadFileAsByteBuffer(directory+name);
-		ifdOffset = OpenImageFileHeader();
+	public ArrayList<ImageInfo> getTiffImages() throws IOException {
+        int ifdOffset = OpenImageFileHeader();
 		if (ifdOffset<0L) {
 			//in.close();
 			return null;
 		}
-		if (debugMode) dInfo = "\n  " + name + ": opening\n";
+
+		ArrayList<ImageInfo> images = new ArrayList<>();
 		while (ifdOffset>0L) {
 			in.position(ifdOffset);
 			ImageInfo fi = OpenIFD();
 			if (fi!=null) {
-				list.add(fi);
+				images.add(fi);
 				ifdOffset = getInt();
 			} else
 				ifdOffset = 0;
@@ -835,31 +813,8 @@ public class TiffDecoder {
 			if (fi!=null && fi.nImages>1)
 				ifdOffset = 0;   // ignore extra IFDs in ImageJ and NIH Image stacks
 		}
-		if (list.size()==0) {
-			//in.close();
-			return null;
-		} else {
-			ImageInfo[] info = (ImageInfo[])list.toArray(new ImageInfo[list.size()]);
-			if (debugMode) info[0].debugInfo = dInfo;
-			if (url!=null) {
-				in.position(0);
-				//info[0].inputStream = in;
-			}
-			// else in.close();
-			if (info[0].info==null)
-				info[0].info = tiffMetadata;
-			ImageInfo fi = info[0];
-			if (fi.fileType==ImageInfo.GRAY16_UNSIGNED && fi.description==null)
-				fi.lutSize = 0; // ignore troublesome non-ImageJ 16-bit LUTs
-			if (debugMode) {
-				int n = info.length;
-				fi.debugInfo += "number of IFDs: "+ n + "\n";
-				fi.debugInfo += "offset to first image: "+fi.getOffset()+ "\n";
-				fi.debugInfo += "gap between images: "+getGapInfo(info) + "\n";
-				fi.debugInfo += "little-endian byte order: "+fi.intelByteOrder + "\n";
-			}
-			return info;
-		}
+
+		return images;
 	}
 	
 	String getGapInfo(ImageInfo[] fi) {
