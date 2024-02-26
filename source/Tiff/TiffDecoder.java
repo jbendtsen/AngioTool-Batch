@@ -76,9 +76,10 @@ public class TiffDecoder {
 	private int[] metaDataCounts;
 	private int photoInterp;
 		
-	public TiffDecoder(File file, FileChannel fc) {
+	public TiffDecoder(File file, ByteBuffer buffer) {
 		directory = file.getParent();
-		this.name = name;
+		name = file.getName();
+		in = buffer;
 		url = "";
 	}
 

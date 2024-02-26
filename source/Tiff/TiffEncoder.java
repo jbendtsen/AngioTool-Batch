@@ -64,6 +64,7 @@ public class TiffEncoder {
 				bytesPerPixel = 4;
 				break;
 			case ImageInfo.RGB:
+			case ImageInfo.RGB_SPLIT:
 				photoInterp = 2;
 				samplesPerPixel = 3;
 				bytesPerPixel = 3;
@@ -183,7 +184,11 @@ public class TiffEncoder {
 				else
 					writeRGBImage(out, (int[])fi.pixels);
 				break;
+			case ImageInfo.RGB_SPLIT:
+			    writeSplitRGBImage(out, fi.reds, fi.greens, fi.blues);
+				break;
 			default:
+			    break;
 		}
 	}
 
@@ -358,6 +363,26 @@ public class TiffEncoder {
 		for (int i=0; i<fi.nImages; i++)
 			writeRGBImage(out, (int[])stack[i]);
 	}
+
+    private void writeSplitRGBImage(OutputStream out, byte[] reds, byte[] blues, byte[] greens) {
+        long bytesWritten = 0L;
+		long size = 3L*fi.width*fi.height;
+		int count = fi.width*24;
+		byte[] buffer = new byte[count];
+		while (bytesWritten<size) {
+			if ((bytesWritten+count)>size)
+				count = (int)(size-bytesWritten);
+			int j = (int)(bytesWritten/3L);
+			for (int i=0; i<count; i+=3) {
+				buffer[i]   = reds[j];
+				buffer[i+1] = greens[j];
+				buffer[i+2] = blues[j];
+				j++;
+			}
+			out.write(buffer, 0, count);
+			bytesWritten += count;
+		}
+    }
 
 	int getMetaDataSize() {
 		nSliceLabels = 0;

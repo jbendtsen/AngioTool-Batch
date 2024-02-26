@@ -74,6 +74,9 @@ public class ImageInfo {
 	/** 10-bit unsigned integer (0-1023). Import only. */
 	public static final int GRAY10_UNSIGNED = 20;
 
+    /** 24-bit planar RGB. Equivalent to RGB_PLANAR, but supported by TiffEncoder. */
+    public static final int RGB_SPLIT = 21;
+
 	// File formats
 	public static final int UNKNOWN = 0;
 	public static final int RAW = 1;
@@ -190,7 +193,7 @@ public class ImageInfo {
 			case GRAY8: case COLOR8: case BITMAP: return 1;
 			case GRAY16_SIGNED: case GRAY16_UNSIGNED: case GRAY12_UNSIGNED: case GRAY10_UNSIGNED: return 2;
 			case GRAY32_INT: case GRAY32_UNSIGNED: case GRAY32_FLOAT: case ARGB: case GRAY24_UNSIGNED: case BARG: case ABGR: case CMYK: return 4;
-			case RGB: case RGB_PLANAR: case BGR: return 3;
+			case RGB: case RGB_PLANAR: case BGR: case RGB_SPLIT: return 3;
 			case RGB48: case RGB48_PLANAR: return 6;
 			case GRAY64_FLOAT : return 8;
 			default: return 0;
@@ -252,7 +255,7 @@ public class ImageInfo {
 			case GRAY32_FLOAT: return "float";
 			case COLOR8: return "byte(lut)";
 			case RGB: return "RGB";
-			case RGB_PLANAR: return "RGB(p)";
+			case RGB_PLANAR: case RGB_SPLIT: return "RGB(p)";
 			case RGB48: return "RGB48";
 			case BITMAP: return "bitmap";
 			case ARGB: return "ARGB";
