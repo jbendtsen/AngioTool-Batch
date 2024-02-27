@@ -13,6 +13,16 @@ public class ByteVectorOutputStream extends OutputStream {
     public ByteVectorOutputStream() {
         this(32);
     }
+    public ByteVectorOutputStream(byte[] initialBuf) {
+        if (initialBuf == null || initialBuf.length == 0) {
+            this.buf = null;
+            this.size = 0;
+        }
+        else {
+            this.buf = initialBuf;
+            this.size = initialBuf.length;
+        }
+    }
 
     public void resize(int newSize) {
         int oldCap = buf != null ? buf.length : 0;

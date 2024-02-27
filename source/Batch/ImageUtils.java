@@ -1,10 +1,22 @@
 package Batch;
 
+import Tiff.ImageInfo;
+import Tiff.ImageReader;
+import Tiff.TiffDecoder;
+import Tiff.TiffEncoder;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.FileSystems;
 import java.nio.file.StandardOpenOption;
-import java.awt.Image;
+import java.util.ArrayList;
 import javax.imageio.ImageIO;
 
 public class ImageUtils
@@ -21,7 +33,7 @@ public class ImageUtils
         int originalHeight = 0;
         int[] inputPixels = null;
         File file = new File(absPath);
-        Image javaImage = ImageIO.read(file);
+        BufferedImage javaImage = ImageIO.read(file);
 
         if (javaImage != null) {
             originalWidth = javaImage.getWidth();
@@ -30,23 +42,29 @@ public class ImageUtils
                 return null;
 
             inputPixels = new int[originalWidth * originalHeight];
-            image.getRGB(0, 0, originalWidth, originalHeight, inputPixels, 0, originalWidth);
+            javaImage.getRGB(0, 0, originalWidth, originalHeight, inputPixels, 0, originalWidth);
         }
         else {
             FileInputStream fis = new FileInputStream(file);
             FileChannel fc = fis.getChannel();
-            byte[] magic = new byte[2];
+            ByteBuffer magic = ByteBuffer.allocate(2);
             fc.read(magic);
+            byte m0 = magic.get();
+            byte m1 = magic.get();
             fc.position(0);
 
-            if (magic[0] == 'P' && magic[1] >= '0' && magic[1] <= '7') {
-                inputPixels = PgmReader.read(fc);
+            if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f')) {
+                RefVector<int[]> images = NetpbmReader.readArgbImages(fc);
+                if (images == null || images.size <= 0)
+                    return null;
+
+                inputPixels = images.buf[0];
                 originalWidth  = inputPixels[inputPixels.length - 2];
                 originalHeight = inputPixels[inputPixels.length - 1];
                 if (originalWidth <= 0 || originalHeight <= 0)
                     return null;
             }
-            else if ((magic[0] == 'M' && magic[1] == 'M') || (magic[0] == 'I' && magic[1] == 'I')) {
+            else if ((m0 == 'M' && m1 == 'M') || (m0 == 'I' && m1 == 'I')) {
                 MappedByteBuffer mapped = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
                 TiffDecoder td = new TiffDecoder(file, mapped);
                 ArrayList<ImageInfo> images = td.getTiffImages();
@@ -110,9 +128,9 @@ public class ImageUtils
 
         if (width == originalWidth && height == originalHeight) {
             for (int i = 0; i < area; i++) {
-                int r = (pixels[i] >> 16) & 0xff;
-                int g = (pixels[i] >> 8) & 0xff;
-                int b = pixels[i] & 0xff;
+                int r = (inputPixels[i] >> 16) & 0xff;
+                int g = (inputPixels[i] >> 8) & 0xff;
+                int b = inputPixels[i] & 0xff;
                 redTally += r;
                 greenTally += g;
                 blueTally += b;
@@ -121,7 +139,7 @@ public class ImageUtils
                 blue[i] = (byte)b;
             }
         }
-        else if (resizingFactor < 1.0) {
+        else if (resizeFactor < 1.0) {
             float[] samples = FloatBufferPool.acquireZeroed(width * height * 4);
 
             double xAdv = width > 1 ? (double)(width - 1) / (double)(originalWidth - 1) : 0.0;
@@ -219,15 +237,15 @@ public class ImageUtils
                         (1.0f - xNeigh) * yNeigh * (c & 0xff) +
                         xNeigh * yNeigh * (d & 0xff);
 
-                    int r = Math.min(Math.max((int)redValue, 0), 255);
-                    int g = Math.min(Math.max((int)greenValue, 0), 255);
-                    int b = Math.min(Math.max((int)blueValue, 0), 255);
-                    redTally += r;
-                    greenTally += g;
-                    blueTally += b;
-                    red[x+width*y] = (byte)r;
-                    green[x+width*y] = (byte)g;
-                    blue[x+width*y] = (byte)b;
+                    int rr = Math.min(Math.max((int)redValue, 0), 255);
+                    int gg = Math.min(Math.max((int)greenValue, 0), 255);
+                    int bb = Math.min(Math.max((int)blueValue, 0), 255);
+                    redTally += rr;
+                    greenTally += gg;
+                    blueTally += bb;
+                    red[x+width*y] = (byte)rr;
+                    green[x+width*y] = (byte)gg;
+                    blue[x+width*y] = (byte)bb;
                 }
             }
         }
@@ -289,7 +307,7 @@ public class ImageUtils
         }
         else if (format == "tif" || format == "tiff") {
             OutputStream out = Files.newOutputStream(
-                FileSystems.getDefault().getPath("", title),
+                FileSystems.getDefault().getPath("", absPath),
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE
@@ -322,14 +340,17 @@ public class ImageUtils
             }
         }
         else {
-            BufferedImage javaImage = new BufferedImage(image.width, image.height, TYPE_INT_RGB);
-            int[] outPixels = javaImage.getData();
+            BufferedImage javaImage = new BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB);
+            int[] outPixels = ((DataBufferInt)javaImage.getData().getDataBuffer()).getData();
 
             if (layer instanceof Bitmap.SplitLayer) {
                 Bitmap.SplitLayer sl = (Bitmap.SplitLayer)layer;
                 int area = image.width * image.height;
+                byte[] reds = sl.red.buf;
+                byte[] greens = sl.green.buf;
+                byte[] blues = sl.blue.buf;
                 for (int i = 0; i < area; i++)
-                    outPixels[i] = ((reds[i] & 0xff) << 16) | ((greens[i] & 0xff) << 8) | (blues[i] & 0xff)
+                    outPixels[i] = ((reds[i] & 0xff) << 16) | ((greens[i] & 0xff) << 8) | (blues[i] & 0xff);
             }
             else {
                 System.arraycopy(layer.getRgb(), 0, outPixels, 0, image.width * image.height);
@@ -339,9 +360,9 @@ public class ImageUtils
         }
     }
 
-    public static Image openAsJavaImage(String absolutePath)
+    public static BufferedImage openAsJavaImage(String absolutePath)
     {
-        return ImageIO.read(new File(absPath));
+        return ImageIO.read(new File(absolutePath));
     }
 
     public static void writePgm(byte[] pixels, int width, int height, String title) {

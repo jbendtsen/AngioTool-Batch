@@ -2203,17 +2203,13 @@ public class AngioToolGUI extends JFrame implements KeyListener, MouseListener {
 
       progress += 33;
       updateStatus(progress, "Computing convex hull... ");
-      Calibration c = iplusSkeleton.getCalibration();
       reallocateSkeletonResult();
       AnalyzeSkeleton2.analyze(
          this.skelResult,
          skelImage,
          skelWidth,
          skelHeight,
-         1,
-         c.pixelWidth,
-         c.pixelHeight,
-         c.pixelDepth
+         1
       );
 
       if (params.shouldComputeThickness) {

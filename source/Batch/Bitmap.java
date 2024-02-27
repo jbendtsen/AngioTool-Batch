@@ -142,4 +142,22 @@ public class Bitmap
         layer.reallocate(width, height);
         return layer;
     }
+
+    public void setFirstCombinedBuffer(int[] rgb, int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+
+        CombinedLayer cl;
+        if (layers.size == 0) {
+            cl = new CombinedLayer();
+            layers.add(cl);
+        }
+        else {
+            cl = (CombinedLayer)layers.buf[0];
+        }
+
+        cl.rgb.buf = rgb;
+        cl.rgb.size = width * height;
+    }
 }

@@ -586,10 +586,7 @@ public class Analyzer
             skeletonImage,
             inputImage.width,
             inputImage.height,
-            1,
-            inputImage.pixelWidth,
-            inputImage.pixelHeight,
-            inputImage.pixelBreadth
+            1
         );
 
         double averageVesselDiameter = 0.0;

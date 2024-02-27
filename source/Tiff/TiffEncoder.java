@@ -364,7 +364,7 @@ public class TiffEncoder {
 			writeRGBImage(out, (int[])stack[i]);
 	}
 
-    private void writeSplitRGBImage(OutputStream out, byte[] reds, byte[] blues, byte[] greens) {
+    private void writeSplitRGBImage(OutputStream out, byte[] reds, byte[] blues, byte[] greens) throws IOException {
         long bytesWritten = 0L;
 		long size = 3L*fi.width*fi.height;
 		int count = fi.width*24;

@@ -1,9 +1,10 @@
 package Tiff;
 
+import Batch.BitReader;
 import Batch.ByteVectorOutputStream;
 import java.io.*;
 import java.net.*;
-import java.awt.image.BufferedImage;
+import java.awt.image.*;
 import javax.imageio.ImageIO;
 import java.util.zip.Inflater;
 import java.util.zip.DataFormatException;
@@ -66,9 +67,9 @@ public class ImageReader {
 		int current = 0;
 		byte last = 0;
 		for (int i=0; i<fi.stripOffsets.length; i++) {
-			if (in instanceof RandomAccessStream)
+			/*if (in instanceof RandomAccessStream)
 				((RandomAccessStream)in).seek(fi.stripOffsets[i]);
-			else if (i > 0) {
+			else */if (i > 0) {
 				long skip = (fi.stripOffsets[i]&0xffffffffL) - (fi.stripOffsets[i-1]&0xffffffffL) - fi.stripLengths[i-1];
 				if (skip > 0L) in.skip(skip);
 			}
@@ -152,9 +153,9 @@ public class ImageReader {
 		short last = 0;
 		for (int k=0; k<fi.stripOffsets.length; k++) {
 			//System.out.println("seek: "+k+" "+fi.stripOffsets[k]+" "+fi.stripLengths[k]+"  "+(in instanceof RandomAccessStream));
-			if (in instanceof RandomAccessStream)
+			/*if (in instanceof RandomAccessStream)
 				((RandomAccessStream)in).seek(fi.stripOffsets[k]);
-			else if (k > 0) {
+			else */if (k > 0) {
 				long skip = (fi.stripOffsets[k]&0xffffffffL) - (fi.stripOffsets[k-1]&0xffffffffL) - fi.stripLengths[k-1];
 				if (skip > 0L) in.skip(skip);
 			}
@@ -257,9 +258,9 @@ public class ImageReader {
 		int base = 0;
 		float last = 0;
 		for (int k=0; k<fi.stripOffsets.length; k++) {
-			if (in instanceof RandomAccessStream)
+			/*if (in instanceof RandomAccessStream)
 				((RandomAccessStream)in).seek(fi.stripOffsets[k]);
-			else if (k > 0) {
+			else */if (k > 0) {
 				long skip = (fi.stripOffsets[k]&0xffffffffL) - (fi.stripOffsets[k-1]&0xffffffffL) - fi.stripLengths[k-1];
 				if (skip > 0L) in.skip(skip);
 			}
@@ -438,9 +439,9 @@ public class ImageReader {
 		boolean cmyk = fi.fileType==ImageInfo.CMYK;
 		boolean differencing = fi.compression==ImageInfo.LZW_WITH_DIFFERENCING||fi.compression==ImageInfo.ZIP_WITH_DIFFERENCING;
 		for (int i=0; i<fi.stripOffsets.length; i++) {
-			if (in instanceof RandomAccessStream)
+			/*if (in instanceof RandomAccessStream)
 				((RandomAccessStream)in).seek(fi.stripOffsets[i]);
-			else if (i > 0) {
+			else */if (i > 0) {
 				long skip = (fi.stripOffsets[i]&0xffffffffL) - (fi.stripOffsets[i-1]&0xffffffffL) - fi.stripLengths[i-1];
 				if (skip > 0L) in.skip(skip);
 			}
@@ -492,8 +493,16 @@ public class ImageReader {
 	
 	int[] readJPEG(InputStream in) throws IOException {
 		BufferedImage bi = ImageIO.read(in);
-		ImageProcessor ip =  new ColorProcessor(bi);
-		return (int[])ip.getPixels();
+		if (bi == null)
+		    return null;
+
+		DataBuffer buffer = bi.getData().getDataBuffer();
+		if (buffer instanceof DataBufferInt)
+		    return ((DataBufferInt)buffer).getData();
+
+		int[] pixels = new int[width * height];
+		bi.getData().getSamples(0, 0, width, height, 0, pixels);
+		return pixels;
 	}
 
 	int[] readPlanarRGB(InputStream in) throws IOException {
@@ -852,8 +861,10 @@ public class ImageReader {
 					pixels = (Object)readChunkyRGB(in);
 					break;
 				case ImageInfo.RGB_PLANAR:
+				    /*
 					if (!(in instanceof RandomAccessStream) && fi.stripOffsets!=null && fi.stripOffsets.length>1)
 						in = new RandomAccessStream(in);
+					*/
 					bytesPerPixel = 3;
 					skip(in);
 					pixels = (Object)readPlanarRGB(in);
@@ -940,7 +951,7 @@ public class ImageReader {
 
 	/** TIFF Adobe ZIP support contributed by Jason Newton. */
 	public byte[] zipUncompress(byte[] input) {
-		ByteArrayOutputStream imageBuffer = new ByteArrayOutputStream();
+		ByteVectorOutputStream imageBuffer = new ByteVectorOutputStream();
 		byte[] buffer = new byte[1024];
 		Inflater decompressor = new Inflater();
 		decompressor.setInput(input);
@@ -971,11 +982,11 @@ public class ImageReader {
 		int code;
 		int oldCode = -1;
 		ByteVectorOutputStream out = new ByteVectorOutputStream(8192);
-		BitBuffer bb = new BitBuffer(input);
+		BitReader bb = new BitReader(input);
 		byte[] byteBuffer1 = new byte[16];
 		byte[] byteBuffer2 = new byte[16];
 		
-		while (out.size()<byteCount) {
+		while (out.size < byteCount) {
 			code = bb.getBits(bitsToRead);
 			if (code==EOI_CODE || code==-1)
 				break;
@@ -1026,7 +1037,7 @@ public class ImageReader {
 		if (expected==0) expected = Integer.MAX_VALUE;
 		ByteVectorOutputStream output = new ByteVectorOutputStream(1024);
 		int index = 0;
-		while (output.size()<expected && index<input.length) {
+		while (output.size < expected && index < input.length) {
 			byte n = input[index++];
 			if (n>=0) { // 0 <= n <= 127
 				byte[] b = new byte[n+1];

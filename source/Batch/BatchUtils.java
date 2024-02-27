@@ -294,7 +294,16 @@ public class BatchUtils
             return Double.parseDouble(text);
         }
         catch (Exception ignored) {}
-        return 0.0;
+        return defaultValue;
+    }
+
+    public static int parseInt(String text, int defaultValue)
+    {
+        try {
+            return Integer.parseInt(text);
+        }
+        catch (Exception ignored) {}
+        return defaultValue;
     }
 
     public static void setNewFontSizeOn(JComponent ui, int newSize)

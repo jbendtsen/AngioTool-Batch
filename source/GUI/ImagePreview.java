@@ -35,7 +35,7 @@ public class ImagePreview extends JComponent implements PropertyChangeListener {
       if (this.file == null) {
          this.thumbnail = null;
       } else {
-         ImageIcon tmpIcon = ImageUtils.openAsImageIcon(this.file.getPath());
+         ImageIcon tmpIcon = new ImageIcon(ImageUtils.openAsJavaImage(this.file.getPath()));
          if (tmpIcon != null) {
             int tmpIconWidth = tmpIcon.getIconWidth();
             int tmpIconHeight = tmpIcon.getIconHeight();

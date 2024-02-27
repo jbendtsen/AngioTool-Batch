@@ -38,10 +38,7 @@ public class AnalyzeSkeleton2
         byte[] skeletonImages,
         int width,
         int height,
-        int breadth,
-        double pixelWidth,
-        double pixelHeight,
-        double pixelBreadth
+        int breadth
     ) {
         breadth = Math.min(Math.max(1, breadth), MAX_BREADTH);
         result.reset(breadth);
@@ -70,7 +67,7 @@ public class AnalyzeSkeleton2
         result.numberOfBranches = IntBufferPool.acquireZeroed(nTrees);
         result.numberOfSlabs = IntBufferPool.acquireZeroed(nTrees);
 
-        buildSkeletonGraphs(result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, nTrees);
+        buildSkeletonGraphs(result, skeletonImages, width, height, breadth, nTrees);
 
         isolateDominantJunctions(result, width, height);
     }
@@ -299,9 +296,6 @@ public class AnalyzeSkeleton2
         int width,
         int height,
         int breadth,
-        double pixelWidth,
-        double pixelHeight,
-        double pixelBreadth,
         int nTrees
     ) {
         int area = width * height;
@@ -319,7 +313,7 @@ public class AnalyzeSkeleton2
             int slabListIdx = result.slabList.size;
 
             visitBranch(
-                result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, t,
+                result, skeletonImages, width, height, breadth, t,
                 END_POINT, i, slabListIdx, 0.0, x, y, z
             );
         }
@@ -354,11 +348,11 @@ public class AnalyzeSkeleton2
                         continue;
                     }
 
-                    double initialLength = calculateDistance(x, y, z, xx, yy, zz, pixelWidth, pixelHeight, pixelBreadth);
+                    double initialLength = calculateDistance(x, y, z, xx, yy, zz);
                     int slabListIdx = result.slabList.addThree(xx, yy, zz);
 
                     visitBranch(
-                        result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, t,
+                        result, skeletonImages, width, height, breadth, t,
                         JUNCTION, vertexIdx, slabListIdx, initialLength, xx, yy, zz
                     );
                 }
@@ -393,7 +387,7 @@ public class AnalyzeSkeleton2
                 int slabListIdx = result.slabList.addThree(x, y, z);
 
                 visitBranch(
-                    result, skeletonImages, width, height, breadth, pixelWidth, pixelHeight, pixelBreadth, t,
+                    result, skeletonImages, width, height, breadth, t,
                     SLAB, s, slabListIdx, 0.0, x, y, z
                 );
             }
@@ -406,9 +400,6 @@ public class AnalyzeSkeleton2
         int width,
         int height,
         int breadth,
-        double pixelWidth,
-        double pixelHeight,
-        double pixelBreadth,
         int iTree,
         int mode,
         int initialVertIdx,
@@ -445,7 +436,7 @@ public class AnalyzeSkeleton2
                     ((skeletonImages[xx + width * yy] >>> zz) & 1) != 0 &&
                     ((result.imageInfo[xx + width * yy] >>> (SKEL_VISIT + zz)) & 1) == 0
                 ) {
-                    length += calculateDistance(x, y, z, xx, yy, zz, pixelWidth, pixelHeight, pixelBreadth);
+                    length += calculateDistance(x, y, z, xx, yy, zz);
                     result.imageInfo[xx + width * yy] |= 1 << (SKEL_VISIT + zz);
                     type = (result.imageInfo[xx + width * yy] >>> (zz << 1)) & 3;
                     x = xx;
@@ -517,7 +508,7 @@ public class AnalyzeSkeleton2
                 ) {
                     finalVertIdx = vert;
                     modeEnd = JUNCTION;
-                    length += calculateDistance(x, y, z, xx, yy, zz, pixelWidth, pixelHeight, pixelBreadth);
+                    length += calculateDistance(x, y, z, xx, yy, zz);
                     break;
                 }
             }
@@ -564,11 +555,11 @@ public class AnalyzeSkeleton2
         }
     }
 
-    static double calculateDistance(int x1, int y1, int z1, int x2, int y2, int z2, double pixelWidth, double pixelHeight, double pixelBreadth)
+    static double calculateDistance(int x1, int y1, int z1, int x2, int y2, int z2)
     {
-        double dx = (double)(x2 - x1) * pixelWidth;
-        double dy = (double)(y2 - y1) * pixelHeight;
-        double dz = (double)(z2 - z1) * pixelBreadth;
+        double dx = (double)(x2 - x1);
+        double dy = (double)(y2 - y1);
+        double dz = (double)(z2 - z1);
         return Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
     }
 }

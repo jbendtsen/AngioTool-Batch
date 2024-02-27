@@ -1,5 +1,6 @@
 package Tiff;
 
+import Batch.BatchUtils;
 import java.io.*;
 import java.nio.*;
 import java.util.*;
@@ -192,8 +193,10 @@ public class TiffDecoder {
 	public void saveImageDescription(byte[] description, ImageInfo fi) {
         String id = new String(description);
         boolean createdByImageJ = id.startsWith("ImageJ");
+        /*
         if (!createdByImageJ)
 			saveMetadata(getName(IMAGE_DESCRIPTION), id);
+		*/
 		if (id.length()<7) return;
 		fi.description = id;
         int index1 = id.indexOf("images=");
@@ -208,6 +211,7 @@ public class TiffDecoder {
         }
 	}
 
+    /*
 	public void saveMetadata(String name, String data) {
 		if (data==null) return;
         String str = name+": "+data+"\n";
@@ -216,6 +220,7 @@ public class TiffDecoder {
         else
         	tiffMetadata += str;
 	}
+	*/
 
 	void decodeNIHImageHeader(int offset, ImageInfo fi) throws IOException {
 		int saveLoc = in.position();

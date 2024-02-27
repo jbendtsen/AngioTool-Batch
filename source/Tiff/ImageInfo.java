@@ -1,9 +1,10 @@
 package Tiff;
 
+import Batch.BatchUtils;
 import java.io.*;
 import java.util.Properties;
 
-// Modified version of ij.io.FileEncoder
+// Modified version of ij.io.FileInfo
 
 /** This class consists of public fields that describe an image file. */
 public class ImageInfo {
