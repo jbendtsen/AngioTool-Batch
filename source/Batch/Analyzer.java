@@ -1,5 +1,9 @@
 package Batch;
 
+import Algorithms.*;
+import Pixels.*;
+import Utils.*;
+import Xlsx.*;
 import java.awt.Color;
 import java.io.IOException;
 import java.io.File;
@@ -85,7 +89,7 @@ public class Analyzer
 
         // Recycling resources
         public Tubeness.Scratch tubeness = new Tubeness.Scratch();
-        public SkeletonResult2 skelResult = new SkeletonResult2();
+        public AnalyzeSkeleton2.Result skelResult = new AnalyzeSkeleton2.Result();
         public Particles.Scratch particleScratch = new Particles.Scratch();
         public Lee94.Scratch lee94Scratch = new Lee94.Scratch();
         public Lacunarity2.Statistics lacunarity = new Lacunarity2.Statistics();
@@ -431,6 +435,7 @@ public class Analyzer
         Tubeness.computeTubenessImage(
             data.tubeness,
             sliceRunner,
+            MAX_WORKERS,
             analysisImage,
             inputImage.getDefaultChannel(),
             inputImage.width,

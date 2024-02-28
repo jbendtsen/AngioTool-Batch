@@ -2,7 +2,10 @@ package Batch;
 
 import AngioTool.AngioTool;
 import AngioTool.ATPreferences;
-import GUI.RoundedPanel;
+import AngioTool.RoundedPanel;
+import Pixels.Rgb;
+import Utils.*;
+import Xlsx.*;
 import java.awt.Color;
 import java.awt.BorderLayout;
 import java.awt.Desktop;

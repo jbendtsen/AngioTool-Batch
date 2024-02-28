@@ -67,7 +67,7 @@ with open("angiotool_jar.h", "wb") as f:
 
 print("Building EXE resource...")
 
-os.system("echo \"this ICON source/images/ATIcon20.ico\" | " + WINDRES + " -J rc -o launcher.coff")
+os.system("echo \"this ICON images/ATIcon20.ico\" | " + WINDRES + " -J rc -o launcher.coff")
 
 print("Compiling...")
 

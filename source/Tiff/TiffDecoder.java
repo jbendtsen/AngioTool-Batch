@@ -1,6 +1,6 @@
 package Tiff;
 
-import Batch.BatchUtils;
+import Utils.BatchUtils;
 import java.io.*;
 import java.nio.*;
 import java.util.*;

@@ -1,9 +1,9 @@
 package AngioTool;
 
 import Batch.AnalyzerParameters;
-import Batch.BatchUtils;
-import Batch.ByteVectorOutputStream;
-import Batch.Rgb;
+import Utils.BatchUtils;
+import Utils.ByteVectorOutputStream;
+import Pixels.Rgb;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -57,8 +57,8 @@ public class ATPreferences {
         }
     }
 
-    public static AnalyzerParameters load(Object at, String fileName) throws IOException {
-        InputStream f = at.getClass().getResourceAsStream("/" + fileName);
+    public static AnalyzerParameters load(Class c, String fileName) throws IOException {
+        InputStream f = c.getResourceAsStream("/" + fileName);
         if (AngioTool.ATDir == null)
             AngioTool.ATDir = System.getProperty("user.dir");
 

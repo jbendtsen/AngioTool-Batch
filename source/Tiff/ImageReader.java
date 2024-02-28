@@ -1,7 +1,7 @@
 package Tiff;
 
-import Batch.BitReader;
-import Batch.ByteVectorOutputStream;
+import Utils.BitReader;
+import Utils.ByteVectorOutputStream;
 import java.io.*;
 import java.net.*;
 import java.awt.image.*;

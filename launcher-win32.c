@@ -9,7 +9,7 @@
 #define IS_FOLDER(bits) (bits) != INVALID_FILE_ATTRIBUTES && ((bits) & FILE_ATTRIBUTE_DIRECTORY)
 
 #define PATH_SIZE 1024
-#define MAIN_CLASS_NAME "AngioTool/AngioToolMain"
+#define MAIN_CLASS_NAME "AngioTool/AngioTool"
 #define MAIN_METHOD_NAME "main"
 
 BOOL addString(char *str, int *strPos, int strSize, const char *toAdd);

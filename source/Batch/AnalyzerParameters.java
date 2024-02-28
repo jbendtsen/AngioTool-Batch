@@ -1,5 +1,7 @@
 package Batch;
 
+import Pixels.Rgb;
+import Utils.RefVector;
 import java.lang.reflect.Field;
 
 public class AnalyzerParameters {
