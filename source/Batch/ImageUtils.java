@@ -54,7 +54,7 @@ public class ImageUtils
             fc.position(0);
 
             if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f')) {
-                RefVector<int[]> images = NetpbmReader.readArgbImages(fc);
+                RefVector<int[]> images = NetpbmReader.readArgbImages(fc, 1);
                 if (images == null || images.size <= 0)
                     return null;
 
@@ -362,7 +362,11 @@ public class ImageUtils
 
     public static BufferedImage openAsJavaImage(String absolutePath)
     {
-        return ImageIO.read(new File(absolutePath));
+        try {
+            return ImageIO.read(new File(absolutePath));
+        }
+        catch (IOException ignored) {}
+        return null;
     }
 
     public static void writePgm(byte[] pixels, int width, int height, String title) {
