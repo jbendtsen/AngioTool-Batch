@@ -66,12 +66,8 @@ public class NetpbmReader
 
                     if (c == '#')
                         isComment = true;
-
-                    if (c == '\n') {
+                    if (c == '\n')
                         isComment = false;
-                        start = i + 1;
-                    }
-
                     if (isComment)
                         continue;
 
@@ -191,6 +187,25 @@ public class NetpbmReader
                 else if (maxval == 1)
                     sampleType = TYPE_BIT;
             }
+
+            /*
+            System.out.println(
+                "isComment = " + isComment +
+                ", isAscii = " + isAscii +
+                ", shouldInvert = " + shouldInvert +
+                ", pbmType = " + pbmType +
+                ", tupleType = " + tupleType +
+                ", width = " + width +
+                ", height = " + height +
+                ", maxval = " + maxval +
+                ", channels = " + channels +
+                ", sampleType = " + sampleType +
+                ", attrType = " + attrType +
+                ", field = " + field +
+                ", dataOffset = " + dataOffset +
+                ", pos = " + pos
+            );
+            */
 
             int[] pixels = new int[width * height + 2];
 

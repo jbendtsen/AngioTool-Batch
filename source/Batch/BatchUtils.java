@@ -267,27 +267,6 @@ public class BatchUtils
         return path;
     }
 
-    public static ByteBuffer loadFileAsByteBuffer(String path) throws IOException
-    {
-        FileChannel channel = null;
-        FileInputStream fis = new FileInputStream(path);
-        try {
-            channel = fis.getChannel();
-            long size = channel.size();
-            if (size >= (1L << 31))
-                return null;
-
-            ByteBuffer buffer = ByteBuffer.allocate((int)size);
-            channel.read(buffer);
-            return buffer;
-        }
-        finally {
-            if (channel != null)
-                channel.close();
-            fis.close();
-        }
-    }
-
     public static double parseDouble(String text, double defaultValue)
     {
         try {

@@ -49,6 +49,7 @@ public class ImageUtils
             FileChannel fc = fis.getChannel();
             ByteBuffer magic = ByteBuffer.allocate(2);
             fc.read(magic);
+            magic.position(0);
             byte m0 = magic.get();
             byte m1 = magic.get();
             fc.position(0);
