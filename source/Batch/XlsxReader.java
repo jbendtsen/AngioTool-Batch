@@ -252,7 +252,7 @@ public class XlsxReader {
     }
 
     static boolean addRowColToVector(IntVector vec, String cellRef) {
-        if (cellRef == null || cellRef == "")
+        if (cellRef == null || cellRef.length() == 0)
             return false;
 
         int row = 0;

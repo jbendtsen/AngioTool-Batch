@@ -306,7 +306,7 @@ public class ImageUtils
                 writePpm24(rgb, image.width, image.height, absPath);
             }
         }
-        else if (format == "tif" || format == "tiff") {
+        else if ("tif".equals(format) || "tiff".equals(format)) {
             OutputStream out = Files.newOutputStream(
                 FileSystems.getDefault().getPath("", absPath),
                 StandardOpenOption.TRUNCATE_EXISTING,
@@ -335,6 +335,9 @@ public class ImageUtils
 
             try {
                 te.write(out);
+            }
+            catch (Exception ex) {
+                ex.printStackTrace();
             }
             finally {
                 out.close();
@@ -414,8 +417,18 @@ public class ImageUtils
 
     public static void writePpm24(byte[] reds, byte[] greens, byte[] blues, int width, int height, String title)
     {
+        int area = width * height;
         byte[] header = ("P6\n" + width + " " + height + "\n255\n").getBytes();
-        byte[] buffer = new byte[12288];
+        int size = header.length + area * 3;
+        byte[] buffer = ByteBufferPool.acquireAsIs(size);
+        System.arraycopy(header, 0, buffer, 0, header.length);
+
+        for (int p = 0, b = header.length; p < area; p++, b += 3) {
+            buffer[b]   = (byte)(reds[p] & 0xff);
+            buffer[b+1] = (byte)(greens[p] & 0xff);
+            buffer[b+2] = (byte)(blues[p] & 0xff);
+        }
+
         try {
             OutputStream out = Files.newOutputStream(
                 FileSystems.getDefault().getPath("", title),
@@ -424,19 +437,7 @@ public class ImageUtils
                 StandardOpenOption.WRITE
             );
             try {
-                out.write(header);
-
-                int offset = 0;
-                do {
-                    int chunkSize = Math.min(4096, width * height - offset);
-                    for (int b = 0, p = 0; p < chunkSize; b += 3, p++) {
-                        buffer[b]   = reds[offset + p];
-                        buffer[b+1] = greens[offset + p];
-                        buffer[b+2] = blues[offset + p];
-                    }
-                    out.write(buffer, 0, chunkSize * 3);
-                    offset += chunkSize;
-                } while (offset < width * height);
+                out.write(buffer, 0, size);
             }
             finally {
                 out.close();
@@ -444,13 +445,27 @@ public class ImageUtils
         }
         catch (Exception ex) {
             ex.printStackTrace();
+        }
+        finally {
+            ByteBufferPool.release(buffer);
         }
     }
 
     public static void writePpm24(int[] argb, int width, int height, String title)
     {
+        int area = width * height;
         byte[] header = ("P6\n" + width + " " + height + "\n255\n").getBytes();
-        byte[] buffer = new byte[12288];
+        int size = header.length + area * 3;
+        byte[] buffer = ByteBufferPool.acquireAsIs(size);
+        System.arraycopy(header, 0, buffer, 0, header.length);
+
+        for (int p = 0, b = header.length; p < area; p++, b += 3) {
+            int color = argb[p];
+            buffer[b]   = (byte)((color >>> 16) & 0xff);
+            buffer[b+1] = (byte)((color >>> 8) & 0xff);
+            buffer[b+2] = (byte)(color & 0xff);
+        }
+
         try {
             OutputStream out = Files.newOutputStream(
                 FileSystems.getDefault().getPath("", title),
@@ -459,20 +474,7 @@ public class ImageUtils
                 StandardOpenOption.WRITE
             );
             try {
-                out.write(header);
-
-                int offset = 0;
-                do {
-                    int chunkSize = Math.min(4096, width * height - offset);
-                    for (int b = 0, p = 0; p < chunkSize; b += 3, p++) {
-                        int color = argb[offset + p];
-                        buffer[b]   = (byte)((color >>> 16) & 0xff);
-                        buffer[b+1] = (byte)((color >>> 8) & 0xff);
-                        buffer[b+2] = (byte)(color & 0xff);
-                    }
-                    out.write(buffer, 0, chunkSize * 3);
-                    offset += chunkSize;
-                } while (offset < width * height);
+                out.write(buffer, 0, size);
             }
             finally {
                 out.close();
@@ -480,6 +482,9 @@ public class ImageUtils
         }
         catch (Exception ex) {
             ex.printStackTrace();
+        }
+        finally {
+            ByteBufferPool.release(buffer);
         }
     }
 }

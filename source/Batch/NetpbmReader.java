@@ -97,17 +97,17 @@ public class NetpbmReader
                                     attrType = ATTR_NONE;
                                 }
                                 else {
-                                    if (token == "endhdr")
+                                    if ("endhdr".equals(token))
                                         dataOffset = i + 1;
-                                    else if (token == "width")
+                                    else if ("width".equals(token))
                                         attrType = ATTR_WIDTH;
-                                    else if (token == "height")
+                                    else if ("height".equals(token))
                                         attrType = ATTR_HEIGHT;
-                                    else if (token == "depth")
+                                    else if ("depth".equals(token))
                                         attrType = ATTR_DEPTH;
-                                    else if (token == "maxval")
+                                    else if ("maxval".equals(token))
                                         attrType = ATTR_MAXVAL;
-                                    else if (token == "tupltype")
+                                    else if ("tupltype".equals(token))
                                         attrType = ATTR_TUPLTYPE;
                                 }
                             }
@@ -165,10 +165,10 @@ public class NetpbmReader
             }
 
             if (tupleType != null) {
-                if (tupleType == "grayscale" || tupleType == "rgb" || tupleType == "rgb_alpha") {
+                if ("grayscale".equals(tupleType) || "rgb".equals(tupleType) || "rgb_alpha".equals(tupleType)) {
                     sampleType = TYPE_BYTE;
                 }
-                else if (tupleType == "blackandwhite") {
+                else if ("blackandwhite".equals(tupleType)) {
                     sampleType = TYPE_BIT;
                 }
 
