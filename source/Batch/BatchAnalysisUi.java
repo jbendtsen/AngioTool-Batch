@@ -48,30 +48,6 @@ public class BatchAnalysisUi
     final JLabel labelResultsImageFormat = new JLabel();
     final JTextField textResultsImageFormat = new JTextField();
 
-    final JLabel labelAnalysis = new JLabel();
-    final JCheckBox cbComputeLacunarity = new JCheckBox();
-    final JCheckBox cbComputeThickness = new JCheckBox();
-    final JSeparator sepAnalysis = new JSeparator(SwingConstants.VERTICAL);
-    final JLabel labelSkeletonizer = new JLabel();
-    final ButtonGroup groupSkeletonizer = new ButtonGroup();
-    final JRadioButton rbSkelFast = new JRadioButton();
-    final JRadioButton rbSkelThorough = new JRadioButton();
-    final NumberEntry elemResizeInputs;
-    final NumberEntry elemLinearScaleFactor;
-    final NumberEntry elemRemoveParticles;
-    final NumberEntry elemFillHoles;
-    final JLabel labelSigmas = new JLabel();
-    final JTextField textSigmas = new JTextField();
-    final JLabel labelIntensity = new JLabel();
-    final JTextField textMinIntensity = new JTextField();
-    final JTextField textMaxIntensity = new JTextField();
-
-    final JLabel labelOverlay = new JLabel();
-    final ColorSizeEntry elemOutline;
-    final ColorSizeEntry elemBranches;
-    final ColorSizeEntry elemSkeleton;
-    final ColorSizeEntry elemConvexHull;
-
     final JSeparator sepProgress = new JSeparator();
     final JLabel labelProgress = new JLabel();
     final JLabel overallLabel = new JLabel();
@@ -135,57 +111,6 @@ public class BatchAnalysisUi
 
         labelResultsImageFormat.setText("Result image format: ");
         textResultsImageFormat.setText(params.resultImageFormat);
-
-        labelAnalysis.setText("Analysis");
-        BatchUtils.setNewFontSizeOn(labelAnalysis, 20);
-
-        labelSkeletonizer.setText("Skeletonizer:");
-
-        rbSkelFast.setText("Fast (Zha84)");
-        rbSkelFast.setSelected(params.shouldUseFastSkeletonizer);
-
-        rbSkelThorough.setText("Thorough (Lee94)");
-        rbSkelThorough.setSelected(!params.shouldUseFastSkeletonizer);
-
-        groupSkeletonizer.add(rbSkelFast);
-        groupSkeletonizer.add(rbSkelThorough);
-
-        /*{
-            ButtonModel m = params.shouldUseFastSkeletonizer ? rbSkelFast.getModel() : rbSkelThorough.getModel();
-            groupSaveResults.setSelected(m, true);
-        }*/
-
-        cbComputeLacunarity.setText("Lacunarity");
-        cbComputeLacunarity.setSelected(params.shouldComputeLacunarity);
-
-        cbComputeThickness.setText("Thickness");
-        cbComputeThickness.setSelected(params.shouldComputeThickness);
-
-        elemResizeInputs = new NumberEntry("Resize inputs by:", params.shouldResizeImage, params.resizingFactor, "x");
-
-        elemLinearScaleFactor = new NumberEntry("Measurement Scale:", params.shouldApplyLinearScale, params.linearScalingFactor, "x");
-
-        elemRemoveParticles = new NumberEntry("Remove Particles:", params.shouldRemoveSmallParticles, params.removeSmallParticlesThreshold, "px");
-
-        elemFillHoles = new NumberEntry("Fill Holes:", params.shouldFillHoles, params.fillHolesValue, "px");
-
-        labelSigmas.setText("Vessel Diameters list");
-
-        textSigmas.setText(BatchUtils.formatDoubleArray(params.sigmas));
-        textSigmas.setToolTipText("List of sigmas (numbers)");
-
-        labelIntensity.setText("Vessel Intensity range");
-
-        textMinIntensity.setText("" + params.thresholdLow);
-        textMaxIntensity.setText("" + params.thresholdHigh);
-
-        labelOverlay.setText("Overlay");
-        BatchUtils.setNewFontSizeOn(labelOverlay, 20);
-
-        elemOutline = new ColorSizeEntry("Outline:", params.shouldDrawOutline, params.outlineSize, params.outlineColor);
-        elemBranches = new ColorSizeEntry("Branches:", params.shouldDrawBranchPoints, params.branchingPointsSize, params.branchingPointsColor);
-        elemSkeleton = new ColorSizeEntry("Skeleton:", params.shouldDrawSkeleton, params.skeletonSize, params.skeletonColor);
-        elemConvexHull = new ColorSizeEntry("Convex Hull:", params.shouldDrawConvexHull, params.convexHullSize, params.convexHullColor);
 
         //sepProgress
 
@@ -264,47 +189,6 @@ public class BatchAnalysisUi
                 .addComponent(labelResultsImageFormat)
                 .addComponent(textResultsImageFormat, 40, 60, 80)
             )
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup()
-                    .addComponent(labelAnalysis)
-                    .addComponent(cbComputeLacunarity)
-                    .addComponent(cbComputeThickness)
-                )
-                .addComponent(sepAnalysis)
-                .addGroup(layout.createParallelGroup()
-                    .addComponent(labelSkeletonizer)
-                    .addComponent(rbSkelFast)
-                    .addComponent(rbSkelThorough)
-                )
-            )
-            .addGroup(
-                arrangeParallelEntries(
-                    elemLinearScaleFactor, elemRemoveParticles, layout, arrangeParallelEntries(
-                        elemResizeInputs, elemFillHoles, layout, layout.createSequentialGroup()
-                    ).addGap(20)
-                )
-            )
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup()
-                    .addComponent(labelSigmas)
-                    .addComponent(textSigmas)
-                )
-                .addGroup(layout.createParallelGroup()
-                    .addComponent(labelIntensity)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(textMinIntensity)
-                        .addComponent(textMaxIntensity)
-                    )
-                )
-            )
-            .addComponent(labelOverlay)
-            .addGroup(
-                arrangeParallelEntries(
-                    elemBranches, elemConvexHull, layout, arrangeParallelEntries(
-                        elemOutline, elemSkeleton, layout, layout.createSequentialGroup()
-                    ).addGap(20)
-                )
-            )
             .addComponent(sepProgress)
             .addComponent(labelProgress)
             .addComponent(overallLabel)
@@ -345,54 +229,6 @@ public class BatchAnalysisUi
                 .addComponent(textResultsImageFormat)
             )
             .addGap(12)
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(labelAnalysis)
-                .addComponent(sepAnalysis)
-                .addComponent(labelSkeletonizer)
-            )
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(cbComputeLacunarity)
-                .addComponent(sepAnalysis)
-                .addComponent(rbSkelFast)
-            )
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(cbComputeThickness)
-                .addComponent(sepAnalysis)
-                .addComponent(rbSkelThorough)
-            )
-            .addGroup(
-                elemLinearScaleFactor.addToGroup(
-                    elemResizeInputs.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
-                )
-            )
-            .addGroup(
-                elemFillHoles.addToGroup(
-                    elemRemoveParticles.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
-                )
-            )
-            .addGap(8)
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(labelSigmas)
-                .addComponent(labelIntensity)
-            )
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(textSigmas)
-                .addComponent(textMinIntensity)
-                .addComponent(textMaxIntensity)
-            )
-            .addGap(12)
-            .addComponent(labelOverlay)
-            .addGap(8)
-            .addGroup(
-                elemBranches.addToGroup(
-                    elemOutline.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
-                )
-            )
-            .addGroup(
-                elemConvexHull.addToGroup(
-                    elemSkeleton.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
-                )
-            )
             .addComponent(sepProgress)
             .addComponent(labelProgress)
             .addComponent(overallLabel)
@@ -406,46 +242,10 @@ public class BatchAnalysisUi
         );
     }
 
-    private static GroupLayout.SequentialGroup arrangeParallelEntries(
-        NumberEntry a,
-        NumberEntry b,
-        GroupLayout layout,
-        GroupLayout.SequentialGroup sequentialGroup
-    ) {
-        sequentialGroup
-            .addGroup(layout.createParallelGroup()
-                .addComponent(a.cb)
-                .addComponent(b.cb)
-            )
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.TRAILING)
-                .addComponent(a.units)
-                .addComponent(b.units)
-            )
-            .addGap(UNITS_GAP)
-            .addGroup(layout.createParallelGroup()
-                .addComponent(a.tf)
-                .addComponent(b.tf)
-            );
-
-        if (a instanceof ColorSizeEntry && b instanceof ColorSizeEntry)
-            sequentialGroup.addGroup(layout.createParallelGroup()
-                .addComponent(((ColorSizeEntry)a).panel, 20, 30, 30)
-                .addComponent(((ColorSizeEntry)b).panel, 20, 30, 30)
-            );
-
-        return sequentialGroup;
-    }
-
     void toggleSaveResults() {
         boolean enabled = rbSaveResultsTo.isSelected();
         btnSaveResultsFolder.setEnabled(enabled);
         textSaveResultsFolder.setEnabled(enabled);
-    }
-
-    static JFileChooser createFileChooser() {
-        JFileChooser fc = new JFileChooser();
-        fc.setPreferredSize(new Dimension(800, 500));
-        return fc;
     }
 
     void selectInputFolders() {
@@ -801,112 +601,5 @@ public class BatchAnalysisUi
             if (!isClosed.getAndSet(true))
                 jdialog.dispose();
         });
-    }
-
-    static class NumberEntry
-    {
-        public JCheckBox cb;
-        public JLabel units;
-        public JTextField tf;
-
-        public String name;
-        public final double originalValue;
-
-        public NumberEntry(String name, boolean enabled, double value, String unitsStr)
-        {
-            this.name = name;
-            this.originalValue = value;
-
-            cb = new JCheckBox();
-            cb.addActionListener((ActionEvent e) -> toggleCheckbox());
-            cb.setText(name);
-
-            units = new JLabel(unitsStr, SwingConstants.RIGHT);
-
-            tf = new JTextField();
-            tf.setText(BatchUtils.formatDouble(value));
-            tf.setEnabled(enabled);
-
-            cb.setSelected(enabled);
-        }
-
-        public double getValue() {
-            String str = tf.getText();
-            try {
-                return Double.parseDouble(str);
-            }
-            catch (Exception ex) {
-                return originalValue;
-            }
-        }
-
-        public GroupLayout.Group addToGroup(GroupLayout.Group group)
-        {
-            group.addComponent(cb).addComponent(units);
-            if (group instanceof GroupLayout.SequentialGroup)
-                ((GroupLayout.SequentialGroup)group).addGap(UNITS_GAP);
-            return group.addComponent(tf);
-        }
-
-        public void toggleCheckbox()
-        {
-            boolean enabled = cb.isSelected();
-            double value = getValue();
-            tf.setText(BatchUtils.formatDouble(value));
-            tf.setEnabled(enabled);
-        }
-    }
-
-    static class ColorSizeEntry extends NumberEntry
-    {
-        public RoundedPanel panel;
-        //public JButton btn;
-        //public GroupLayout panelLayout;
-
-        public Rgb color;
-        public final Rgb originalColor;
-
-        public ColorSizeEntry(String name, boolean enabled, double value, Rgb color)
-        {
-            super(name, enabled, value, "px");
-            this.color = color;
-            this.originalColor = color;
-
-            //btn = new JButton();
-            //btn.setContentAreaFilled(false);
-            //btn.addActionListener((ActionEvent e) -> clickColorButton());
-
-            panel = new RoundedPanel();
-            panel.setCornerRadius(7);
-            panel.setBackground(color.toColor());
-            panel.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    selectColor();
-                }
-            });
-        }
-
-        @Override
-        public GroupLayout.Group addToGroup(GroupLayout.Group group)
-        {
-            group.addComponent(cb).addComponent(units);
-            if (group instanceof GroupLayout.SequentialGroup)
-                ((GroupLayout.SequentialGroup)group).addGap(UNITS_GAP);
-            return group
-                .addComponent(tf)
-                .addComponent(panel, 20, 25, 25);
-        }
-
-        void selectColor()
-        {
-            if (cb.isSelected()) {
-                Color background = JColorChooser.showDialog(null, name, color.toColor());
-                if (background != null) {
-                    color = new Rgb(background);
-                    panel.setBackground(background);
-                }
-            }
-        }
     }
 }

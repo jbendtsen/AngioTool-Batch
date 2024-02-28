@@ -291,6 +291,12 @@ public class BatchUtils
         ui.setFont(new Font(font.getName(), font.getStyle(), newSize));
     }
 
+    public static JFileChooser createFileChooser() {
+        JFileChooser fc = new JFileChooser();
+        fc.setPreferredSize(new Dimension(800, 500));
+        return fc;
+    }
+
     public static void showDialogBox(String title, String message)
     {
         JOptionPane.showMessageDialog(
@@ -326,5 +332,35 @@ public class BatchUtils
             message += exSource;
 
         showDialogBox(name, message);
+    }
+
+    public static GroupLayout.SequentialGroup arrangeParallelEntries(
+        NumberEntry a,
+        NumberEntry b,
+        GroupLayout layout,
+        GroupLayout.SequentialGroup sequentialGroup
+    ) {
+        sequentialGroup
+            .addGroup(layout.createParallelGroup()
+                .addComponent(a.cb)
+                .addComponent(b.cb)
+            )
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.TRAILING)
+                .addComponent(a.units)
+                .addComponent(b.units)
+            )
+            .addGap(4)
+            .addGroup(layout.createParallelGroup()
+                .addComponent(a.tf)
+                .addComponent(b.tf)
+            );
+
+        if (a instanceof ColorSizeEntry && b instanceof ColorSizeEntry)
+            sequentialGroup.addGroup(layout.createParallelGroup()
+                .addComponent(((ColorSizeEntry)a).panel, 20, 30, 30)
+                .addComponent(((ColorSizeEntry)b).panel, 20, 30, 30)
+            );
+
+        return sequentialGroup;
     }
 }
