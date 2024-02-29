@@ -1,7 +1,5 @@
 package AngioTool;
 
-import Batch.AnalyzerParameters;
-import Batch.BatchParameters;
 import Utils.BatchUtils;
 import Utils.RefVector;
 import java.awt.Dimension;

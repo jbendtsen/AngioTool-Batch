@@ -1,4 +1,4 @@
-package Batch;
+package AngioTool;
 
 import Algorithms.*;
 import Pixels.*;

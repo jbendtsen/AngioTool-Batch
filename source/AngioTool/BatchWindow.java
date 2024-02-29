@@ -1,9 +1,5 @@
-package Batch;
+package AngioTool;
 
-import AngioTool.AngioTool;
-import AngioTool.AngioToolGui2;
-import AngioTool.ATPreferences;
-import AngioTool.RoundedPanel;
 import Pixels.Rgb;
 import Utils.*;
 import Xlsx.*;

@@ -1,10 +1,9 @@
 package AngioTool;
 
-import Batch.AnalyzerParameters;
-import Batch.BatchParameters;
 import Utils.BatchUtils;
 import Pixels.Rgb;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -109,7 +108,9 @@ public class AngioToolGui2 extends JFrame
             }
         });
 
-        this.setMinimumSize(this.getPreferredSize());
+        Dimension minSize = this.getPreferredSize();
+        this.setMinimumSize(minSize);
+        this.setSize(new Dimension(minSize.width + 32, minSize.height));
     }
 
     private void arrangeUi(GroupLayout layout)
