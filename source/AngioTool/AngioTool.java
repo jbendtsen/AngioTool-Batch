@@ -15,7 +15,6 @@ public class AngioTool
     public static final String VERSION = "AngioTool-Batch 2.0 r8 (22.02.24)";
     public static final String PREFS_TXT = "AT_Prefs.txt";
     public static final String BATCH_TXT = "AT_BatchPrefs.txt";
-    public static AngioToolGui2 angioToolGui;
 
     public static String osName;
     public static String osArch;
@@ -106,8 +105,10 @@ public class AngioTool
         if (errors.size > 0)
             BatchUtils.showDialogBox("Configuration parsing error", String.join("\n", errors));
 
-        angioToolGui = new AngioToolGui2(analyzerParams, batchParams);
-        //angioToolGUI.setLocation(new Point(100, 50));
+        AngioToolGui2 angioToolGui = new AngioToolGui2(analyzerParams, batchParams);
+        angioToolGui.setTitle(VERSION);
+        angioToolGui.setIconImage(ATIcon.getImage());
+        angioToolGui.setLocation(new Point(200, 250));
         angioToolGui.setVisible(true);
     }
 

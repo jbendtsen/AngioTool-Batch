@@ -6,13 +6,13 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.*;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
 public class AngioToolGui2 extends JFrame
 {
     final JLabel labelAnalysis = new JLabel();
     final JCheckBox cbComputeLacunarity = new JCheckBox();
     final JCheckBox cbComputeThickness = new JCheckBox();
-    final JSeparator sepAnalysis = new JSeparator(SwingConstants.VERTICAL);
     final JLabel labelSkeletonizer = new JLabel();
     final ButtonGroup groupSkeletonizer = new ButtonGroup();
     final JRadioButton rbSkelFast = new JRadioButton();
@@ -89,6 +89,7 @@ public class AngioToolGui2 extends JFrame
         JPanel dialogPanel = new JPanel();
         GroupLayout layout = new GroupLayout(dialogPanel);
         dialogPanel.setLayout(layout);
+        dialogPanel.setBorder(new EmptyBorder(0, 2, 12, 2));
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
 
@@ -110,25 +111,31 @@ public class AngioToolGui2 extends JFrame
 
         Dimension minSize = this.getPreferredSize();
         this.setMinimumSize(minSize);
-        this.setSize(new Dimension(minSize.width + 32, minSize.height));
+        this.setSize(new Dimension(minSize.width + 50, minSize.height));
     }
 
     private void arrangeUi(GroupLayout layout)
     {
         layout.setHorizontalGroup(layout.createParallelGroup()
+            .addComponent(labelAnalysis)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
-                    .addComponent(labelAnalysis)
+                    .addGap(0, 0, Short.MAX_VALUE)
                     .addComponent(cbComputeLacunarity)
                     .addComponent(cbComputeThickness)
+                    .addGroup(elemResizeInputs.addToGroup(layout.createSequentialGroup()))
+                    .addGroup(elemFillHoles.addToGroup(layout.createSequentialGroup()))
                 )
-                .addComponent(sepAnalysis)
+                .addGap(0, 0, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup()
                     .addComponent(labelSkeletonizer)
                     .addComponent(rbSkelFast)
                     .addComponent(rbSkelThorough)
+                    .addGroup(elemLinearScaleFactor.addToGroup(layout.createSequentialGroup()))
+                    .addGroup(elemRemoveParticles.addToGroup(layout.createSequentialGroup()))
                 )
             )
+            /*
             .addGroup(
                 BatchUtils.arrangeParallelEntries(
                     elemLinearScaleFactor, elemRemoveParticles, layout, BatchUtils.arrangeParallelEntries(
@@ -136,6 +143,7 @@ public class AngioToolGui2 extends JFrame
                     ).addGap(20)
                 )
             )
+            */
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
                     .addComponent(labelSigmas)
@@ -163,21 +171,19 @@ public class AngioToolGui2 extends JFrame
         final int PATH_WIDTH = 30;
 
         layout.setVerticalGroup(layout.createSequentialGroup()
+            .addComponent(labelAnalysis)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(labelAnalysis)
-                .addComponent(sepAnalysis)
                 .addComponent(labelSkeletonizer)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(cbComputeLacunarity)
-                .addComponent(sepAnalysis)
                 .addComponent(rbSkelFast)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(cbComputeThickness)
-                .addComponent(sepAnalysis)
                 .addComponent(rbSkelThorough)
             )
+            .addGap(12)
             .addGroup(
                 elemLinearScaleFactor.addToGroup(
                     elemResizeInputs.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
@@ -188,7 +194,7 @@ public class AngioToolGui2 extends JFrame
                     elemRemoveParticles.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
-            .addGap(8)
+            .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelSigmas)
                 .addComponent(labelIntensity)
@@ -198,9 +204,9 @@ public class AngioToolGui2 extends JFrame
                 .addComponent(textMinIntensity)
                 .addComponent(textMaxIntensity)
             )
-            .addGap(12)
+            .addGap(20)
             .addComponent(labelOverlay)
-            .addGap(8)
+            .addGap(12)
             .addGroup(
                 elemBranches.addToGroup(
                     elemOutline.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
