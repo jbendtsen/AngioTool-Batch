@@ -1,6 +1,7 @@
 package Batch;
 
 import AngioTool.AngioTool;
+import AngioTool.AngioToolGui2;
 import AngioTool.ATPreferences;
 import AngioTool.RoundedPanel;
 import Pixels.Rgb;
@@ -29,7 +30,7 @@ public class BatchWindow implements Analyzer.IProgressToken
 {
     static int UNITS_GAP = 4;
 
-    final JFrame parentFrame;
+    final AngioToolGui2 parentFrame;
     final JDialog jdialog;
 
     final JLabel labelData = new JLabel();
@@ -64,7 +65,7 @@ public class BatchWindow implements Analyzer.IProgressToken
     public Future<Void> analysisTaskFuture = null;
     public final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-    public BatchWindow(JFrame uiFrame, BatchParameters params)
+    public BatchWindow(AngioToolGui2 uiFrame, BatchParameters params)
     {
         this.parentFrame = uiFrame;
 
@@ -382,7 +383,7 @@ public class BatchWindow implements Analyzer.IProgressToken
 
         AnalyzerParameters params;
         try {
-            params = buildAnalyzerParamsFromUi();
+            params = parentFrame.buildAnalyzerParamsFromUi();
         }
         catch (Throwable t) {
             BatchUtils.showDialogBox("Parsing Error", "Invalid data in the form (" + t.getClass().getSimpleName() + ")");

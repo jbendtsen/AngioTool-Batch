@@ -1,8 +1,8 @@
 package AngioTool;
 
-import Batch.AnalyzerParameters;
 import Utils.BatchUtils;
 import Utils.ByteVectorOutputStream;
+import Utils.RefVector;
 import Pixels.Rgb;
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,7 +19,7 @@ import java.lang.reflect.Field;
 public class ATPreferences {
     public static String separator = System.getProperty("file.separator");
 
-    public static void savePreferences(AnalyzerParameters params, String fileName) {
+    public static void savePreferences(Object params, String fileName) {
         StringBuilder sb = new StringBuilder();
         sb.append("# " + AngioTool.VERSION + " Preferences\n");
         sb.append("# " + new Date() + "\n\n");
@@ -57,8 +57,8 @@ public class ATPreferences {
         }
     }
 
-    public static AnalyzerParameters load(Class c, String fileName) throws IOException {
-        InputStream f = c.getResourceAsStream("/" + fileName);
+    public static RefVector<String> load(Object params, Class contextClass, String fileName) throws IOException {
+        InputStream f = contextClass.getResourceAsStream("/" + fileName);
         if (AngioTool.ATDir == null)
             AngioTool.ATDir = System.getProperty("user.dir");
 
@@ -101,17 +101,16 @@ public class ATPreferences {
         }
         */
 
-        return populatePreferences(sb.toString());
+        return populatePreferences(params, sb.toString());
     }
 
-    public static AnalyzerParameters populatePreferences(String text) {
+    public static RefVector<String> populatePreferences(Object params, String text) {
         HashMap<String, Field> map = new HashMap<>();
-        AnalyzerParameters params = AnalyzerParameters.defaults();
         Field[] fields = params.getClass().getDeclaredFields();
         for (Field f : fields)
             map.put(f.getName(), f);
 
-        ArrayList<String> errors = new ArrayList<>();
+        RefVector<String> errors = new RefVector<>(String.class);
 
         String[] lines = text.split("\n");
         for (String l : lines) {
@@ -166,10 +165,7 @@ public class ATPreferences {
             }
         }
 
-        if (!errors.isEmpty())
-            System.err.println("Configuration Parsing Error\n" + String.join("\n", errors));
-
-        return params;
+        return errors;
     }
 
     public static String getStringOfArrayOrObject(Object obj) {

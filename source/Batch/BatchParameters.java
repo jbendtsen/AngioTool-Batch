@@ -13,6 +13,8 @@ public class BatchParameters
     public String resultImagesPath;
     public String resultImageFormat;
 
+    public BatchParameters() {}
+
     public BatchParameters(
         String defaultPath,
         String[] inputImagePaths,
@@ -29,6 +31,14 @@ public class BatchParameters
         this.shouldSaveImagesToSpecificFolder = shouldSaveImagesToSpecificFolder;
         this.resultImagesPath = resultImagesPath;
         this.resultImageFormat = resultImageFormat;
+    }
+
+    public static BatchParameters defaults()
+    {
+        BatchParameters params = new BatchParameters();
+        params.defaultPath = "C:\\";
+        params.resultImageFormat = "jpg";
+        return params;
     }
 
     public RefVector<String> validate()

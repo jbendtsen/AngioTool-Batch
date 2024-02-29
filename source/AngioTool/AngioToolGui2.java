@@ -1,9 +1,11 @@
 package AngioTool;
 
 import Batch.AnalyzerParameters;
+import Batch.BatchParameters;
 import Utils.BatchUtils;
 import Pixels.Rgb;
 import java.awt.Container;
+import java.awt.event.*;
 import javax.swing.*;
 
 public class AngioToolGui2 extends JFrame
@@ -32,7 +34,7 @@ public class AngioToolGui2 extends JFrame
     final ColorSizeEntry elemSkeleton;
     final ColorSizeEntry elemConvexHull;
 
-    public AngioToolGui2(AnalyzerParameters params)
+    public AngioToolGui2(AnalyzerParameters analyzerParams, BatchParameters batchParams)
     {
         labelAnalysis.setText("Analysis");
         BatchUtils.setNewFontSizeOn(labelAnalysis, 20);
@@ -40,10 +42,10 @@ public class AngioToolGui2 extends JFrame
         labelSkeletonizer.setText("Skeletonizer:");
 
         rbSkelFast.setText("Fast (Zha84)");
-        rbSkelFast.setSelected(params.shouldUseFastSkeletonizer);
+        rbSkelFast.setSelected(analyzerParams.shouldUseFastSkeletonizer);
 
         rbSkelThorough.setText("Thorough (Lee94)");
-        rbSkelThorough.setSelected(!params.shouldUseFastSkeletonizer);
+        rbSkelThorough.setSelected(!analyzerParams.shouldUseFastSkeletonizer);
 
         groupSkeletonizer.add(rbSkelFast);
         groupSkeletonizer.add(rbSkelThorough);
@@ -54,36 +56,36 @@ public class AngioToolGui2 extends JFrame
         }*/
 
         cbComputeLacunarity.setText("Lacunarity");
-        cbComputeLacunarity.setSelected(params.shouldComputeLacunarity);
+        cbComputeLacunarity.setSelected(analyzerParams.shouldComputeLacunarity);
 
         cbComputeThickness.setText("Thickness");
-        cbComputeThickness.setSelected(params.shouldComputeThickness);
+        cbComputeThickness.setSelected(analyzerParams.shouldComputeThickness);
 
-        elemResizeInputs = new NumberEntry("Resize inputs by:", params.shouldResizeImage, params.resizingFactor, "x");
+        elemResizeInputs = new NumberEntry("Resize inputs by:", analyzerParams.shouldResizeImage, analyzerParams.resizingFactor, "x");
 
-        elemLinearScaleFactor = new NumberEntry("Measurement Scale:", params.shouldApplyLinearScale, params.linearScalingFactor, "x");
+        elemLinearScaleFactor = new NumberEntry("Measurement Scale:", analyzerParams.shouldApplyLinearScale, analyzerParams.linearScalingFactor, "x");
 
-        elemRemoveParticles = new NumberEntry("Remove Particles:", params.shouldRemoveSmallParticles, params.removeSmallParticlesThreshold, "px");
+        elemRemoveParticles = new NumberEntry("Remove Particles:", analyzerParams.shouldRemoveSmallParticles, analyzerParams.removeSmallParticlesThreshold, "px");
 
-        elemFillHoles = new NumberEntry("Fill Holes:", params.shouldFillHoles, params.fillHolesValue, "px");
+        elemFillHoles = new NumberEntry("Fill Holes:", analyzerParams.shouldFillHoles, analyzerParams.fillHolesValue, "px");
 
         labelSigmas.setText("Vessel Diameters list");
 
-        textSigmas.setText(BatchUtils.formatDoubleArray(params.sigmas));
+        textSigmas.setText(BatchUtils.formatDoubleArray(analyzerParams.sigmas));
         textSigmas.setToolTipText("List of sigmas (numbers)");
 
         labelIntensity.setText("Vessel Intensity range");
 
-        textMinIntensity.setText("" + params.thresholdLow);
-        textMaxIntensity.setText("" + params.thresholdHigh);
+        textMinIntensity.setText("" + analyzerParams.thresholdLow);
+        textMaxIntensity.setText("" + analyzerParams.thresholdHigh);
 
         labelOverlay.setText("Overlay");
         BatchUtils.setNewFontSizeOn(labelOverlay, 20);
 
-        elemOutline = new ColorSizeEntry("Outline:", params.shouldDrawOutline, params.outlineSize, params.outlineColor);
-        elemBranches = new ColorSizeEntry("Branches:", params.shouldDrawBranchPoints, params.branchingPointsSize, params.branchingPointsColor);
-        elemSkeleton = new ColorSizeEntry("Skeleton:", params.shouldDrawSkeleton, params.skeletonSize, params.skeletonColor);
-        elemConvexHull = new ColorSizeEntry("Convex Hull:", params.shouldDrawConvexHull, params.convexHullSize, params.convexHullColor);
+        elemOutline = new ColorSizeEntry("Outline:", analyzerParams.shouldDrawOutline, analyzerParams.outlineSize, analyzerParams.outlineColor);
+        elemBranches = new ColorSizeEntry("Branches:", analyzerParams.shouldDrawBranchPoints, analyzerParams.branchingPointsSize, analyzerParams.branchingPointsColor);
+        elemSkeleton = new ColorSizeEntry("Skeleton:", analyzerParams.shouldDrawSkeleton, analyzerParams.skeletonSize, analyzerParams.skeletonColor);
+        elemConvexHull = new ColorSizeEntry("Convex Hull:", analyzerParams.shouldDrawConvexHull, analyzerParams.convexHullSize, analyzerParams.convexHullColor);
 
         JPanel dialogPanel = new JPanel();
         GroupLayout layout = new GroupLayout(dialogPanel);
@@ -97,14 +99,15 @@ public class AngioToolGui2 extends JFrame
         container.add(dialogPanel);
         this.pack();
 
-        /*
+        this.setDefaultCloseOperation(0);
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent evt) {
-                ATPreferences.savePreferences(buildNewParamsFromUi(), AngioTool.BATCH_TXT);
+                ATPreferences.savePreferences(buildAnalyzerParamsFromUi(), AngioTool.PREFS_TXT);
+                AngioToolGui2.this.setVisible(false);
+                System.exit(0);
             }
         });
-        */
 
         this.setMinimumSize(this.getPreferredSize());
     }

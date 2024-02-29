@@ -94,9 +94,11 @@ public class Analyzer
         IntVector iv1 = new IntVector();
         IntVector iv2 = new IntVector();
         IntVector iv3 = new IntVector();
-        ByteVectorOutputStream b1 = new ByteVectorOutputStream();
+
         ByteVectorOutputStream b2 = new ByteVectorOutputStream();
         ByteVectorOutputStream b3 = new ByteVectorOutputStream();
+
+        ByteVectorOutputStream analysisImage = new ByteVectorOutputStream();
 
         // Recycling resources
         public Tubeness.Scratch tubeness = new Tubeness.Scratch();
@@ -125,7 +127,7 @@ public class Analyzer
             iv2.resize(area * breadth);
             iv3.resize(area * breadth);
 
-            b1.resize(area);
+            analysisImage.resize(area);
             b2.resize(area);
 
             if (params.shouldUseFastSkeletonizer)
@@ -157,7 +159,7 @@ public class Analyzer
             if (iv1 != null) { iv1.buf = null; } iv1 = null;
             if (iv2 != null) { iv2.buf = null; } iv2 = null;
             if (iv3 != null) { iv3.buf = null; } iv3 = null;
-            if (b1 != null) { b1.buf = null; } b1 = null;
+            if (analysisImage != null) { analysisImage.buf = null; } analysisImage = null;
             if (b2 != null) { b2.buf = null; } b2 = null;
             if (b3 != null) { b3.buf = null; } b3 = null;
 
@@ -237,7 +239,7 @@ public class Analyzer
                 return;
 
             try {
-                ImageUtils.openImageForAnalysis(
+                ImageFile.openImageForAnalysis(
                     inputImage,
                     inFile.getAbsolutePath(),
                     imageResizeFactor,
@@ -274,7 +276,15 @@ public class Analyzer
             if (exception == null) {
                 if (batchParams.shouldSaveResultImages) {
                     uiToken.updateImageProgress("Drawing overlay...");
-                    drawOverlay(params, data.convexHull, data.skelResult, analysisImage, overlayImage, inputImage.width, inputImage.height);
+                    drawOverlay(
+                        params,
+                        data.convexHull,
+                        data.skelResult,
+                        data.analysisImage.buf,
+                        outputImage.getDefaultRgb(),
+                        inputImage.width,
+                        inputImage.height
+                    );
 
                     try {
                         uiToken.updateImageProgress("Saving result image...");
@@ -284,8 +294,7 @@ public class Analyzer
                             inFile.getAbsolutePath();
                         String format = resolveImageFormat(batchParams.resultImageFormat);
 
-                        // data.imageResult.flatten()
-                        ImageUtils.saveImage(outputImage, 0, format, basePath + " result." + format);
+                        ImageFile.saveImage(outputImage, 0, format, basePath + " result." + format);
                     }
                     catch (Throwable ex) {
                         exception = ex;
@@ -441,8 +450,7 @@ public class Analyzer
     ) {
         data.reallocate(params, inputImage.width, inputImage.height, 1);
 
-        int[] overlayImage = outputImage != null ? outputImage.getDefaultRgb() : null;
-        byte[] analysisImage = data.b1.buf;
+        byte[] analysisImage = data.analysisImage.buf;
 
         uiToken.updateImageProgress("Calculating tubeness...");
 
@@ -458,7 +466,7 @@ public class Analyzer
             params.sigmas.length
         );
 
-        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " tubeness.pgm");
+        //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " tubeness.pgm");
 
         uiToken.updateImageProgress("Filtering image...");
 
@@ -470,7 +478,7 @@ public class Analyzer
             params.thresholdHigh
         );
 
-        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " thresholded.pgm");
+        //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " thresholded.pgm");
 
         byte[] skeletonImage = data.b2.buf;
 
@@ -479,7 +487,7 @@ public class Analyzer
         Filters.filterMin(skeletonImage, analysisImage, inputImage.width, inputImage.height); // dilate
         Filters.filterMin(analysisImage, skeletonImage, inputImage.width, inputImage.height); // dilate
 
-        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, "filtered.pgm");
+        //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, "filtered.pgm");
 
         int[] particleBuf = data.i1.buf;
         uiToken.updateImageProgress("Identifying shapes...");

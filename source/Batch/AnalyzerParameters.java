@@ -34,7 +34,7 @@ public class AnalyzerParameters {
     public boolean shouldComputeLacunarity;
     public boolean shouldComputeThickness;
 
-    private AnalyzerParameters() {}
+    public AnalyzerParameters() {}
 
     public AnalyzerParameters(
         boolean shouldResizeImage,

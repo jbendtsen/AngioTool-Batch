@@ -331,6 +331,12 @@ public class BatchUtils
             return;
 
         String name = t.getClass().getName();
+        String message = buildDialogMessageFromException(t);
+        showDialogBox(name, message);
+    }
+
+    public static String buildDialogMessageFromException(Throwable t)
+    {
         String message = t.getMessage();
 
         StackTraceElement[] st = t.getStackTrace();
@@ -349,7 +355,7 @@ public class BatchUtils
         else
             message += exSource;
 
-        showDialogBox(name, message);
+        return message;
     }
 
     public static GroupLayout.SequentialGroup arrangeParallelEntries(

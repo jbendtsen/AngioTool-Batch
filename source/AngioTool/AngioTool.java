@@ -1,7 +1,9 @@
 package AngioTool;
 
 import Batch.AnalyzerParameters;
+import Batch.BatchParameters;
 import Utils.BatchUtils;
+import Utils.RefVector;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Image;
@@ -83,16 +85,30 @@ public class AngioTool
         ATOpenImageSmall = createResizedIcon(ATOpenImage, 24, 24);
         ATExcelSmall = createResizedIcon(ATExcel, 24, 24);
 
-        AnalyzerParameters initialParams;
+        RefVector<String> errors = new RefVector<>(String.class);
+
+        AnalyzerParameters analyzerParams = new AnalyzerParameters();
         try {
-            initialParams = ATPreferences.load(at, PREFS_TXT);
+            errors.add(ATPreferences.load(analyzerParams, at, PREFS_TXT));
         }
         catch (Exception ex) {
-            BatchUtils.showExceptionInDialogBox(ex);
-            initialParams = AnalyzerParameters.defaults();
+            errors.add(BatchUtils.buildDialogMessageFromException(ex));
+            analyzerParams = AnalyzerParameters.defaults();
         }
 
-        angioToolGui = new AngioToolGui2(initialParams);
+        BatchParameters batchParams = new BatchParameters();
+        try {
+            errors.add(ATPreferences.load(batchParams, at, BATCH_TXT));
+        }
+        catch (Exception ex) {
+            errors.add(BatchUtils.buildDialogMessageFromException(ex));
+            batchParams = BatchParameters.defaults();
+        }
+
+        if (errors.size > 0)
+            BatchUtils.showDialogBox("Configuration parsing error", String.join("\n", errors));
+
+        angioToolGui = new AngioToolGui2(analyzerParams, batchParams);
         //angioToolGUI.setLocation(new Point(100, 50));
         angioToolGui.setVisible(true);
     }

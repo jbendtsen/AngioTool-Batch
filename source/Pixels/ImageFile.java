@@ -20,7 +20,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import javax.imageio.ImageIO;
 
-public class ImageUtils
+public class ImageFile
 {
     public static Bitmap openImageForAnalysis(
         Bitmap image,
@@ -224,24 +224,41 @@ public class ImageUtils
     public static ArgbBuffer loadImage(File file) throws IOException
     {
         ArgbBuffer input = null;
+        IOException firstException = null;
         String fileName = file.getName();
         int fileNameLen = fileName.length();
 
         if (fileName.endsWith(".tif") || fileName.endsWith(".tiff") || (fileName.charAt(fileNameLen - 3) == 'p' && fileName.charAt(fileNameLen - 1) == 'm')) {
-            input = loadTiffOrNetpbm(file);
+            try {
+                input = loadTiffOrNetpbm(file);
+            }
+            catch (IOException ex) {
+                firstException = ex;
+            }
             if (input == null)
                 input = loadFromImageIO(file);
         }
         else {
-            input = loadFromImageIO(file);
+            try {
+                input = loadFromImageIO(file);
+            }
+            catch (IOException ex) {
+                firstException = ex;
+            }
             if (input == null)
                 input = loadTiffOrNetpbm(file);
         }
 
-        return input;
+        if (input != null)
+            return input;
+
+        if (firstException != null)
+            throw firstException;
+
+        return null;
     }
 
-    static ArgbBuffer loadFromImageIO(File file)
+    static ArgbBuffer loadFromImageIO(File file) throws IOException
     {
         BufferedImage javaImage = ImageIO.read(file);
         if (javaImage == null)
