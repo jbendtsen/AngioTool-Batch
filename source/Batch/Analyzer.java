@@ -35,7 +35,20 @@ public class Analyzer
         "overlay"
     });
 
-    static class Stats
+    public interface IProgressToken
+    {
+        boolean isClosed();
+        void notifyNoImages();
+        void onEnumerationStart();
+        void onBatchStatsKnown(int nImages, int maxProgressPerImage);
+        void notifyImageWasInvalid();
+        void onStartImage(String absPath);
+        void updateImageProgress(String statusMsg);
+        void onImageDone(Throwable error);
+        void onFinished(SpreadsheetWriter sw);
+    }
+
+    public static class Stats
     {
         public String imageFileName;
         public String imageAbsolutePath;
@@ -62,8 +75,6 @@ public class Analyzer
         public double FLacunarityCurve;
         public double meanFl;
         public double meanEl;
-
-        //public Exception exception;
     }
 
     public static class Scratch
@@ -158,37 +169,38 @@ public class Analyzer
         }
     }
 
-    static int determineUpdateCountPerImage(AnalyzerParameters params) {
+    static int determineUpdateCountPerImage(AnalyzerParameters params, BatchParameters batchParams) {
         int count = 6;
-        if (params.shouldDrawOutline && params.shouldSaveResultImages)
+        if (params.shouldDrawOutline && batchParams.shouldSaveResultImages)
             count++;
         if (params.shouldComputeLacunarity)
             count++;
-        if (params.shouldDrawConvexHull && params.shouldSaveResultImages)
+        if (params.shouldDrawConvexHull && batchParams.shouldSaveResultImages)
             count++;
         if (params.shouldComputeThickness)
             count++;
-        if (params.shouldDrawSkeleton && params.shouldSaveResultImages)
+        if (params.shouldDrawSkeleton && batchParams.shouldSaveResultImages)
             count++;
-        if (params.shouldDrawBranchPoints && params.shouldSaveResultImages)
+        if (params.shouldDrawBranchPoints && batchParams.shouldSaveResultImages)
             count++;
-        if (params.shouldSaveResultImages)
+        if (batchParams.shouldSaveResultImages)
             count++;
         return count;
     }
 
     public static void doBatchAnalysis(
         AnalyzerParameters params,
-        BatchAnalysisUi uiToken,
+        BatchParameters batchParams,
+        IProgressToken uiToken,
         ArrayList<XlsxReader.SheetCells> originalSheets
     ) {
         uiToken.onEnumerationStart();
 
         ArrayList<File> inputs = new ArrayList<>();
         BidirectionalMap<String, String> outputPathMap = new BidirectionalMap<>();
-        for (String path : params.inputImagePaths) {
+        for (String path : batchParams.inputImagePaths) {
             enumerateImageFilesRecursively(inputs, new File(path), outputPathMap, uiToken);
-            if (uiToken.isClosed.get())
+            if (uiToken.isClosed())
                 return;
         }
 
@@ -197,7 +209,7 @@ public class Analyzer
             return;
         }
 
-        File excelPath = new File(params.excelFilePath);
+        File excelPath = new File(batchParams.excelFilePath);
         SpreadsheetWriter writer;
         try {
             writer = createWriterWithNewSheet(originalSheets, excelPath.getParentFile(), excelPath.getName());
@@ -207,31 +219,30 @@ public class Analyzer
             return;
         }
 
+        uiToken.onBatchStatsKnown(inputs.size(), determineUpdateCountPerImage(params, batchParams));
+
         double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
         double imageResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
 
-        uiToken.startProgressBars(inputs.size(), determineUpdateCountPerImage(params));
         boolean startedAnyImages = false;
 
         ISliceRunner sliceRunner = new ISliceRunner.Parallel(threadPool);
 
         Scratch data = new Scratch();
-        Bitmap outputImage = params.shouldSaveResultImages ? new Bitmap() : null;
+        Bitmap outputImage = batchParams.shouldSaveResultImages ? new Bitmap() : null;
         Bitmap inputImage = new Bitmap();
 
         for (File inFile : inputs) {
-            if (uiToken.isClosed.get())
+            if (uiToken.isClosed())
                 return;
 
-            boolean useSingleChannelInOutputImage = true; // TODO: add option in params
-
             try {
-                ImageUtils.openImage(
+                ImageUtils.openImageForAnalysis(
                     inputImage,
                     inFile.getAbsolutePath(),
                     imageResizeFactor,
                     outputImage,
-                    useSingleChannelInOutputImage
+                    params.shouldIsolateBrightestChannelInOutput
                 );
             }
             catch (Throwable ex) {
@@ -252,7 +263,7 @@ public class Analyzer
             try {
                 result = analyze(data, inFile, inputImage, outputImage, params, linearScalingFactor, sliceRunner, uiToken);
                 analyzeSucceeded = true;
-                uiToken.updateImageProgress("Saving image stats to Excel");
+                uiToken.updateImageProgress("Saving image stats to Excel...");
                 writeResultToSheet(writer, result);
             }
             catch (Throwable ex) {
@@ -261,14 +272,17 @@ public class Analyzer
             }
 
             if (exception == null) {
-                if (params.shouldSaveResultImages) {
+                if (batchParams.shouldSaveResultImages) {
+                    uiToken.updateImageProgress("Drawing overlay...");
+                    drawOverlay(params, data.convexHull, data.skelResult, analysisImage, overlayImage, inputImage.width, inputImage.height);
+
                     try {
                         uiToken.updateImageProgress("Saving result image...");
 
-                        String basePath = params.shouldSaveImagesToSpecificFolder ?
-                            resolveOutputPath(params.resultImagesPath, outputPathMap, inFile) :
+                        String basePath = batchParams.shouldSaveImagesToSpecificFolder ?
+                            resolveOutputPath(batchParams.resultImagesPath, outputPathMap, inFile) :
                             inFile.getAbsolutePath();
-                        String format = resolveImageFormat(params.resultImageFormat);
+                        String format = resolveImageFormat(batchParams.resultImageFormat);
 
                         // data.imageResult.flatten()
                         ImageUtils.saveImage(outputImage, 0, format, basePath + " result." + format);
@@ -355,7 +369,7 @@ public class Analyzer
         ArrayList<File> images,
         File currentFolder,
         BidirectionalMap<String, String> outputPathMap,
-        BatchAnalysisUi uiToken
+        IProgressToken uiToken
     ) {
         String curAbsPath = currentFolder.getAbsolutePath();
         String outFolder = currentFolder.getName();
@@ -390,7 +404,7 @@ public class Analyzer
         for (File f : list) {
             if (f.isDirectory()) {
                 enumerateImageFilesRecursively(images, f, outputPathMap, uiToken);
-                if (uiToken.isClosed.get())
+                if (uiToken.isClosed())
                     return;
             }
             else if (f.isFile()) {
@@ -415,7 +429,7 @@ public class Analyzer
         }
     }
 
-    static Stats analyze(
+    public static Stats analyze(
         Scratch data,
         File inFile,
         Bitmap inputImage,
@@ -423,7 +437,7 @@ public class Analyzer
         AnalyzerParameters params,
         double linearScalingFactor,
         ISliceRunner sliceRunner,
-        BatchAnalysisUi uiToken
+        IProgressToken uiToken
     ) {
         data.reallocate(params, inputImage.width, inputImage.height, 1);
 
@@ -508,29 +522,6 @@ public class Analyzer
                 false
             );
 
-        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, "clarified.pgm");
-
-        if (params.shouldDrawOutline && params.shouldSaveResultImages)
-        {
-            uiToken.updateImageProgress("Drawing outline...");
-            int[] outlineScratch1 = data.i2.buf;
-            int[] outlineScratch2 = data.iv1.buf;
-
-            // TODO: implement strokeWidth
-            Outline.drawOutline(
-                overlayImage,
-                outlineScratch1,
-                outlineScratch2,
-                params.outlineColor.getARGB(),
-                params.outlineSize,
-                data.particleScratch.shapes,
-                particleBuf,
-                analysisImage,
-                inputImage.width,
-                inputImage.height
-            );
-        }
-
         data.vesselPixelArea = BatchUtils.countForegroundPixels(analysisImage, inputImage.width, inputImage.height);
 
         if (params.shouldComputeLacunarity)
@@ -543,25 +534,6 @@ public class Analyzer
         uiToken.updateImageProgress("Building convex hull...");
 
         data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
-
-        if (params.shouldDrawConvexHull && params.shouldSaveResultImages)
-        {
-            uiToken.updateImageProgress("Drawing convex hull...");
-
-            Canvas.drawLines(
-                overlayImage,
-                inputImage.width,
-                inputImage.height,
-                null,
-                data.convexHull.buf,
-                data.convexHull.size,
-                2,
-                params.convexHullColor.getARGB(),
-                params.convexHullSize
-            );
-        }
-
-        //ImageUtils.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " b4skel.pgm");
 
         uiToken.updateImageProgress("Computing skeleton...");
 
@@ -614,54 +586,6 @@ public class Analyzer
             );
         }
 
-        //uiToken.updateImageProgress("Generating skeleton points...");
-        //uiToken.updateImageProgress("Computing junctions...");
-
-        if (params.shouldDrawSkeleton && params.shouldSaveResultImages)
-        {
-            uiToken.updateImageProgress("Drawing skeleton...");
-
-            Canvas.drawCircles(
-                overlayImage,
-                inputImage.width,
-                inputImage.height,
-                null,
-                data.skelResult.slabList.buf,
-                data.skelResult.slabList.size,
-                3,
-                params.skeletonColor.getARGB(),
-                params.skeletonSize
-            );
-            Canvas.drawCircles(
-                overlayImage,
-                inputImage.width,
-                inputImage.height,
-                data.skelResult.removedJunctions.buf,
-                data.skelResult.junctionVoxels.buf,
-                data.skelResult.removedJunctions.size,
-                3,
-                params.skeletonColor.getARGB(),
-                params.skeletonSize
-            );
-        }
-
-        if (params.shouldDrawBranchPoints && params.shouldSaveResultImages)
-        {
-            uiToken.updateImageProgress("Drawing branch points...");
-
-            Canvas.drawCircles(
-                overlayImage,
-                inputImage.width,
-                inputImage.height,
-                data.skelResult.isolatedJunctions.buf,
-                data.skelResult.junctionVoxels.buf,
-                data.skelResult.isolatedJunctions.size,
-                3,
-                params.branchingPointsColor.getARGB(),
-                params.branchingPointsSize
-            );
-        }
-
         double areaScalingFactor = linearScalingFactor * linearScalingFactor;
 
         Stats stats = new Stats();
@@ -709,11 +633,99 @@ public class Analyzer
         return stats;
     }
 
+    public static void drawOverlay(
+        AnalyzerParameters params,
+        IntVector convexHull,
+        AnalyzeSkeleton2.Result skelResult,
+        byte[] analysisImage,
+        int[] overlayImage,
+        int width,
+        int height
+    ) {
+        if (params.shouldDrawOutline)
+        {
+            int area = width * height;
+            int[] outlineScratch1 = IntBufferPool.acquireAsIs(area);
+            int[] outlineScratch2 = IntBufferPool.acquireAsIs(area);
+
+            Outline.drawOutline(
+                overlayImage,
+                outlineScratch1,
+                outlineScratch2,
+                params.outlineColor.getARGB(),
+                params.outlineSize,
+                analysisImage,
+                width,
+                height
+            );
+
+            IntBufferPool.release(outlineScratch1);
+            IntBufferPool.release(outlineScratch2);
+        }
+
+        if (params.shouldDrawConvexHull)
+        {
+            Canvas.drawLines(
+                overlayImage,
+                width,
+                height,
+                null,
+                convexHull.buf,
+                convexHull.size,
+                2,
+                params.convexHullColor.getARGB(),
+                params.convexHullSize
+            );
+        }
+
+        if (params.shouldDrawSkeleton)
+        {
+            Canvas.drawCircles(
+                overlayImage,
+                width,
+                height,
+                null,
+                skelResult.slabList.buf,
+                skelResult.slabList.size,
+                3,
+                params.skeletonColor.getARGB(),
+                params.skeletonSize
+            );
+            Canvas.drawCircles(
+                overlayImage,
+                width,
+                height,
+                skelResult.removedJunctions.buf,
+                skelResult.junctionVoxels.buf,
+                skelResult.removedJunctions.size,
+                3,
+                params.skeletonColor.getARGB(),
+                params.skeletonSize
+            );
+        }
+
+        if (params.shouldDrawBranchPoints)
+        {
+            Canvas.drawCircles(
+                overlayImage,
+                width,
+                height,
+                skelResult.isolatedJunctions.buf,
+                skelResult.junctionVoxels.buf,
+                skelResult.isolatedJunctions.size,
+                3,
+                params.branchingPointsColor.getARGB(),
+                params.branchingPointsSize
+            );
+        }
+    }
+
     static SpreadsheetWriter createWriterWithNewSheet(
         ArrayList<XlsxReader.SheetCells> originalSheets,
         File folder,
         String sheetName
-    ) throws IOException {
+    ) throws IOException
+    {
         SpreadsheetWriter writer = new SpreadsheetWriter(folder, sheetName);
         writer.addSheets(originalSheets);
 

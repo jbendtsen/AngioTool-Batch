@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class BatchAnalysisUi
+public class BatchWindow implements Analyzer.IProgressToken
 {
     static int UNITS_GAP = 4;
 
@@ -64,7 +64,7 @@ public class BatchAnalysisUi
     public Future<Void> analysisTaskFuture = null;
     public final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-    public BatchAnalysisUi(JFrame uiFrame, AnalyzerParameters params)
+    public BatchWindow(JFrame uiFrame, BatchParameters params)
     {
         this.parentFrame = uiFrame;
 
@@ -78,25 +78,25 @@ public class BatchAnalysisUi
         labelInputFolders.setText("Select input folders:");
 
         btnInputFolders.setIcon(AngioTool.ATOpenImageSmall);
-        btnInputFolders.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectInputFolders());
+        btnInputFolders.addActionListener((ActionEvent e) -> BatchWindow.this.selectInputFolders());
         //textInputFolders
 
         labelExcel.setText("Excel spreadsheet:");
 
         btnExcel.setIcon(AngioTool.ATExcelSmall);
-        btnExcel.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectExcelFile());
+        btnExcel.addActionListener((ActionEvent e) -> BatchWindow.this.selectExcelFile());
         //textExcel
 
         rbNoOutput.setText("No output");
-        rbNoOutput.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+        rbNoOutput.addActionListener((ActionEvent e) -> BatchWindow.this.toggleSaveResults());
         rbNoOutput.setSelected(!params.shouldSaveResultImages);
 
         rbSameOutput.setText("Same folders as inputs");
-        rbSameOutput.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+        rbSameOutput.addActionListener((ActionEvent e) -> BatchWindow.this.toggleSaveResults());
         rbSameOutput.setSelected(params.shouldSaveResultImages && !params.shouldSaveImagesToSpecificFolder);
 
         rbSaveResultsTo.setText("Save result images to:");
-        rbSaveResultsTo.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.toggleSaveResults());
+        rbSaveResultsTo.addActionListener((ActionEvent e) -> BatchWindow.this.toggleSaveResults());
         rbSaveResultsTo.setSelected(params.shouldSaveResultImages && params.shouldSaveImagesToSpecificFolder);
 
         groupSaveResults.add(rbNoOutput);
@@ -104,7 +104,7 @@ public class BatchAnalysisUi
         groupSaveResults.add(rbSaveResultsTo);
 
         btnSaveResultsFolder.setIcon(AngioTool.ATOpenImageSmall);
-        btnSaveResultsFolder.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.selectResultFolder());
+        btnSaveResultsFolder.addActionListener((ActionEvent e) -> BatchWindow.this.selectResultFolder());
         //textSaveResultsFolder
 
         toggleSaveResults();
@@ -126,10 +126,10 @@ public class BatchAnalysisUi
         imageProgress.setStringPainted(true);
 
         analyzeBtn.setText("Run");
-        analyzeBtn.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.startAnalysis());
+        analyzeBtn.addActionListener((ActionEvent e) -> BatchWindow.this.startAnalysis());
 
         cancelBtn.setText("Cancel");
-        cancelBtn.addActionListener((ActionEvent e) -> BatchAnalysisUi.this.close());
+        cancelBtn.addActionListener((ActionEvent e) -> BatchWindow.this.close());
         cancelBtn.setEnabled(false);
     }
 
@@ -150,7 +150,7 @@ public class BatchAnalysisUi
             jdialog.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent evt) {
-                    ATPreferences.savePreferences(buildNewParamsFromUi(), AngioTool.BATCH_TXT);
+                    ATPreferences.savePreferences(buildBatchParamsFromUi(), AngioTool.BATCH_TXT);
                 }
             });
 
@@ -249,7 +249,7 @@ public class BatchAnalysisUi
     }
 
     void selectInputFolders() {
-        JFileChooser fc = createFileChooser();
+        JFileChooser fc = BatchUtils.createFileChooser();
         fc.setDialogTitle("Select Folders");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -274,7 +274,7 @@ public class BatchAnalysisUi
     }
 
     void selectExcelFile() {
-        JFileChooser fc = createFileChooser();
+        JFileChooser fc = BatchUtils.createFileChooser();
         fc.setDialogTitle("Append to Excel spreadsheet");
         fc.setDialogType(JFileChooser.SAVE_DIALOG);
         fc.setCurrentDirectory(new File(defaultPath));
@@ -326,7 +326,7 @@ public class BatchAnalysisUi
     }
 
     void selectResultFolder() {
-        JFileChooser fc = createFileChooser();
+        JFileChooser fc = BatchUtils.createFileChooser();
         fc.setDialogTitle("Select Folders");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -339,7 +339,8 @@ public class BatchAnalysisUi
         }
     }
 
-    AnalyzerParameters buildNewParamsFromUi() {
+    public BatchParameters buildBatchParamsFromUi()
+    {
         boolean shouldSaveImages;
         boolean shouldUseSpecificOutputFolder;
         ButtonModel saveImageType = groupSaveResults.getSelection();
@@ -356,45 +357,14 @@ public class BatchAnalysisUi
             shouldUseSpecificOutputFolder = false;
         }
 
-        ButtonModel skelType = groupSkeletonizer.getSelection();
-        boolean shouldUseFastSkel = skelType == rbSkelFast.getModel();
-
-        return new AnalyzerParameters(
+        return new BatchParameters(
             defaultPath,
             BatchUtils.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
             textExcel.getText(),
             shouldSaveImages,
             shouldUseSpecificOutputFolder,
             textSaveResultsFolder.getText(),
-            textResultsImageFormat.getText(),
-            elemResizeInputs.cb.isSelected(),
-            elemResizeInputs.getValue(),
-            elemRemoveParticles.cb.isSelected(),
-            elemRemoveParticles.getValue(),
-            elemFillHoles.cb.isSelected(),
-            elemFillHoles.getValue(),
-            BatchUtils.getSomeDoubles(textSigmas.getText()),
-            Integer.parseInt(textMaxIntensity.getText()),
-            Integer.parseInt(textMinIntensity.getText()),
-            shouldUseFastSkel,
-            elemLinearScaleFactor.cb.isSelected(),
-            elemLinearScaleFactor.getValue(),
-            true, // shouldShowOverlayOrGallery
-            elemOutline.cb.isSelected(),
-            elemOutline.color,
-            elemOutline.getValue(),
-            elemSkeleton.cb.isSelected(),
-            elemSkeleton.color,
-            elemSkeleton.getValue(),
-            elemBranches.cb.isSelected(),
-            elemBranches.color,
-            elemBranches.getValue(),
-            elemConvexHull.cb.isSelected(),
-            elemConvexHull.color,
-            elemConvexHull.getValue(),
-            false, // shouldScalePixelValues
-            cbComputeLacunarity.isSelected(),
-            cbComputeThickness.isSelected()
+            textResultsImageFormat.getText()
         );
     }
 
@@ -412,7 +382,7 @@ public class BatchAnalysisUi
 
         AnalyzerParameters params;
         try {
-            params = buildNewParamsFromUi();
+            params = buildAnalyzerParamsFromUi();
         }
         catch (Throwable t) {
             BatchUtils.showDialogBox("Parsing Error", "Invalid data in the form (" + t.getClass().getSimpleName() + ")");
@@ -420,7 +390,13 @@ public class BatchAnalysisUi
         }
 
         RefVector<String> errors = params.validate();
-        if (errors != null && errors.size > 0) {
+
+        BatchParameters batchParams = buildBatchParamsFromUi();
+        RefVector<String> batchErrors = batchParams.validate();
+
+        errors.add(batchErrors);
+
+        if (errors.size > 0) {
             int nErrors = errors.size;
             String header = nErrors > 1 ? ("There were " + nErrors + " errors:\n") : "";
             BatchUtils.showDialogBox(
@@ -432,10 +408,11 @@ public class BatchAnalysisUi
 
         cancelBtn.setEnabled(true);
 
-        ATPreferences.savePreferences(params, AngioTool.BATCH_TXT);
+        ATPreferences.savePreferences(params, AngioTool.PREFS_TXT);
+        ATPreferences.savePreferences(batchParams, AngioTool.BATCH_TXT);
 
         analysisTaskFuture = (Future<Void>)Analyzer.threadPool.submit(
-            () -> Analyzer.doBatchAnalysis(params, BatchAnalysisUi.this, originalSheets)
+            () -> Analyzer.doBatchAnalysis(params, batchParams, BatchWindow.this, originalSheets)
         );
     }
 
@@ -447,6 +424,13 @@ public class BatchAnalysisUi
             dlg.setSize(new Dimension(curSize.width, preferred.height));
     }
 
+    @Override
+    public boolean isClosed()
+    {
+        return this.isClosed.get();
+    }
+
+    @Override
     public void notifyNoImages()
     {
         SwingUtilities.invokeLater(() -> {
@@ -461,6 +445,7 @@ public class BatchAnalysisUi
         });
     }
 
+    @Override
     public void onEnumerationStart()
     {
         SwingUtilities.invokeLater(() -> {
@@ -473,7 +458,8 @@ public class BatchAnalysisUi
         });
     }
 
-    public void startProgressBars(int nImages, int maxProgressPerImage)
+    @Override
+    public void onBatchStatsKnown(int nImages, int maxProgressPerImage)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
@@ -490,6 +476,7 @@ public class BatchAnalysisUi
         });
     }
 
+    @Override
     public void notifyImageWasInvalid()
     {
         SwingUtilities.invokeLater(() -> {
@@ -503,6 +490,7 @@ public class BatchAnalysisUi
 
     boolean wasStartImageJustCalled = false;
 
+    @Override
     public void onStartImage(String absPath)
     {
         SwingUtilities.invokeLater(() -> {
@@ -530,6 +518,7 @@ public class BatchAnalysisUi
         });
     }
 
+    @Override
     public void updateImageProgress(String statusMsg)
     {
         SwingUtilities.invokeLater(() -> {
@@ -546,6 +535,7 @@ public class BatchAnalysisUi
         });
     }
 
+    @Override
     public void onImageDone(Throwable error)
     {
         SwingUtilities.invokeLater(() -> {
@@ -560,6 +550,7 @@ public class BatchAnalysisUi
         });
     }
 
+    @Override
     public void onFinished(SpreadsheetWriter sw)
     {
         SwingUtilities.invokeLater(() -> {

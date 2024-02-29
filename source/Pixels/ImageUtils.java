@@ -22,7 +22,7 @@ import javax.imageio.ImageIO;
 
 public class ImageUtils
 {
-    public static Bitmap openImage(
+    public static Bitmap openImageForAnalysis(
         Bitmap image,
         String absPath,
         double resizeFactor,
@@ -30,92 +30,13 @@ public class ImageUtils
         boolean outUseSingleChannel
     ) throws Exception
     {
-        int originalWidth = 0;
-        int originalHeight = 0;
-        int[] inputPixels = null;
         File file = new File(absPath);
-        BufferedImage javaImage = ImageIO.read(file);
+        ArgbBuffer input = loadImage(file);
+        if (input == null)
+            return null;
 
-        if (javaImage != null) {
-            originalWidth = javaImage.getWidth();
-            originalHeight = javaImage.getHeight();
-            if (originalWidth <= 0 || originalHeight <= 0)
-                return null;
-
-            inputPixels = new int[originalWidth * originalHeight];
-            javaImage.getRGB(0, 0, originalWidth, originalHeight, inputPixels, 0, originalWidth);
-        }
-        else {
-            FileInputStream fis = new FileInputStream(file);
-            FileChannel fc = fis.getChannel();
-            ByteBuffer magic = ByteBuffer.allocate(2);
-            fc.read(magic);
-            magic.position(0);
-            byte m0 = magic.get();
-            byte m1 = magic.get();
-            fc.position(0);
-
-            if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f')) {
-                RefVector<int[]> images = NetpbmReader.readArgbImages(fc, 1);
-                if (images == null || images.size <= 0)
-                    return null;
-
-                inputPixels = images.buf[0];
-                originalWidth  = inputPixels[inputPixels.length - 2];
-                originalHeight = inputPixels[inputPixels.length - 1];
-                if (originalWidth <= 0 || originalHeight <= 0)
-                    return null;
-            }
-            else if ((m0 == 'M' && m1 == 'M') || (m0 == 'I' && m1 == 'I')) {
-                MappedByteBuffer mapped = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
-                TiffDecoder td = new TiffDecoder(file, mapped);
-                ArrayList<ImageInfo> images = td.getTiffImages();
-                if (images == null || images.size() == 0)
-                    return null;
-
-                ImageInfo info = images.get(0);
-                originalWidth = info.width;
-                originalHeight = info.height;
-                if (originalWidth <= 0 || originalHeight <= 0)
-                    return null;
-
-                fc.position(0);
-                Object pixelData = new ImageReader(info).readPixels(fis);
-                if (pixelData instanceof int[]) {
-                    inputPixels = (int[])pixelData;
-                }
-                else if (pixelData instanceof byte[]) {
-                    inputPixels = new int[originalWidth * originalHeight];
-                    byte[] byteData = (byte[])pixelData;
-                    for (int i = 0; i < inputPixels.length; i++) {
-                        int lum = byteData[i] & 0xff;
-                        inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
-                    }
-                }
-                else if (pixelData instanceof short[]) {
-                    inputPixels = new int[originalWidth * originalHeight];
-                    short[] shortData = (short[])pixelData;
-                    for (int i = 0; i < inputPixels.length; i++) {
-                        int lum = shortData[i] >>> 8;
-                        inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
-                    }
-                }
-                else if (pixelData instanceof float[]) {
-                    inputPixels = new int[originalWidth * originalHeight];
-                    float[] floatData = (float[])pixelData;
-                    for (int i = 0; i < inputPixels.length; i++) {
-                        int lum = (int)(floatData[i] * 255.0f);
-                        inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
-                    }
-                }
-            }
-            else {
-                return null;
-            }
-        }
-
-        int width  = Math.max((int)(originalWidth * resizeFactor), 1);
-        int height = Math.max((int)(originalHeight * resizeFactor), 1);
+        int width  = Math.max((int)(input.width * resizeFactor), 1);
+        int height = Math.max((int)(input.height * resizeFactor), 1);
         int area = width * height;
 
         Bitmap.SplitLayer layer = (Bitmap.SplitLayer)image.reallocate(new Bitmap.SplitLayer(), width, height);
@@ -127,6 +48,10 @@ public class ImageUtils
         long redTally = 0;
         long greenTally = 0;
         long blueTally = 0;
+
+        int[] inputPixels = input.pixels;
+        int originalWidth = input.width;
+        int originalHeight = input.height;
 
         if (width == originalWidth && height == originalHeight) {
             for (int i = 0; i < area; i++) {
@@ -142,7 +67,7 @@ public class ImageUtils
             }
         }
         else if (resizeFactor < 1.0) {
-            float[] samples = FloatBufferPool.acquireZeroed(width * height * 4);
+            float[] samples = FloatBufferPool.acquireZeroed((width + 1) * (height + 1) * 4);
 
             double xAdv = width > 1 ? (double)(width - 1) / (double)(originalWidth - 1) : 0.0;
             double yAdv = height > 1 ? (double)(height - 1) / (double)(originalHeight - 1) : 0.0;
@@ -189,17 +114,20 @@ public class ImageUtils
                 }
             }
 
-            for (int i = 0; i < width * height * 4; i += 4) {
-                float weight = 1.0f / samples[i+3];
-                int r = Math.min(Math.max((int)(samples[i]   * weight), 0), 255);
-                int g = Math.min(Math.max((int)(samples[i+1] * weight), 0), 255);
-                int b = Math.min(Math.max((int)(samples[i+2] * weight), 0), 255);
-                redTally += r;
-                greenTally += g;
-                blueTally += b;
-                red[i] = (byte)r;
-                green[i] = (byte)g;
-                blue[i] = (byte)b;
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int idx = 4 * (x + width * y);
+                    float weight = 1.0f / samples[idx+3];
+                    int r = Math.min(Math.max((int)(samples[idx]   * weight), 0), 255);
+                    int g = Math.min(Math.max((int)(samples[idx+1] * weight), 0), 255);
+                    int b = Math.min(Math.max((int)(samples[idx+2] * weight), 0), 255);
+                    redTally += r;
+                    greenTally += g;
+                    blueTally += b;
+                    red[idx >> 2] = (byte)r;
+                    green[idx >> 2] = (byte)g;
+                    blue[idx >> 2] = (byte)b;
+                }
             }
 
             FloatBufferPool.release(samples);
@@ -291,6 +219,130 @@ public class ImageUtils
         image.width = width;
         image.height = height;
         return image;
+    }
+
+    public static ArgbBuffer loadImage(File file) throws IOException
+    {
+        ArgbBuffer input = null;
+        String fileName = file.getName();
+        int fileNameLen = fileName.length();
+
+        if (fileName.endsWith(".tif") || fileName.endsWith(".tiff") || (fileName.charAt(fileNameLen - 3) == 'p' && fileName.charAt(fileNameLen - 1) == 'm')) {
+            input = loadTiffOrNetpbm(file);
+            if (input == null)
+                input = loadFromImageIO(file);
+        }
+        else {
+            input = loadFromImageIO(file);
+            if (input == null)
+                input = loadTiffOrNetpbm(file);
+        }
+
+        return input;
+    }
+
+    static ArgbBuffer loadFromImageIO(File file)
+    {
+        BufferedImage javaImage = ImageIO.read(file);
+        if (javaImage == null)
+            return null;
+
+        int width = javaImage.getWidth();
+        int height = javaImage.getHeight();
+        if (width <= 0 || height <= 0)
+            return null;
+
+        int[] pixels = new int[width * height];
+        javaImage.getRGB(0, 0, width, height, pixels, 0, width);
+
+        return new ArgbBuffer(pixels, width, height);
+    }
+
+    static ArgbBuffer loadTiffOrNetpbm(File file) throws IOException
+    {
+        int[] inputPixels = null;
+        int width = 0;
+        int height = 0;
+
+        FileInputStream fis = null;
+        FileChannel fc = null;
+        try {
+            fis = new FileInputStream(file);
+            fc = fis.getChannel();
+            ByteBuffer magic = ByteBuffer.allocate(2);
+            fc.read(magic);
+            magic.position(0);
+            byte m0 = magic.get();
+            byte m1 = magic.get();
+            fc.position(0);
+
+            if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f')) {
+                RefVector<int[]> images = NetpbmReader.readArgbImages(fc, 1);
+                if (images == null || images.size <= 0)
+                    return null;
+
+                inputPixels = images.buf[0];
+                width  = inputPixels[inputPixels.length - 2];
+                height = inputPixels[inputPixels.length - 1];
+                if (width <= 0 || height <= 0)
+                    return null;
+            }
+            else if ((m0 == 'M' && m1 == 'M') || (m0 == 'I' && m1 == 'I')) {
+                MappedByteBuffer mapped = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+                TiffDecoder td = new TiffDecoder(file, mapped);
+                ArrayList<ImageInfo> images = td.getTiffImages();
+                if (images == null || images.size() == 0)
+                    return null;
+
+                ImageInfo info = images.get(0);
+                width = info.width;
+                height = info.height;
+                if (width <= 0 || height <= 0)
+                    return null;
+
+                fc.position(0);
+                Object pixelData = new ImageReader(info).readPixels(fis);
+                if (pixelData instanceof int[]) {
+                    inputPixels = (int[])pixelData;
+                }
+                else {
+                    inputPixels = new int[width * height];
+                    if (pixelData instanceof byte[]) {
+                        byte[] byteData = (byte[])pixelData;
+                        for (int i = 0; i < inputPixels.length; i++) {
+                            int lum = byteData[i] & 0xff;
+                            inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
+                        }
+                    }
+                    else if (pixelData instanceof short[]) {
+                        short[] shortData = (short[])pixelData;
+                        for (int i = 0; i < inputPixels.length; i++) {
+                            int lum = shortData[i] >>> 8;
+                            inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
+                        }
+                    }
+                    else if (pixelData instanceof float[]) {
+                        float[] floatData = (float[])pixelData;
+                        for (int i = 0; i < inputPixels.length; i++) {
+                            int lum = (int)(floatData[i] * 255.0f);
+                            inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
+                        }
+                    }
+                }
+            }
+        }
+        finally {
+            if (fc != null) {
+                try { fc.close(); }
+                catch (IOException ignored) {}
+            }
+            if (fis != null) {
+                try { fis.close(); }
+                catch (IOException ignored) {}
+            }
+        }
+
+        return inputPixels != null ? new ArgbBuffer(inputPixels, width, height) : null;
     }
 
     public static void saveImage(Bitmap image, int layerIdx, String format, String absPath) throws IOException

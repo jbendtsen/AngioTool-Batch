@@ -1,6 +1,10 @@
 package Utils;
 
+import AngioTool.NumberEntry;
+import AngioTool.ColorSizeEntry;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.lang.reflect.Field;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -9,7 +13,9 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashSet;
+import javax.swing.GroupLayout;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
 public class BatchUtils
@@ -199,6 +205,18 @@ public class BatchUtils
         for (String s : array)
             c.add(s);
         return c;
+    }
+
+    // TODO: something more sophisticated
+    public static boolean shouldPersistField(Field f)
+    {
+        return !f.getName().equals("inputImagePaths");
+    }
+
+    // TODO: also something more sophisticated
+    public static boolean isValidPath(String path)
+    {
+        return path != null && path.length() > 0;
     }
 
     public static boolean hasAnyFileExtension(File f)

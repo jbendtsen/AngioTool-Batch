@@ -33,8 +33,6 @@ public class Outline
         int[] outlineScratch2,
         int rgbColor,
         double strokeWidth,
-        IntVector shapes,
-        int[] shapeRegions,
         byte[] image,
         int width,
         int height

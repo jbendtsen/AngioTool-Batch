@@ -1,7 +1,10 @@
 package AngioTool;
 
 import Batch.AnalyzerParameters;
-import javax.swing.JFrame;
+import Utils.BatchUtils;
+import Pixels.Rgb;
+import java.awt.Container;
+import javax.swing.*;
 
 public class AngioToolGui2 extends JFrame
 {
@@ -123,8 +126,8 @@ public class AngioToolGui2 extends JFrame
                 )
             )
             .addGroup(
-                arrangeParallelEntries(
-                    elemLinearScaleFactor, elemRemoveParticles, layout, arrangeParallelEntries(
+                BatchUtils.arrangeParallelEntries(
+                    elemLinearScaleFactor, elemRemoveParticles, layout, BatchUtils.arrangeParallelEntries(
                         elemResizeInputs, elemFillHoles, layout, layout.createSequentialGroup()
                     ).addGap(20)
                 )
@@ -144,8 +147,8 @@ public class AngioToolGui2 extends JFrame
             )
             .addComponent(labelOverlay)
             .addGroup(
-                arrangeParallelEntries(
-                    elemBranches, elemConvexHull, layout, arrangeParallelEntries(
+                BatchUtils.arrangeParallelEntries(
+                    elemBranches, elemConvexHull, layout, BatchUtils.arrangeParallelEntries(
                         elemOutline, elemSkeleton, layout, layout.createSequentialGroup()
                     ).addGap(20)
                 )
@@ -204,6 +207,44 @@ public class AngioToolGui2 extends JFrame
                     elemSkeleton.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
+        );
+    }
+
+    public AnalyzerParameters buildAnalyzerParamsFromUi()
+    {
+        ButtonModel skelType = groupSkeletonizer.getSelection();
+        boolean shouldUseFastSkel = skelType == rbSkelFast.getModel();
+
+        return new AnalyzerParameters(
+            elemResizeInputs.cb.isSelected(),
+            elemResizeInputs.getValue(),
+            elemRemoveParticles.cb.isSelected(),
+            elemRemoveParticles.getValue(),
+            elemFillHoles.cb.isSelected(),
+            elemFillHoles.getValue(),
+            BatchUtils.getSomeDoubles(textSigmas.getText()),
+            Integer.parseInt(textMaxIntensity.getText()),
+            Integer.parseInt(textMinIntensity.getText()),
+            shouldUseFastSkel,
+            elemLinearScaleFactor.cb.isSelected(),
+            elemLinearScaleFactor.getValue(),
+            true, // shouldShowOverlayOrGallery
+            elemOutline.cb.isSelected(),
+            elemOutline.color,
+            elemOutline.getValue(),
+            elemSkeleton.cb.isSelected(),
+            elemSkeleton.color,
+            elemSkeleton.getValue(),
+            elemBranches.cb.isSelected(),
+            elemBranches.color,
+            elemBranches.getValue(),
+            elemConvexHull.cb.isSelected(),
+            elemConvexHull.color,
+            elemConvexHull.getValue(),
+            false, // shouldScalePixelValues
+            true,  // shouldIsolateBrightestChannelInOutput
+            cbComputeLacunarity.isSelected(),
+            cbComputeThickness.isSelected()
         );
     }
 }

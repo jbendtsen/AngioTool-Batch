@@ -54,6 +54,12 @@ public class RefVector<T> implements Iterable<T> {
         buf[pos] = v;
     }
 
+    public void add(RefVector<T> other) {
+        int pos = this.size;
+        resize(pos + other.size);
+        System.arraycopy(other.buf, 0, this.buf, pos, other.size);
+    }
+
     public void clear() {
         size = 0;
     }

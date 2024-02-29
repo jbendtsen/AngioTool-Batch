@@ -1,5 +1,8 @@
 package AngioTool;
 
+import Pixels.Rgb;
+import java.awt.Color;
+import java.awt.event.*;
 import javax.swing.*;
 
 public class ColorSizeEntry extends NumberEntry
@@ -31,7 +34,7 @@ public class ColorSizeEntry extends NumberEntry
     {
         group.addComponent(cb).addComponent(units);
         if (group instanceof GroupLayout.SequentialGroup)
-            ((GroupLayout.SequentialGroup)group).addGap(UNITS_GAP);
+            ((GroupLayout.SequentialGroup)group).addGap(4);
         return group
             .addComponent(tf)
             .addComponent(panel, 20, 25, 25);

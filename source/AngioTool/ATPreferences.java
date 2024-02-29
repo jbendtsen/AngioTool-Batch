@@ -27,7 +27,7 @@ public class ATPreferences {
         Field[] fields = params.getClass().getDeclaredFields();
         try {
             for (Field f : fields) {
-                if (!AnalyzerParameters.shouldPersistField(f))
+                if (!BatchUtils.shouldPersistField(f))
                     continue;
 
                 String name = f.getName();

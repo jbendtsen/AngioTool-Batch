@@ -1,5 +1,7 @@
 package AngioTool;
 
+import Utils.BatchUtils;
+import java.awt.event.*;
 import javax.swing.*;
 
 public class NumberEntry
@@ -43,7 +45,7 @@ public class NumberEntry
     {
         group.addComponent(cb).addComponent(units);
         if (group instanceof GroupLayout.SequentialGroup)
-            ((GroupLayout.SequentialGroup)group).addGap(UNITS_GAP);
+            ((GroupLayout.SequentialGroup)group).addGap(4);
         return group.addComponent(tf);
     }
 

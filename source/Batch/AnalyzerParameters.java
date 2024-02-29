@@ -2,16 +2,8 @@ package Batch;
 
 import Pixels.Rgb;
 import Utils.RefVector;
-import java.lang.reflect.Field;
 
 public class AnalyzerParameters {
-    public String defaultPath;
-    public String[] inputImagePaths;
-    public String excelFilePath;
-    public boolean shouldSaveResultImages;
-    public boolean shouldSaveImagesToSpecificFolder;
-    public String resultImagesPath;
-    public String resultImageFormat;
     public boolean shouldResizeImage;
     public double resizingFactor;
     public boolean shouldRemoveSmallParticles;
@@ -38,19 +30,13 @@ public class AnalyzerParameters {
     public Rgb convexHullColor;
     public double convexHullSize;
     public boolean shouldScalePixelValues; // doScaling, ie. pixels that had values between min-max become between 0-255
+    public boolean shouldIsolateBrightestChannelInOutput;
     public boolean shouldComputeLacunarity;
     public boolean shouldComputeThickness;
 
     private AnalyzerParameters() {}
 
     public AnalyzerParameters(
-        String defaultPath,
-        String[] inputImagePaths,
-        String excelFilePath,
-        boolean shouldSaveResultImages,
-        boolean shouldSaveImagesToSpecificFolder,
-        String resultImagesPath,
-        String resultImageFormat,
         boolean shouldResizeImage,
         double resizingFactor,
         boolean shouldRemoveSmallParticles,
@@ -77,16 +63,10 @@ public class AnalyzerParameters {
         Rgb convexHullColor,
         double convexHullSize,
         boolean shouldScalePixelValues,
+        boolean shouldIsolateBrightestChannelInOutput,
         boolean shouldComputeLacunarity,
         boolean shouldComputeThickness
     ) {
-        this.defaultPath = defaultPath;
-        this.inputImagePaths = inputImagePaths;
-        this.excelFilePath = excelFilePath;
-        this.shouldSaveResultImages = shouldSaveResultImages;
-        this.shouldSaveImagesToSpecificFolder = shouldSaveImagesToSpecificFolder;
-        this.resultImagesPath = resultImagesPath;
-        this.resultImageFormat = resultImageFormat;
         this.shouldResizeImage = shouldResizeImage;
         this.resizingFactor = resizingFactor;
         this.shouldRemoveSmallParticles = shouldRemoveSmallParticles;
@@ -113,13 +93,14 @@ public class AnalyzerParameters {
         this.convexHullColor = convexHullColor;
         this.convexHullSize = convexHullSize;
         this.shouldScalePixelValues = shouldScalePixelValues;
+        this.shouldIsolateBrightestChannelInOutput = shouldIsolateBrightestChannelInOutput;
         this.shouldComputeLacunarity = shouldComputeLacunarity;
         this.shouldComputeThickness = shouldComputeThickness;
     }
 
-    public static AnalyzerParameters defaults() {
+    public static AnalyzerParameters defaults()
+    {
         AnalyzerParameters p = new AnalyzerParameters();
-        p.defaultPath = "C:/";
         p.outlineColor = new Rgb("FFFF00");
         p.skeletonColor = new Rgb("FF0000");
         p.branchingPointsColor = new Rgb("0099FF");
@@ -128,7 +109,6 @@ public class AnalyzerParameters {
         p.skeletonSize = 5;
         p.branchingPointsSize = 8;
         p.convexHullSize = 1;
-        p.resultImageFormat = "jpg";
         p.shouldShowOverlayOrGallery = true;
         p.shouldDrawOutline = true;
         p.shouldDrawSkeleton = true;
@@ -147,31 +127,10 @@ public class AnalyzerParameters {
         return p;
     }
 
-    // TODO: something more sophisticated
-    public static boolean shouldPersistField(Field f) {
-        return !f.getName().equals("inputImagePaths");
-    }
-
-    // TODO: also something more sophisticated
-    public static boolean isValidPath(String path) {
-        return path != null && path.length() > 0;
-    }
-
-    public RefVector<String> validate() {
+    public RefVector<String> validate()
+    {
         RefVector<String> errors = new RefVector<>(String.class);
-        try {
-            Analyzer.resolveImageFormat(resultImageFormat);
-        }
-        catch (Exception ex) {
-            errors.add("Result image format: " + ex.getMessage());
-        }
 
-        if (inputImagePaths == null || inputImagePaths.length == 0)
-            errors.add("At least one input folder is required");
-        if (!isValidPath(excelFilePath))
-            errors.add("Path to spreadsheet is missing");
-        if (shouldSaveImagesToSpecificFolder && !isValidPath(resultImagesPath))
-            errors.add("Specific output folder was selected but not provided");
         if (shouldResizeImage && resizingFactor <= 0.0)
             errors.add("Image resize factor must be >0 (not " + resizingFactor + ")");
         if (shouldRemoveSmallParticles && removeSmallParticlesThreshold <= 0.0)
