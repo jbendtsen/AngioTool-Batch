@@ -1,6 +1,6 @@
 package AngioTool;
 
-import Pixels.Bitmap;
+import Pixels.ArgbBuffer;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -13,12 +13,12 @@ public class ImagingWindow
 {
     public static class ImagingDisplay extends JPanel
     {
-        public Bitmap source;
+        public ArgbBuffer source;
         public BufferedImage drawingImage;
         public Color backgroundColor;
         public Rectangle areaRect = null;
 
-        public ImagingDisplay(Bitmap source)
+        public ImagingDisplay(ArgbBuffer source)
         {
             this.source = source;
             this.backgroundColor = new Color(0);
@@ -66,9 +66,14 @@ public class ImagingWindow
     JButton btnSaveSpreadsheet;
     JTextField textSaveSpreadsheet;
 
-    public ImagingWindow(AngioToolGui2 uiFrame, Bitmap image)
+    public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image)
     {
         this.parentFrame = uiFrame;
         this.imageUi = new ImagingDisplay(image);
+    }
+
+    public void showDialog()
+    {
+        
     }
 }

@@ -29,15 +29,16 @@ public class Tubeness
         ISliceRunner sliceRunner,
         int maxWorkers,
         byte[] output,
-        byte[] input,
+        int[] input,
         int width,
         int height,
+        int brightestChannel,
         double[] sigma,
         int nSigmas
     ) {
         final int area = width * height;
         for (int i = 0; i < area; i++)
-            data.image[i] = (float)(input[i] & 0xff);
+            data.image[i] = (float)((input[i] >> (8 * (2 - brightestChannel))) & 0xff);
 
         Arrays.fill(data.maxEigenOutput, 0, area, 0.0f);
 

@@ -22,12 +22,11 @@ import java.util.ArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class BatchWindow implements Analyzer.IProgressToken
+public class BatchWindow extends JFrame implements Analyzer.IProgressToken
 {
     static int UNITS_GAP = 4;
 
-    final AngioToolGui2 parentFrame;
-    final JDialog jdialog;
+    final AngioToolGui2 mainWindow;
 
     final JLabel labelData = new JLabel();
     final JLabel labelInputFolders = new JLabel();
@@ -61,11 +60,10 @@ public class BatchWindow implements Analyzer.IProgressToken
     public Future<Void> analysisTaskFuture = null;
     public final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-    public BatchWindow(AngioToolGui2 uiFrame, BatchParameters params)
+    public BatchWindow(AngioToolGui2 mainWindow, BatchParameters params)
     {
-        this.parentFrame = uiFrame;
-
-        this.jdialog = new JDialog(parentFrame, "Batch Analysis", true);
+        super("Batch Analysis");
+        this.mainWindow = mainWindow;
 
         defaultPath = params.defaultPath;
 
@@ -126,35 +124,36 @@ public class BatchWindow implements Analyzer.IProgressToken
         analyzeBtn.addActionListener((ActionEvent e) -> BatchWindow.this.startAnalysis());
 
         cancelBtn.setText("Cancel");
-        cancelBtn.addActionListener((ActionEvent e) -> BatchWindow.this.close());
+        cancelBtn.addActionListener((ActionEvent e) -> BatchWindow.this.cancel());
         cancelBtn.setEnabled(false);
     }
 
     public void showDialog()
     {
-        SwingUtilities.invokeLater(() -> {
-            JPanel dialogPanel = new JPanel();
-            GroupLayout layout = new GroupLayout(dialogPanel);
-            dialogPanel.setLayout(layout);
-            layout.setAutoCreateGaps(true);
-            layout.setAutoCreateContainerGaps(true);
+        JPanel dialogPanel = new JPanel();
+        GroupLayout layout = new GroupLayout(dialogPanel);
+        dialogPanel.setLayout(layout);
+        layout.setAutoCreateGaps(true);
+        layout.setAutoCreateContainerGaps(true);
 
-            arrangeUi(layout);
+        arrangeUi(layout);
 
-            jdialog.add(dialogPanel);
-            jdialog.pack();
+        this.getContentPane().add(dialogPanel);
+        this.pack();
 
-            jdialog.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent evt) {
-                    ATPreferences.savePreferences(buildBatchParamsFromUi(), AngioTool.BATCH_TXT);
-                }
-            });
-
-            jdialog.setMinimumSize(jdialog.getPreferredSize());
-            jdialog.setLocationRelativeTo(parentFrame);
-            jdialog.setVisible(true);
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent evt) {
+                ATPreferences.savePreferences(buildBatchParamsFromUi(), AngioTool.BATCH_TXT);
+            }
         });
+
+        Dimension preferredSize = this.getPreferredSize();
+        this.setMinimumSize(preferredSize);
+        this.setSize(new Dimension(preferredSize.width + 150, preferredSize.height));
+
+        this.setLocation(700, 300);
+        this.setVisible(true);
     }
 
     private void arrangeUi(GroupLayout layout)
@@ -253,7 +252,7 @@ public class BatchWindow implements Analyzer.IProgressToken
         fc.setMultiSelectionEnabled(true);
         fc.setCurrentDirectory(new File(defaultPath));
 
-        if (fc.showOpenDialog(parentFrame) != 0)
+        if (fc.showOpenDialog(this) != 0)
             return;
 
         File[] folderList = fc.getSelectedFiles();
@@ -285,7 +284,7 @@ public class BatchWindow implements Analyzer.IProgressToken
             }
         });
 
-        if (fc.showOpenDialog(parentFrame) != 0)
+        if (fc.showOpenDialog(this) != 0)
             return;
 
         defaultPath = fc.getCurrentDirectory().getAbsolutePath();
@@ -329,7 +328,7 @@ public class BatchWindow implements Analyzer.IProgressToken
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         fc.setCurrentDirectory(new File(defaultPath));
 
-        if (fc.showOpenDialog(parentFrame) == 0) {
+        if (fc.showOpenDialog(this) == 0) {
             File file = fc.getSelectedFile();
             if (file != null)
                 textSaveResultsFolder.setText(file.getAbsolutePath());
@@ -379,7 +378,7 @@ public class BatchWindow implements Analyzer.IProgressToken
 
         AnalyzerParameters params;
         try {
-            params = parentFrame.buildAnalyzerParamsFromUi();
+            params = mainWindow.buildAnalyzerParamsFromUi();
         }
         catch (Throwable t) {
             BatchUtils.showDialogBox("Parsing Error", "Invalid data in the form (" + t.getClass().getSimpleName() + ")");
@@ -413,12 +412,12 @@ public class BatchWindow implements Analyzer.IProgressToken
         );
     }
 
-    static void updateDialogSize(JDialog dlg) {
-        Dimension preferred = dlg.getPreferredSize();
-        Dimension curSize = dlg.getSize();
+    void updateWindowSize() {
+        Dimension preferred = this.getPreferredSize();
+        Dimension curSize = this.getSize();
 
         if (preferred.height > curSize.height)
-            dlg.setSize(new Dimension(curSize.width, preferred.height));
+            this.setSize(new Dimension(curSize.width, preferred.height));
     }
 
     @Override
@@ -438,7 +437,7 @@ public class BatchWindow implements Analyzer.IProgressToken
             imageLabel.setText("");
             cancelBtn.setEnabled(false);
 
-            updateDialogSize(jdialog);
+            updateWindowSize();
         });
     }
 
@@ -451,7 +450,7 @@ public class BatchWindow implements Analyzer.IProgressToken
 
             overallLabel.setText("Finding every image to be analyzed...");
 
-            updateDialogSize(jdialog);
+            updateWindowSize();
         });
     }
 
@@ -469,7 +468,7 @@ public class BatchWindow implements Analyzer.IProgressToken
             imageProgress.setValue(0);
             imageProgress.setMaximum(maxProgressPerImage);
 
-            updateDialogSize(jdialog);
+            updateWindowSize();
         });
     }
 
@@ -511,7 +510,7 @@ public class BatchWindow implements Analyzer.IProgressToken
 
             imageProgress.setValue(0);
 
-            updateDialogSize(jdialog);
+            updateWindowSize();
         });
     }
 
@@ -528,7 +527,7 @@ public class BatchWindow implements Analyzer.IProgressToken
             imageLabel.setText(statusMsg);
             imageProgress.setValue(progress);
 
-            updateDialogSize(jdialog);
+            updateWindowSize();
         });
     }
 
@@ -573,7 +572,7 @@ public class BatchWindow implements Analyzer.IProgressToken
             imageProgress.setValue(imageProgress.getMaximum());
             cancelBtn.setEnabled(false);
 
-            updateDialogSize(jdialog);
+            updateWindowSize();
 
             final File xlsxFile = new File(sw.parentFolder, sw.fileName);
             Analyzer.threadPool.submit(() -> {
@@ -583,11 +582,11 @@ public class BatchWindow implements Analyzer.IProgressToken
         });
     }
 
-    public void close()
+    public void cancel()
     {
         SwingUtilities.invokeLater(() -> {
             if (!isClosed.getAndSet(true))
-                jdialog.dispose();
+                this.dispose();
         });
     }
 }

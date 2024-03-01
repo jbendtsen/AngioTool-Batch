@@ -20,7 +20,7 @@ public class NetpbmReader
     static final int ATTR_MAXVAL = 4;
     static final int ATTR_TUPLTYPE = 5;
 
-    public static RefVector<int[]> readArgbImages(FileChannel fc, int maxImages) throws IOException
+    public static RefVector<int[]> readArgbImages(FileChannel fc, int maxImages, boolean shouldAllocateWithRecycler) throws IOException
     {
         RefVector<int[]> images = new RefVector<int[]>(int[].class);
 
@@ -208,7 +208,9 @@ public class NetpbmReader
             );
             */
 
-            int[] pixels = new int[width * height + 2];
+            int[] pixels = shouldAllocateWithRecycler ?
+                IntBufferPool.acquireAsIs(width * height + 2) :
+                new int[width * height + 2];
 
             if (isAscii) {
                 if (sampleType == TYPE_FLOAT)

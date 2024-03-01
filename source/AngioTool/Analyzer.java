@@ -231,20 +231,17 @@ public class Analyzer
         ISliceRunner sliceRunner = new ISliceRunner.Parallel(threadPool);
 
         Scratch data = new Scratch();
-        Bitmap outputImage = batchParams.shouldSaveResultImages ? new Bitmap() : null;
-        Bitmap inputImage = new Bitmap();
+        ArgbBuffer inputImage = new ArgbBuffer();
 
         for (File inFile : inputs) {
             if (uiToken.isClosed())
                 return;
 
             try {
-                ImageFile.openImageForAnalysis(
+                inputImage = ImageFile.openImageForAnalysis(
                     inputImage,
                     inFile.getAbsolutePath(),
-                    imageResizeFactor,
-                    outputImage,
-                    params.shouldIsolateBrightestChannelInOutput
+                    imageResizeFactor
                 );
             }
             catch (Throwable ex) {
@@ -263,7 +260,7 @@ public class Analyzer
             Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
-                result = analyze(data, inFile, inputImage, outputImage, params, linearScalingFactor, sliceRunner, uiToken);
+                result = analyze(data, inFile, inputImage, params, linearScalingFactor, sliceRunner, uiToken);
                 analyzeSucceeded = true;
                 uiToken.updateImageProgress("Saving image stats to Excel...");
                 writeResultToSheet(writer, result);
@@ -276,12 +273,21 @@ public class Analyzer
             if (exception == null) {
                 if (batchParams.shouldSaveResultImages) {
                     uiToken.updateImageProgress("Drawing overlay...");
+
+                    if (params.shouldIsolateBrightestChannelInOutput) {
+                        int area = inputImage.width * inputImage.height;
+                        int[] pixels = inputImage.pixels;
+                        int mask = 0xff000000 | (0xff << (8 * (2 - inputImage.brightestChannel)));
+                        for (int i = 0; i < area; i++)
+                            pixels[i] &= mask;
+                    }
+
                     drawOverlay(
                         params,
                         data.convexHull,
                         data.skelResult,
                         data.analysisImage.buf,
-                        outputImage.getDefaultRgb(),
+                        inputImage.pixels,
                         inputImage.width,
                         inputImage.height
                     );
@@ -294,7 +300,7 @@ public class Analyzer
                             inFile.getAbsolutePath();
                         String format = resolveImageFormat(batchParams.resultImageFormat);
 
-                        ImageFile.saveImage(outputImage, 0, format, basePath + " result." + format);
+                        ImageFile.saveImage(inputImage, 0, format, basePath + " result." + format);
                     }
                     catch (Throwable ex) {
                         exception = ex;
@@ -441,8 +447,7 @@ public class Analyzer
     public static Stats analyze(
         Scratch data,
         File inFile,
-        Bitmap inputImage,
-        Bitmap outputImage,
+        ArgbBuffer inputImage,
         AnalyzerParameters params,
         double linearScalingFactor,
         ISliceRunner sliceRunner,
@@ -459,9 +464,10 @@ public class Analyzer
             sliceRunner,
             MAX_WORKERS,
             analysisImage,
-            inputImage.getDefaultChannel(),
+            inputImage.pixels,
             inputImage.width,
             inputImage.height,
+            inputImage.brightestChannel,
             params.sigmas,
             params.sigmas.length
         );

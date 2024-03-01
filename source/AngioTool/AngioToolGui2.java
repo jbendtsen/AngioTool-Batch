@@ -1,10 +1,11 @@
 package AngioTool;
 
 import Utils.BatchUtils;
-import Pixels.Rgb;
+import Pixels.*;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.*;
+import java.io.File;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -37,8 +38,12 @@ public class AngioToolGui2 extends JFrame implements ActionListener
     final ColorSizeEntry elemSkeleton;
     final ColorSizeEntry elemConvexHull;
 
+    BatchParameters batchParams;
+
     public AngioToolGui2(AnalyzerParameters analyzerParams, BatchParameters batchParams)
     {
+        this.batchParams = batchParams;
+
         initButton(btnLoadImage, AngioTool.ATFolder, "View");
         initButton(btnStartBatch, AngioTool.ATBatch, "Batch");
         initButton(btnHelp, AngioTool.ATHelp, "Help");
@@ -240,26 +245,62 @@ public class AngioToolGui2 extends JFrame implements ActionListener
     {
         Object source = evt.getSource();
         if (source == btnLoadImage)
-            openImage();
+            openImageThenImagingWindow();
         else if (source == btnStartBatch)
             openBatchWindow();
         else if (source == btnHelp)
             openHelpWindow();
     }
 
-    void openImage()
+    void openImageThenImagingWindow()
     {
-        BatchUtils.showDialogBox("View", "Open image");
+        File imageFile = openImageFile();
+        if (imageFile == null)
+            return;
+
+        ArgbBuffer image = null;
+        Exception error = null;
+        try {
+            image = ImageFile.openImageForAnalysis(
+                null,
+                imageFile.getAbsolutePath(),
+                elemResizeInputs.cb.isSelected() ? elemResizeInputs.getValue() : 1.0
+            );
+        }
+        catch (Exception ex) {
+            error = ex;
+        }
+
+        if (image == null) {
+            BatchUtils.showDialogBox(
+                "Failed to analyze image",
+                error != null ?
+                    BatchUtils.buildDialogMessageFromException(error) :
+                    "Image file could not be read"
+            );
+            return;
+        }
+
+        new ImagingWindow(this, image);
     }
 
     void openBatchWindow()
     {
-        BatchUtils.showDialogBox("Batch", "Open batch window");
+        new BatchWindow(this, batchParams).showDialog();
     }
 
     void openHelpWindow()
     {
         BatchUtils.showDialogBox("Help", "Content goes here");
+    }
+
+    File openImageFile()
+    {
+        JFileChooser fc = BatchUtils.createFileChooser();
+        fc.setDialogTitle("Open Image to View/Analyze");
+        fc.setDialogType(JFileChooser.OPEN_DIALOG);
+        fc.setCurrentDirectory(new File(batchParams.defaultPath));
+        return fc.showOpenDialog(this) == 0 ? fc.getSelectedFile() : null;
     }
 
     public AnalyzerParameters buildAnalyzerParamsFromUi()

@@ -353,21 +353,23 @@ public class ImageReader {
 		return pixels;
 	}
 
-	int[] readChunkyRGB(InputStream in) throws IOException {
+	int[] readChunkyRGB(InputStream in, int[] pixels) throws IOException {
 		if (fi.compression==ImageInfo.JPEG)
-			return readJPEG(in);
+			return readJPEG(in, pixels);
 		else if (fi.compression>ImageInfo.COMPRESSION_NONE || (fi.stripOffsets!=null&&fi.stripOffsets.length>1))
-			return readCompressedChunkyRGB(in);
+			return readCompressedChunkyRGB(in, pixels);
 		int pixelsRead;
 		bufferSize = 24*width;
 		byte[] buffer = new byte[bufferSize];
-		int[] pixels = new int[nPixels];
 		long totalRead = 0L;
 		int base = 0;
 		int count, value;
 		int bufferCount;
 		int r, g, b, a;
-		
+
+		if (pixels == null)
+		    pixels = new int[nPixels];
+
 		while (totalRead<byteCount) {
 			if ((totalRead+bufferSize)>byteCount)
 				bufferSize = (int)(byteCount-totalRead);
@@ -429,8 +431,10 @@ public class ImageReader {
 		return pixels;
 	}
 
-	int[] readCompressedChunkyRGB(InputStream in) throws IOException {
-		int[] pixels = new int[nPixels];
+	int[] readCompressedChunkyRGB(InputStream in, int[] pixels) throws IOException {
+	    if (pixels == null)
+		    pixels = new int[nPixels];
+
 		int base = 0;
 		int lastRed=0, lastGreen=0, lastBlue=0;
 		int nextByte;
@@ -491,7 +495,7 @@ public class ImageReader {
 		return pixels;
 	}
 	
-	int[] readJPEG(InputStream in) throws IOException {
+	int[] readJPEG(InputStream in, int[] pixels) throws IOException {
 		BufferedImage bi = ImageIO.read(in);
 		if (bi == null)
 		    return null;
@@ -500,19 +504,23 @@ public class ImageReader {
 		if (buffer instanceof DataBufferInt)
 		    return ((DataBufferInt)buffer).getData();
 
-		int[] pixels = new int[width * height];
+        if (pixels == null)
+		    pixels = new int[width * height];
+
 		bi.getData().getSamples(0, 0, width, height, 0, pixels);
 		return pixels;
 	}
 
-	int[] readPlanarRGB(InputStream in) throws IOException {
+	int[] readPlanarRGB(InputStream in, int[] pixels) throws IOException {
 		if (fi.compression>ImageInfo.COMPRESSION_NONE || (fi.stripOffsets!=null&&fi.stripOffsets.length>1))
-			return readCompressedPlanarRGBImage(in);
+			return readCompressedPlanarRGBImage(in, pixels);
 		DataInputStream dis = new DataInputStream(in);
 		int planeSize = nPixels; // 1/3 image size
 		byte[] buffer = new byte[planeSize];
-		int[] pixels = new int[nPixels];
 		int r, g, b;
+
+        if (pixels == null)
+            pixels = new int[nPixels];
 
 		startTime = 0L;
 		dis.readFully(buffer);
@@ -536,8 +544,10 @@ public class ImageReader {
 		return pixels;
 	}
 
-	int[] readCompressedPlanarRGBImage(InputStream in) throws IOException {
-		int[] pixels = new int[nPixels];
+	int[] readCompressedPlanarRGBImage(InputStream in, int[] pixels) throws IOException {
+	    if (pixels == null)
+		    pixels = new int[nPixels];
+
 		int r, g, b;
 		nPixels *= 3; // read all 3 planes
 		byte[] buffer = readCompressed8bitImage(in);
@@ -821,7 +831,7 @@ public class ImageReader {
 	array (byte, short, int or float). Returns null if there
 	was an IO exception. Does not close the InputStream.
 	*/
-	public Object readPixels(InputStream in) {
+	public Object readPixels(InputStream in, int[] existingRgbPixels) {
 		Object pixels;
 		startTime = System.currentTimeMillis();
 		try {
@@ -858,7 +868,7 @@ public class ImageReader {
 				case ImageInfo.CMYK:
 					bytesPerPixel = fi.getBytesPerPixel();
 					skip(in);
-					pixels = (Object)readChunkyRGB(in);
+					pixels = (Object)readChunkyRGB(in, existingRgbPixels);
 					break;
 				case ImageInfo.RGB_PLANAR:
 				    /*
@@ -867,7 +877,7 @@ public class ImageReader {
 					*/
 					bytesPerPixel = 3;
 					skip(in);
-					pixels = (Object)readPlanarRGB(in);
+					pixels = (Object)readPlanarRGB(in, existingRgbPixels);
 					break;
 				case ImageInfo.BITMAP:
 					bytesPerPixel = 1;
@@ -915,9 +925,9 @@ public class ImageReader {
 	returns the pixel array (byte, short, int or float). Returns
 	null if there was an IO exception. Does not close the InputStream.
 	*/
-	public Object readPixels(InputStream in, long skipCount) {
+	public Object readPixels(InputStream in, long skipCount, int[] existingRgbPixels) {
 		this.skipCount = skipCount;
-		Object pixels = readPixels(in);
+		Object pixels = readPixels(in, existingRgbPixels);
 		if (eofErrorCount>(imageCount==1?1:0))
 			return null;
 		else
@@ -928,14 +938,14 @@ public class ImageReader {
 	Reads the image from a URL and returns the pixel array (byte, 
 	short, int or float). Returns null if there was an IO exception.
 	*/
-	public Object readPixels(String url) {
+	public Object readPixels(String url, int[] existingRgbPixels) {
 		java.net.URL theURL;
 		InputStream is;
 		try {theURL = new URL(url);}
 		catch (MalformedURLException e) {System.out.println(e); return null;}
 		try {is = theURL.openStream();}
 		catch (IOException e) {System.out.println(e); return null;}
-		return readPixels(is);
+		return readPixels(is, existingRgbPixels);
 	}
 	
 	private byte[] uncompress(byte[] input) {

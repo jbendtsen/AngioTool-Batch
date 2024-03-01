@@ -22,38 +22,33 @@ import javax.imageio.ImageIO;
 
 public class ImageFile
 {
-    public static Bitmap openImageForAnalysis(
-        Bitmap image,
+    public static ArgbBuffer openImageForAnalysis(
+        ArgbBuffer image,
         String absPath,
-        double resizeFactor,
-        Bitmap outCombinedCopy,
-        boolean outUseSingleChannel
-    ) throws Exception
+        double resizeFactor
+    ) throws IOException
     {
+        boolean shouldResize = resizeFactor != 1.0;
+
         File file = new File(absPath);
-        ArgbBuffer input = loadImage(file);
-        if (input == null)
+        image = loadImage(image, file, shouldResize);
+        if (image == null)
             return null;
 
-        int width  = Math.max((int)(input.width * resizeFactor), 1);
-        int height = Math.max((int)(input.height * resizeFactor), 1);
+        int width  = Math.max((int)(image.width * resizeFactor), 1);
+        int height = Math.max((int)(image.height * resizeFactor), 1);
         int area = width * height;
-
-        Bitmap.SplitLayer layer = (Bitmap.SplitLayer)image.reallocate(new Bitmap.SplitLayer(), width, height);
-
-        byte[] red   = layer.red.buf;
-        byte[] green = layer.green.buf;
-        byte[] blue  = layer.blue.buf;
 
         long redTally = 0;
         long greenTally = 0;
         long blueTally = 0;
 
-        int[] inputPixels = input.pixels;
-        int originalWidth = input.width;
-        int originalHeight = input.height;
+        int[] resizedPixels = null;
+        int[] inputPixels = image.pixels;
+        int originalWidth = image.width;
+        int originalHeight = image.height;
 
-        if (width == originalWidth && height == originalHeight) {
+        if (!shouldResize) {
             for (int i = 0; i < area; i++) {
                 int r = (inputPixels[i] >> 16) & 0xff;
                 int g = (inputPixels[i] >> 8) & 0xff;
@@ -61,9 +56,7 @@ public class ImageFile
                 redTally += r;
                 greenTally += g;
                 blueTally += b;
-                red[i] = (byte)r;
-                green[i] = (byte)g;
-                blue[i] = (byte)b;
+                inputPixels[i] |= 0xff000000;
             }
         }
         else if (resizeFactor < 1.0) {
@@ -114,6 +107,8 @@ public class ImageFile
                 }
             }
 
+            resizedPixels = new int[area];
+
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     int idx = 4 * (x + width * y);
@@ -124,17 +119,18 @@ public class ImageFile
                     redTally += r;
                     greenTally += g;
                     blueTally += b;
-                    red[idx >> 2] = (byte)r;
-                    green[idx >> 2] = (byte)g;
-                    blue[idx >> 2] = (byte)b;
+                    resizedPixels[idx >> 2] = 0xff000000 | (r << 16) | (g << 8) | b;
                 }
             }
 
             FloatBufferPool.release(samples);
         }
         else {
+            resizedPixels = new int[area];
+
             double xAdv = width > 1 ? (double)(originalWidth - 1) / (double)(width - 1) : 0.0;
             double yAdv = height > 1 ? (double)(originalHeight - 1) / (double)(height - 1) : 0.0;
+
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     double xx = 0.5 + (xAdv * x);
@@ -173,55 +169,32 @@ public class ImageFile
                     redTally += rr;
                     greenTally += gg;
                     blueTally += bb;
-                    red[x+width*y] = (byte)rr;
-                    green[x+width*y] = (byte)gg;
-                    blue[x+width*y] = (byte)bb;
+                    resizedPixels[x+width*y] = 0xff000000 | (rr << 16) | (gg << 8) | bb;
                 }
             }
         }
 
+        int brightestChannel;
         if (redTally >= greenTally && redTally >= blueTally)
-            layer.selectedChannelIdx = 0;
+            brightestChannel = 0;
         else if (greenTally >= blueTally)
-            layer.selectedChannelIdx = 1;
+            brightestChannel = 1;
         else
-            layer.selectedChannelIdx = 2;
+            brightestChannel = 2;
 
-        if (outCombinedCopy != null) {
-            if (width == originalWidth && height == originalHeight) {
-                outCombinedCopy.setFirstCombinedBuffer(inputPixels, width, height);
-
-                int mask = outUseSingleChannel ? (0xff << ((2-layer.selectedChannelIdx) * 8)) : 0xfffFFF;
-                for (int i = 0; i < area; i++)
-                    inputPixels[i] = 0xff000000 | (inputPixels[i] & mask);
-            }
-            else {
-                outCombinedCopy.reallocate(new Bitmap.CombinedLayer(), width, height);
-                int[] rgb = outCombinedCopy.getDefaultRgb();
-
-                if (outUseSingleChannel) {
-                    byte[] channel = layer.getSelectedChannel();
-                    int shift = (2-layer.selectedChannelIdx) * 8;
-                    for (int i = 0; i < area; i++) {
-                        int p = channel[i] & 0xff;
-                        rgb[i] = 0xff000000 | (p << shift);
-                    }
-                }
-                else {
-                    for (int i = 0; i < area; i++)
-                        rgb[i] = 0xff000000 | inputPixels[i];
-                }
-            }
+        if (shouldResize) {
+            IntBufferPool.release(image.pixels);
+            image.pixels = resizedPixels;
         }
-
-        inputPixels = null;
 
         image.width = width;
         image.height = height;
+        image.brightestChannel = brightestChannel;
+
         return image;
     }
 
-    public static ArgbBuffer loadImage(File file) throws IOException
+    public static ArgbBuffer loadImage(ArgbBuffer existingImage, File file, boolean shouldAllocateWithRecycler) throws IOException
     {
         ArgbBuffer input = null;
         IOException firstException = null;
@@ -230,23 +203,23 @@ public class ImageFile
 
         if (fileName.endsWith(".tif") || fileName.endsWith(".tiff") || (fileName.charAt(fileNameLen - 3) == 'p' && fileName.charAt(fileNameLen - 1) == 'm')) {
             try {
-                input = loadTiffOrNetpbm(file);
+                input = loadTiffOrNetpbm(existingImage, file, shouldAllocateWithRecycler);
             }
             catch (IOException ex) {
                 firstException = ex;
             }
             if (input == null)
-                input = loadFromImageIO(file);
+                input = loadFromImageIO(existingImage, file, shouldAllocateWithRecycler);
         }
         else {
             try {
-                input = loadFromImageIO(file);
+                input = loadFromImageIO(existingImage, file, shouldAllocateWithRecycler);
             }
             catch (IOException ex) {
                 firstException = ex;
             }
             if (input == null)
-                input = loadTiffOrNetpbm(file);
+                input = loadTiffOrNetpbm(existingImage, file, shouldAllocateWithRecycler);
         }
 
         if (input != null)
@@ -258,7 +231,7 @@ public class ImageFile
         return null;
     }
 
-    static ArgbBuffer loadFromImageIO(File file) throws IOException
+    static ArgbBuffer loadFromImageIO(ArgbBuffer existingImage, File file, boolean shouldAllocateWithRecycler) throws IOException
     {
         BufferedImage javaImage = ImageIO.read(file);
         if (javaImage == null)
@@ -269,13 +242,22 @@ public class ImageFile
         if (width <= 0 || height <= 0)
             return null;
 
-        int[] pixels = new int[width * height];
+        int[] pixels = shouldAllocateWithRecycler ?
+            IntBufferPool.acquireAsIs(width * height) :
+            new int[width * height];
+
         javaImage.getRGB(0, 0, width, height, pixels, 0, width);
 
-        return new ArgbBuffer(pixels, width, height);
+        if (existingImage == null)
+            return new ArgbBuffer(pixels, width, height);
+
+        existingImage.pixels = pixels;
+        existingImage.width = width;
+        existingImage.height = height;
+        return existingImage;
     }
 
-    static ArgbBuffer loadTiffOrNetpbm(File file) throws IOException
+    static ArgbBuffer loadTiffOrNetpbm(ArgbBuffer existingImage, File file, boolean shouldAllocateWithRecycler) throws IOException
     {
         int[] inputPixels = null;
         int width = 0;
@@ -294,7 +276,7 @@ public class ImageFile
             fc.position(0);
 
             if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f')) {
-                RefVector<int[]> images = NetpbmReader.readArgbImages(fc, 1);
+                RefVector<int[]> images = NetpbmReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
                 if (images == null || images.size <= 0)
                     return null;
 
@@ -317,33 +299,35 @@ public class ImageFile
                 if (width <= 0 || height <= 0)
                     return null;
 
+                inputPixels = shouldAllocateWithRecycler ?
+                    IntBufferPool.acquireAsIs(width * height) :
+                    new int[width * height];
+
                 fc.position(0);
-                Object pixelData = new ImageReader(info).readPixels(fis);
-                if (pixelData instanceof int[]) {
-                    inputPixels = (int[])pixelData;
+                Object pixelData = new ImageReader(info).readPixels(fis, inputPixels);
+
+                // If pixelData is an int[], then it will already be filled with the data we want.
+                // Otherwise we must convert the data to an int[] ourselves.
+
+                if (pixelData instanceof byte[]) {
+                    byte[] byteData = (byte[])pixelData;
+                    for (int i = 0; i < inputPixels.length; i++) {
+                        int lum = byteData[i] & 0xff;
+                        inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
+                    }
                 }
-                else {
-                    inputPixels = new int[width * height];
-                    if (pixelData instanceof byte[]) {
-                        byte[] byteData = (byte[])pixelData;
-                        for (int i = 0; i < inputPixels.length; i++) {
-                            int lum = byteData[i] & 0xff;
-                            inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
-                        }
+                else if (pixelData instanceof short[]) {
+                    short[] shortData = (short[])pixelData;
+                    for (int i = 0; i < inputPixels.length; i++) {
+                        int lum = shortData[i] >>> 8;
+                        inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
                     }
-                    else if (pixelData instanceof short[]) {
-                        short[] shortData = (short[])pixelData;
-                        for (int i = 0; i < inputPixels.length; i++) {
-                            int lum = shortData[i] >>> 8;
-                            inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
-                        }
-                    }
-                    else if (pixelData instanceof float[]) {
-                        float[] floatData = (float[])pixelData;
-                        for (int i = 0; i < inputPixels.length; i++) {
-                            int lum = (int)(floatData[i] * 255.0f);
-                            inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
-                        }
+                }
+                else if (pixelData instanceof float[]) {
+                    float[] floatData = (float[])pixelData;
+                    for (int i = 0; i < inputPixels.length; i++) {
+                        int lum = (int)(floatData[i] * 255.0f);
+                        inputPixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
                     }
                 }
             }
@@ -359,22 +343,22 @@ public class ImageFile
             }
         }
 
-        return inputPixels != null ? new ArgbBuffer(inputPixels, width, height) : null;
+        if (inputPixels == null)
+            return null;
+
+        if (existingImage == null)
+            return new ArgbBuffer(inputPixels, width, height);
+
+        existingImage.pixels = inputPixels;
+        existingImage.width = width;
+        existingImage.height = height;
+        return existingImage;
     }
 
-    public static void saveImage(Bitmap image, int layerIdx, String format, String absPath) throws IOException
+    public static void saveImage(ArgbBuffer image, int layerIdx, String format, String absPath) throws IOException
     {
-        Bitmap.Layer layer = image.layers.buf[layerIdx];
-
         if (format.length() == 3 && format.charAt(0) == 'p' && format.charAt(2) == 'm') {
-            if (layer instanceof Bitmap.SplitLayer) {
-                Bitmap.SplitLayer sl = (Bitmap.SplitLayer)layer;
-                writePpm24(sl.red.buf, sl.green.buf, sl.blue.buf, image.width, image.height, absPath);
-            }
-            else {
-                int[] rgb = layer.getRgb();
-                writePpm24(rgb, image.width, image.height, absPath);
-            }
+            writePpm24(image.pixels, image.width, image.height, absPath);
         }
         else if ("tif".equals(format) || "tiff".equals(format)) {
             OutputStream out = Files.newOutputStream(
@@ -388,18 +372,8 @@ public class ImageFile
             fi.nImages = 1;
             fi.width = image.width;
             fi.height = image.height;
-
-            if (layer instanceof Bitmap.SplitLayer) {
-                Bitmap.SplitLayer sl = (Bitmap.SplitLayer)layer;
-                fi.fileType = ImageInfo.RGB_SPLIT;
-                fi.reds = sl.red.buf;
-                fi.greens = sl.green.buf;
-                fi.blues = sl.blue.buf;
-            }
-            else {
-                fi.fileType = ImageInfo.RGB;
-                fi.pixels = layer.getRgb();
-            }
+            fi.fileType = ImageInfo.RGB;
+            fi.pixels = image.pixels;
 
             TiffEncoder te = new TiffEncoder(fi);
 
@@ -416,20 +390,7 @@ public class ImageFile
         else {
             BufferedImage javaImage = new BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB);
             int[] outPixels = ((DataBufferInt)javaImage.getData().getDataBuffer()).getData();
-
-            if (layer instanceof Bitmap.SplitLayer) {
-                Bitmap.SplitLayer sl = (Bitmap.SplitLayer)layer;
-                int area = image.width * image.height;
-                byte[] reds = sl.red.buf;
-                byte[] greens = sl.green.buf;
-                byte[] blues = sl.blue.buf;
-                for (int i = 0; i < area; i++)
-                    outPixels[i] = ((reds[i] & 0xff) << 16) | ((greens[i] & 0xff) << 8) | (blues[i] & 0xff);
-            }
-            else {
-                System.arraycopy(layer.getRgb(), 0, outPixels, 0, image.width * image.height);
-            }
-
+            System.arraycopy(image.pixels, 0, outPixels, 0, image.width * image.height);
             ImageIO.write(javaImage, format, new File(absPath));
         }
     }
@@ -482,42 +443,6 @@ public class ImageFile
         }
         catch (Exception ex) {
             ex.printStackTrace();
-        }
-    }
-
-    public static void writePpm24(byte[] reds, byte[] greens, byte[] blues, int width, int height, String title)
-    {
-        int area = width * height;
-        byte[] header = ("P6\n" + width + " " + height + "\n255\n").getBytes();
-        int size = header.length + area * 3;
-        byte[] buffer = ByteBufferPool.acquireAsIs(size);
-        System.arraycopy(header, 0, buffer, 0, header.length);
-
-        for (int p = 0, b = header.length; p < area; p++, b += 3) {
-            buffer[b]   = (byte)(reds[p] & 0xff);
-            buffer[b+1] = (byte)(greens[p] & 0xff);
-            buffer[b+2] = (byte)(blues[p] & 0xff);
-        }
-
-        try {
-            OutputStream out = Files.newOutputStream(
-                FileSystems.getDefault().getPath("", title),
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE
-            );
-            try {
-                out.write(buffer, 0, size);
-            }
-            finally {
-                out.close();
-            }
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        finally {
-            ByteBufferPool.release(buffer);
         }
     }
 
