@@ -8,8 +8,12 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-public class AngioToolGui2 extends JFrame
+public class AngioToolGui2 extends JFrame implements ActionListener
 {
+    final JButton btnLoadImage = new JButton();
+    final JButton btnStartBatch = new JButton();
+    final JButton btnHelp = new JButton();
+
     final JLabel labelAnalysis = new JLabel();
     final JCheckBox cbComputeLacunarity = new JCheckBox();
     final JCheckBox cbComputeThickness = new JCheckBox();
@@ -35,6 +39,10 @@ public class AngioToolGui2 extends JFrame
 
     public AngioToolGui2(AnalyzerParameters analyzerParams, BatchParameters batchParams)
     {
+        initButton(btnLoadImage, AngioTool.ATFolder, "View");
+        initButton(btnStartBatch, AngioTool.ATBatch, "Batch");
+        initButton(btnHelp, AngioTool.ATHelp, "Help");
+
         labelAnalysis.setText("Analysis");
         BatchUtils.setNewFontSizeOn(labelAnalysis, 20);
 
@@ -48,11 +56,6 @@ public class AngioToolGui2 extends JFrame
 
         groupSkeletonizer.add(rbSkelFast);
         groupSkeletonizer.add(rbSkelThorough);
-
-        /*{
-            ButtonModel m = params.shouldUseFastSkeletonizer ? rbSkelFast.getModel() : rbSkelThorough.getModel();
-            groupSaveResults.setSelected(m, true);
-        }*/
 
         cbComputeLacunarity.setText("Lacunarity");
         cbComputeLacunarity.setSelected(analyzerParams.shouldComputeLacunarity);
@@ -114,9 +117,24 @@ public class AngioToolGui2 extends JFrame
         this.setSize(new Dimension(minSize.width + 50, minSize.height));
     }
 
+    private void initButton(JButton button, ImageIcon icon, String text)
+    {
+        button.setIcon(icon);
+        button.setVerticalTextPosition(SwingConstants.BOTTOM);
+        button.setHorizontalTextPosition(SwingConstants.CENTER);
+        button.setText(text);
+        button.addActionListener(this);
+    }
+
     private void arrangeUi(GroupLayout layout)
     {
         layout.setHorizontalGroup(layout.createParallelGroup()
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(btnLoadImage)
+                .addComponent(btnStartBatch)
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addComponent(btnHelp)
+            )
             .addComponent(labelAnalysis)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
@@ -135,15 +153,6 @@ public class AngioToolGui2 extends JFrame
                     .addGroup(elemRemoveParticles.addToGroup(layout.createSequentialGroup()))
                 )
             )
-            /*
-            .addGroup(
-                BatchUtils.arrangeParallelEntries(
-                    elemLinearScaleFactor, elemRemoveParticles, layout, BatchUtils.arrangeParallelEntries(
-                        elemResizeInputs, elemFillHoles, layout, layout.createSequentialGroup()
-                    ).addGap(20)
-                )
-            )
-            */
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
                     .addComponent(labelSigmas)
@@ -171,6 +180,12 @@ public class AngioToolGui2 extends JFrame
         final int PATH_WIDTH = 30;
 
         layout.setVerticalGroup(layout.createSequentialGroup()
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(btnLoadImage)
+                .addComponent(btnStartBatch)
+                .addComponent(btnHelp)
+            )
+            .addGap(20)
             .addComponent(labelAnalysis)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelSkeletonizer)
@@ -218,6 +233,33 @@ public class AngioToolGui2 extends JFrame
                 )
             )
         );
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent evt)
+    {
+        Object source = evt.getSource();
+        if (source == btnLoadImage)
+            openImage();
+        else if (source == btnStartBatch)
+            openBatchWindow();
+        else if (source == btnHelp)
+            openHelpWindow();
+    }
+
+    void openImage()
+    {
+        BatchUtils.showDialogBox("View", "Open image");
+    }
+
+    void openBatchWindow()
+    {
+        BatchUtils.showDialogBox("Batch", "Open batch window");
+    }
+
+    void openHelpWindow()
+    {
+        BatchUtils.showDialogBox("Help", "Content goes here");
     }
 
     public AnalyzerParameters buildAnalyzerParamsFromUi()

@@ -74,7 +74,7 @@ public class BatchWindow implements Analyzer.IProgressToken
 
         labelInputFolders.setText("Select input folders:");
 
-        btnInputFolders.setIcon(AngioTool.ATOpenImageSmall);
+        btnInputFolders.setIcon(AngioTool.ATFolderSmall);
         btnInputFolders.addActionListener((ActionEvent e) -> BatchWindow.this.selectInputFolders());
         //textInputFolders
 
@@ -100,7 +100,7 @@ public class BatchWindow implements Analyzer.IProgressToken
         groupSaveResults.add(rbSameOutput);
         groupSaveResults.add(rbSaveResultsTo);
 
-        btnSaveResultsFolder.setIcon(AngioTool.ATOpenImageSmall);
+        btnSaveResultsFolder.setIcon(AngioTool.ATFolderSmall);
         btnSaveResultsFolder.addActionListener((ActionEvent e) -> BatchWindow.this.selectResultFolder());
         //textSaveResultsFolder
 

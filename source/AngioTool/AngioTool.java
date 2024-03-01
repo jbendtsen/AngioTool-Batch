@@ -31,13 +31,13 @@ public class AngioTool
     public static String resultsPath;
     //public static String ATClassCanonicalName;
     public static ImageIcon ATIcon;
-    public static ImageIcon ATOpenImage;
-    public static ImageIcon ATRunAnalysis;
+    public static ImageIcon ATImage;
+    public static ImageIcon ATFolder;
     public static ImageIcon ATBatch;
     public static ImageIcon ATExit;
     public static ImageIcon ATHelp;
     public static ImageIcon ATExcel;
-    public static ImageIcon ATOpenImageSmall;
+    public static ImageIcon ATFolderSmall;
     public static ImageIcon ATExcelSmall;
 
     public static void main(String[] args)
@@ -72,14 +72,13 @@ public class AngioTool
 
         //screenDim = Toolkit.getDefaultToolkit().getScreenSize();
 
-        ATIcon = createImageIcon(at, "/images/ATIcon20.gif");
-        ATOpenImage = createImageIcon(at, "/images/OpenImages.png");
-        ATRunAnalysis = createImageIcon(at, "/images/RunAnalysis.png");
-        ATBatch = createImageIcon(at, "/images/Batch.png");
-        ATHelp = createImageIcon(at, "/images/Help.png");
-        ATExcel = createImageIcon(at, "/images/Excel.png");
+        ATIcon = createImageIcon(at, "/images/icon.gif");
+        ATFolder = createImageIcon(at, "/images/folder.png");
+        ATBatch = createImageIcon(at, "/images/batch.png");
+        ATHelp = createImageIcon(at, "/images/help.png");
+        ATExcel = createImageIcon(at, "/images/excel.png");
 
-        ATOpenImageSmall = createResizedIcon(ATOpenImage, 24, 24);
+        ATFolderSmall = createResizedIcon(ATFolder, 24, 24);
         ATExcelSmall = createResizedIcon(ATExcel, 24, 24);
 
         RefVector<String> errors = new RefVector<>(String.class);
