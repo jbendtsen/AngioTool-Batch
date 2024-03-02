@@ -38,17 +38,40 @@ public class ImagingWindow extends JFrame implements ActionListener
         {
             // determine whether the empty space should be above and below or left and right of the image
             g.getClipBounds(areaRect);
-            int beforeX = 0, beforeY = 0;
-            int afterX = 0, afterY = 0;
-            int blankW = 0, blankH = 0;
-            int imgX = 0, imgY = 0;
-            int imgW = 0, imgH = 0;
 
-            g.drawImage(drawingImage, imgX, imgY, imgW, imgH, backgroundColor, null);
+            if (areaRect.width <= 0 || areaRect.height <= 0) {
+                super.paintComponent(g);
+                return;
+            }
 
-            g.setColor(backgroundColor);
-            g.fillRect(beforeX, beforeY, blankW, blankH);
-            g.fillRect(afterX, afterY, blankW, blankH);
+            double wRatio = (double)source.width / (double)areaRect.width;
+            double hRatio = (double)source.height / (double)areaRect.height;
+
+            if (wRatio > hRatio && wRatio > 0.0) {
+                int imgH = Math.min((int)(source.height / wRatio + 0.5), areaRect.height);
+                int dH = areaRect.height - imgH;
+                int imgY = (dH / 2) + (dH % 2);
+
+                g.drawImage(drawingImage, 0, imgY, areaRect.width, imgH, backgroundColor, null);
+
+                g.setColor(backgroundColor);
+                g.fillRect(0, 0, areaRect.width, imgY);
+                g.fillRect(0, imgY + imgH, areaRect.width, dH / 2);
+            }
+            else if (wRatio < hRatio && hRatio > 0.0) {
+                int imgW = Math.min((int)(source.width / hRatio + 0.5), areaRect.width);
+                int dW = areaRect.width - imgW;
+                int imgX = (dW / 2) + (dW % 2);
+
+                g.drawImage(drawingImage, imgX, 0, imgW, areaRect.height, backgroundColor, null);
+
+                g.setColor(backgroundColor);
+                g.fillRect(0, 0, imgX, areaRect.height);
+                g.fillRect(imgX + imgW, 0, dW / 2, areaRect.height);
+            }
+            else {
+                g.drawImage(drawingImage, 0, 0, areaRect.width, areaRect.height, backgroundColor, null);
+            }
         }
 
         public void updateSurface()
@@ -78,11 +101,20 @@ public class ImagingWindow extends JFrame implements ActionListener
         this.inputFile = sourceFile;
 
         this.labelSaveImage.setText("Save result image");
+
         this.btnSaveImage.addActionListener(this);
         this.btnSaveImage.setIcon(AngioTool.ATFolderSmall);
-        this.labelSaveSpreadsheet.setText("Save spreadsheet");
+        this.btnSaveImage.setEnabled(false);
+
+        this.textSaveImage.setEnabled(false);
+
+        this.labelSaveSpreadsheet.setText("Save stats to spreadsheet");
+
         this.btnSaveSpreadsheet.addActionListener(this);
         this.btnSaveSpreadsheet.setIcon(AngioTool.ATExcelSmall);
+        this.btnSaveSpreadsheet.setEnabled(false);
+
+        this.textSaveSpreadsheet.setEnabled(false);
     }
 
     public void showDialog()
