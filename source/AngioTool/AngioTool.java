@@ -24,11 +24,10 @@ public class AngioTool
     public static String javaVmName;
     public static final String LOOKANDFEEL = "System";
     public static final String THEME = "Test";
-    public static Dimension screenDim;
-    public static String ATDir;
-    public static String prefsDir;
-    public static String currentDir;
-    public static String resultsPath;
+    //public static String ATDir;
+    //public static String prefsDir;
+    //public static String currentDir;
+    //public static String resultsPath;
     //public static String ATClassCanonicalName;
     public static ImageIcon ATIcon;
     public static ImageIcon ATImage;
@@ -66,11 +65,8 @@ public class AngioTool
         javaVersion = System.getProperty("java.version");
         javaVmName = System.getProperty("java.vm.name");
         javaVmVersion = System.getProperty("java.vm.version");
-        ATDir = System.getProperty("user.dir").replace("\\", "/");
+        //ATDir = System.getProperty("user.dir").replace("\\", "/");
         URL url = AngioToolGui2.class.getProtectionDomain().getCodeSource().getLocation();
-        prefsDir = url.toString();
-
-        //screenDim = Toolkit.getDefaultToolkit().getScreenSize();
 
         ATIcon = createImageIcon(at, "/images/icon.gif");
         ATFolder = createImageIcon(at, "/images/folder.png");
@@ -105,8 +101,6 @@ public class AngioTool
             BatchUtils.showDialogBox("Configuration parsing error", String.join("\n", errors));
 
         AngioToolGui2 angioToolGui = new AngioToolGui2(analyzerParams, batchParams);
-        angioToolGui.setTitle(VERSION);
-        angioToolGui.setIconImage(ATIcon.getImage());
         angioToolGui.setLocation(new Point(200, 250));
         angioToolGui.setVisible(true);
     }

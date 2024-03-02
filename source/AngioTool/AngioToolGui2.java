@@ -42,7 +42,10 @@ public class AngioToolGui2 extends JFrame implements ActionListener
 
     public AngioToolGui2(AnalyzerParameters analyzerParams, BatchParameters batchParams)
     {
+        super(AngioTool.VERSION);
         this.batchParams = batchParams;
+
+        this.setIconImage(AngioTool.ATIcon.getImage());
 
         initButton(btnLoadImage, AngioTool.ATFolder, "View");
         initButton(btnStartBatch, AngioTool.ATBatch, "Batch");
@@ -78,7 +81,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener
 
         labelSigmas.setText("Vessel Diameters list");
 
-        textSigmas.setText(BatchUtils.formatDoubleArray(analyzerParams.sigmas));
+        textSigmas.setText(BatchUtils.formatDoubleArray(analyzerParams.sigmas, "12"));
         textSigmas.setToolTipText("List of sigmas (numbers)");
 
         labelIntensity.setText("Vessel Intensity range");
@@ -119,7 +122,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener
 
         Dimension minSize = this.getPreferredSize();
         this.setMinimumSize(minSize);
-        this.setSize(new Dimension(minSize.width + 50, minSize.height));
+        this.setSize(new Dimension(minSize.width + 50, minSize.height + 10));
     }
 
     private void initButton(JButton button, ImageIcon icon, String text)
@@ -281,7 +284,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener
             return;
         }
 
-        new ImagingWindow(this, image);
+        new ImagingWindow(this, image, imageFile).showDialog();
     }
 
     void openBatchWindow()

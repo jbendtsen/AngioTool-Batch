@@ -180,8 +180,11 @@ public class BatchUtils
         return values;
     }
 
-    public static String formatDoubleArray(double[] array)
+    public static String formatDoubleArray(double[] array, String defaultValue)
     {
+        if (array == null || array.length == 0)
+            return defaultValue;
+
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < array.length; i++) {
             if (i != 0)

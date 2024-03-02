@@ -7,12 +7,9 @@ import java.awt.Color;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowAdapter;
+import java.awt.event.*;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileFilter;
 import java.io.File;
 import java.io.IOException;
@@ -64,8 +61,9 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     {
         super("Batch Analysis");
         this.mainWindow = mainWindow;
+        this.defaultPath = params.defaultPath;
 
-        defaultPath = params.defaultPath;
+        this.setIconImage(AngioTool.ATIcon.getImage());
 
         labelData.setText("Data");
         BatchUtils.setNewFontSizeOn(labelData, 20);
@@ -133,6 +131,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         JPanel dialogPanel = new JPanel();
         GroupLayout layout = new GroupLayout(dialogPanel);
         dialogPanel.setLayout(layout);
+        dialogPanel.setBorder(new EmptyBorder(0, 2, 12, 2));
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
 
@@ -150,7 +149,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
 
         Dimension preferredSize = this.getPreferredSize();
         this.setMinimumSize(preferredSize);
-        this.setSize(new Dimension(preferredSize.width + 150, preferredSize.height));
+        this.setSize(new Dimension(preferredSize.width + 150, preferredSize.height + 10));
 
         this.setLocation(700, 300);
         this.setVisible(true);

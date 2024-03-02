@@ -2,8 +2,11 @@ package Pixels;
 
 import java.awt.Color;
 
-public class Rgb {
-    public int value;
+public class Rgb
+{
+    public int value = 0;
+
+    public Rgb() {}
 
     public Rgb(String str) {
         value = 0;

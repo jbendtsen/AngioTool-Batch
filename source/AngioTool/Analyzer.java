@@ -791,7 +791,7 @@ public class Analyzer
             stats.imageHeight,
             stats.thresholdLow,
             stats.thresholdHigh,
-            BatchUtils.formatDoubleArray(stats.sigmas),
+            BatchUtils.formatDoubleArray(stats.sigmas, ""),
             stats.removeSmallParticlesThreshold,
             stats.fillHolesValue,
             stats.linearScalingFactor,

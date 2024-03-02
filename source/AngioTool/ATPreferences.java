@@ -16,10 +16,12 @@ import java.util.HashMap;
 import java.util.Date;
 import java.lang.reflect.Field;
 
-public class ATPreferences {
+public class ATPreferences
+{
     public static String separator = System.getProperty("file.separator");
 
-    public static void savePreferences(Object params, String fileName) {
+    public static void savePreferences(Object params, String fileName)
+    {
         StringBuilder sb = new StringBuilder();
         sb.append("# " + AngioTool.VERSION + " Preferences\n");
         sb.append("# " + new Date() + "\n\n");
@@ -47,7 +49,7 @@ public class ATPreferences {
         }
 
         try {
-            File path = new File(AngioTool.prefsDir, fileName);
+            File path = new File(acquirePrefsDir(), fileName);
             FileOutputStream out = new FileOutputStream(path);
             out.write(sb.toString().getBytes());
             out.close();
@@ -57,31 +59,11 @@ public class ATPreferences {
         }
     }
 
-    public static RefVector<String> load(Object params, Class contextClass, String fileName) throws IOException {
-        InputStream f = contextClass.getResourceAsStream("/" + fileName);
-        if (AngioTool.ATDir == null)
-            AngioTool.ATDir = System.getProperty("user.dir");
+    public static RefVector<String> load(Object params, Class contextClass, String fileName) throws IOException
+    {
+        File atFolder = acquirePrefsDir();
 
-        String userHome = System.getProperty("user.home");
-        File atFolder = new File(userHome, "AngioTool-Batch");
-        if (!atFolder.exists())
-            atFolder.mkdir();
-
-        /*
-        if (Utils.osName.indexOf("Windows", 0) > -1) {
-            AngioTool.prefsDir = AngioTool.ATDir;
-        } else {
-            AngioTool.prefsDir = userHome;
-            if (IJ.isMacOSX()) {
-                AngioTool.prefsDir = AngioTool.prefsDir + "/Library/Preferences";
-            }
-        }
-        */
-
-        AngioTool.prefsDir = atFolder.getAbsolutePath();
-
-        File prefsPath = new File(atFolder, fileName);
-        f = new FileInputStream(prefsPath);
+        InputStream f = new FileInputStream(new File(atFolder, fileName));
 
         //if (f == null)
             //return "AT_Prefs.txt not found in AngioTool.jar or in " + AngioTool.prefsDir;
@@ -104,7 +86,8 @@ public class ATPreferences {
         return populatePreferences(params, sb.toString());
     }
 
-    public static RefVector<String> populatePreferences(Object params, String text) {
+    public static RefVector<String> populatePreferences(Object params, String text)
+    {
         HashMap<String, Field> map = new HashMap<>();
         Field[] fields = params.getClass().getDeclaredFields();
         for (Field f : fields)
@@ -168,13 +151,15 @@ public class ATPreferences {
         return errors;
     }
 
-    public static String getStringOfArrayOrObject(Object obj) {
+    public static String getStringOfArrayOrObject(Object obj)
+    {
         ByteVectorOutputStream bv = new ByteVectorOutputStream();
         writeArrayToString(bv, obj);
         return bv.toString();
     }
 
-    public static void writeArrayToString(ByteVectorOutputStream bv, Object obj) {
+    public static void writeArrayToString(ByteVectorOutputStream bv, Object obj)
+    {
         if (obj instanceof String) {
             bv.add((String)obj);
         }
@@ -213,7 +198,8 @@ public class ATPreferences {
             bv.add(obj != null ? obj.toString() : "null");
     }
 
-    public static Object parseArray(String value, String type) throws Exception {
+    public static Object parseArray(String value, String type) throws Exception
+    {
         Object array;
         if (type.equals("double[]")) {
             array = BatchUtils.getSomeDoubles(value);
@@ -225,17 +211,23 @@ public class ATPreferences {
         return array;
     }
 
-    public static Boolean parseBool(String value) {
+    public static Boolean parseBool(String value)
+    {
         char c = value.charAt(0);
         c = c >= 'A' && c <= 'Z' ? (char)(c + 0x20) : c;
         return c == 't' || c == 'y';
     }
 
-    public static String getHomeDir() {
-        return AngioTool.ATDir;
+    public static File acquirePrefsDir() throws IOException
+    {
+        File atFolder = new File(System.getProperty("user.home"), "AngioTool-Batch");
+        if (!atFolder.exists())
+            atFolder.mkdir();
+        return atFolder;
     }
 
-    public static String getFileSeparator() {
+    public static String getFileSeparator()
+    {
         return separator;
     }
 }

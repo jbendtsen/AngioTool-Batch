@@ -8,19 +8,16 @@ import javax.swing.*;
 public class ColorSizeEntry extends NumberEntry
 {
     public RoundedPanel panel;
-
     public Rgb color;
-    public final Rgb originalColor;
 
     public ColorSizeEntry(String name, boolean enabled, double value, Rgb color)
     {
         super(name, enabled, value, "px");
-        this.color = color;
-        this.originalColor = color;
+        this.color = color == null ? new Rgb() : color;
 
         panel = new RoundedPanel();
         panel.setCornerRadius(7);
-        panel.setBackground(color.toColor());
+        panel.setBackground(this.color.toColor());
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
