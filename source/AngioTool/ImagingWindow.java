@@ -9,6 +9,7 @@ import java.awt.Toolkit;
 import java.awt.event.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.io.File;
 import javax.swing.*;
 
@@ -16,27 +17,49 @@ public class ImagingWindow extends JFrame implements ActionListener
 {
     public static class ImagingDisplay extends JPanel
     {
-        public ArgbBuffer source;
+        public boolean waiting_;
+        public ArgbBuffer source_;
+        int imgWidth;
+        int imgHeight;
+
         public BufferedImage drawingImage;
         public Color backgroundColor;
         public Rectangle areaRect = new Rectangle();
 
+        private float[] kernel = build5x5Kernel();
+
+        static float[] build5x5Kernel()
+        {
+            float[] k = new float[25];
+            final float s = 1.0f / 256.0f;
+            k[0] = k[4] = k[24] = k[20]  = s *  1;
+            k[1] = k[9] = k[23] = k[15]  = s *  4;
+            k[2] = k[14] = k[22] = k[10] = s *  6;
+            k[5] = k[3] = k[19] = k[21]  = s *  4;
+            k[6] = k[8] = k[18] = k[16]  = s *  9;
+            k[7] = k[13] = k[17] = k[11] = s * 20;
+            k[12] = s * 80;
+            return k;
+        }
+
         public ImagingDisplay(ArgbBuffer source)
         {
-            this.source = source;
+            this.source_ = source;
+            this.imgWidth = source.width;
+            this.imgHeight = source.height;
+            this.drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
             this.backgroundColor = new Color(0);
         }
 
         @Override
         public Dimension getPreferredSize()
         {
-            return new Dimension(source.width, source.height);
+            return new Dimension(imgWidth, imgHeight);
         }
 
         @Override
         public void paintComponent(Graphics g)
         {
-            // determine whether the empty space should be above and below or left and right of the image
             g.getClipBounds(areaRect);
 
             if (areaRect.width <= 0 || areaRect.height <= 0) {
@@ -44,11 +67,11 @@ public class ImagingWindow extends JFrame implements ActionListener
                 return;
             }
 
-            double wRatio = (double)source.width / (double)areaRect.width;
-            double hRatio = (double)source.height / (double)areaRect.height;
+            double wRatio = (double)imgWidth / (double)areaRect.width;
+            double hRatio = (double)imgHeight / (double)areaRect.height;
 
             if (wRatio > hRatio && wRatio > 0.0) {
-                int imgH = Math.min((int)(source.height / wRatio + 0.5), areaRect.height);
+                int imgH = Math.min((int)(imgHeight / wRatio + 0.5), areaRect.height);
                 int dH = areaRect.height - imgH;
                 int imgY = (dH / 2) + (dH % 2);
 
@@ -59,7 +82,7 @@ public class ImagingWindow extends JFrame implements ActionListener
                 g.fillRect(0, imgY + imgH, areaRect.width, dH / 2);
             }
             else if (wRatio < hRatio && hRatio > 0.0) {
-                int imgW = Math.min((int)(source.width / hRatio + 0.5), areaRect.width);
+                int imgW = Math.min((int)(imgWidth / hRatio + 0.5), areaRect.width);
                 int dW = areaRect.width - imgW;
                 int imgX = (dW / 2) + (dW % 2);
 
@@ -74,7 +97,25 @@ public class ImagingWindow extends JFrame implements ActionListener
             }
         }
 
-        public void updateSurface()
+        public void onImageWaiting()
+        {
+            int[] outPixels = ((DataBufferInt)drawingImage.getRaster().getDataBuffer()).getData();
+            float[] blurWnd = new float[15 * 3];
+            int[] coords = new int[2];
+
+            synchronized (source_) {
+
+            }
+
+            try {
+                javax.imageio.ImageIO.write(drawingImage, "png", new File("test.png"));
+            }
+            catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        public void onImageFinished()
         {
             
         }
@@ -119,6 +160,9 @@ public class ImagingWindow extends JFrame implements ActionListener
 
     public void showDialog()
     {
+        imageUi.onImageWaiting();
+        dispatchAnalysisTask();
+
         JPanel dialogPanel = new JPanel();
         GroupLayout layout = new GroupLayout(dialogPanel);
         dialogPanel.setLayout(layout);
@@ -184,5 +228,10 @@ public class ImagingWindow extends JFrame implements ActionListener
     public void actionPerformed(ActionEvent evt)
     {
         
+    }
+
+    void dispatchAnalysisTask()
+    {
+    
     }
 }

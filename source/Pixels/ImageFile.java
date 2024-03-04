@@ -389,7 +389,7 @@ public class ImageFile
         }
         else {
             BufferedImage javaImage = new BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB);
-            int[] outPixels = ((DataBufferInt)javaImage.getData().getDataBuffer()).getData();
+            int[] outPixels = ((DataBufferInt)javaImage.getRaster().getDataBuffer()).getData();
             System.arraycopy(image.pixels, 0, outPixels, 0, image.width * image.height);
             ImageIO.write(javaImage, format, new File(absPath));
         }

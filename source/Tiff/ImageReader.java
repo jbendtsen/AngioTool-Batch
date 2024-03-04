@@ -500,7 +500,7 @@ public class ImageReader {
 		if (bi == null)
 		    return null;
 
-		DataBuffer buffer = bi.getData().getDataBuffer();
+		DataBuffer buffer = bi.getRaster().getDataBuffer();
 		if (buffer instanceof DataBufferInt)
 		    return ((DataBufferInt)buffer).getData();
 
