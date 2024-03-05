@@ -221,7 +221,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addComponent(labelResultsImageFormat)
-                .addComponent(textResultsImageFormat)
+                .addComponent(textResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
             )
             .addGap(12)
             .addComponent(sepProgress)
