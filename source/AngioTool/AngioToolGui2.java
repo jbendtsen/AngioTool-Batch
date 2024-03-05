@@ -40,6 +40,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     final ColorSizeEntry elemSkeleton;
     final ColorSizeEntry elemConvexHull;
 
+    final JLabel labelMemory = new JLabel();
+
     AnalyzerParameters latestAnalyzerParams = null;
     BatchParameters batchParams;
 
@@ -102,10 +104,12 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         elemSkeleton = new ColorSizeEntry("Skeleton:", analyzerParams.shouldDrawSkeleton, analyzerParams.skeletonSize, analyzerParams.skeletonColor);
         elemConvexHull = new ColorSizeEntry("Convex Hull:", analyzerParams.shouldDrawConvexHull, analyzerParams.convexHullSize, analyzerParams.convexHullColor);
 
+        updateMemoryMonitor();
+
         JPanel dialogPanel = new JPanel();
         GroupLayout layout = new GroupLayout(dialogPanel);
         dialogPanel.setLayout(layout);
-        dialogPanel.setBorder(new EmptyBorder(0, 2, 12, 2));
+        dialogPanel.setBorder(new EmptyBorder(0, 2, 4, 2));
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
 
@@ -195,6 +199,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                     ).addGap(20)
                 )
             )
+            .addComponent(labelMemory)
         );
 
         final int MIN_PATH_WIDTH = 18;
@@ -253,6 +258,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                     elemSkeleton.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
+            .addGap(8)
+            .addComponent(labelMemory)
         );
     }
 
@@ -268,12 +275,15 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             openHelpWindow();
         else
             maybeUpdateImagingWindows();
+
+        updateMemoryMonitor();
     }
 
     @Override
     public void focusGained(FocusEvent evt)
     {
         // ...
+        updateMemoryMonitor();
     }
 
     @Override
@@ -383,5 +393,14 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             cbComputeLacunarity.isSelected(),
             cbComputeThickness.isSelected()
         );
+    }
+
+    public void updateMemoryMonitor()
+    {
+        Runtime rt = Runtime.getRuntime();
+        long maxMB  = (rt.maxMemory() + (1L << 19)) >> 20L;
+        long usedMB = (rt.totalMemory() - rt.freeMemory() + (1L << 19)) >> 20L;
+
+        labelMemory.setText("Used MB: " + usedMB + " / " + maxMB);
     }
 }
