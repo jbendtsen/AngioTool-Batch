@@ -186,18 +186,21 @@ public class Canvas
         }
     }
 
-    public static void blurArgbImage(int[] outPixels, int[] inPixels, int width, int height, int[] row, int[] blurWnd)
+    public static void blurArgbImage(int[] outPixels, int[] inPixels, int width, int height, int[] row, float[] blurWnd)
     {
         int[] dstPixels = row;
+        int[] srcPixels = inPixels;
+
         int wndSize = Math.min(Math.max(
-            Math.min(w - 1 + (w % 2), h - 1 + (h % 2)),
+            Math.min(width - 1 + (width % 2), height - 1 + (height % 2)),
             1), blurWnd.length / 3
         );
         int halfWnd = wndSize / 2;
 
-        int nA = w;
-        int nB = h;
-        int d1 = w;
+        int shouldWriteToOutPixels = 0;
+        int nA = width;
+        int nB = height;
+        int d1 = width;
         int d2 = 1;
 
         for (int axis = 0; axis < 2; axis++) {
@@ -209,11 +212,6 @@ public class Canvas
             d2 = temp;
 
             for (int a = 0; a < nA; a++) {
-                coords[0] = 0;
-                coords[1] = a;
-                int x = coords[axis];
-                int y = coords[1-axis];
-
                 float sumRed = 0f, sumGreen = 0f, sumBlue = 0f;
                 for (int i = 0; i < halfWnd; i++) {
                     int rgb = inPixels[(halfWnd - i) * d1 + a * d2];
@@ -229,32 +227,21 @@ public class Canvas
                     sumBlue  += blurWnd[halfWnd*3+2] = (float)(rgb & 0xff);
                 }
 
-                for (int b = 0; b < nB; b++) {
-                    coords[0] = b;
-                    x = coords[axis];
-                    y = coords[1-axis];
+                int offset = a * d2 * shouldWriteToOutPixels;
+                int l1 = Math.max(d1 * shouldWriteToOutPixels, 1);
 
+                for (int b = 0; b < nB; b++) {
                     float red = sumRed / wndSize;
                     float green = sumGreen / wndSize;
                     float blue = sumBlue / wndSize;
-                    /*
-                    for (int i = 0; i < 25; i++) {
-                        int xx = Math.min(Math.max(x + (i % 5) - 2, 0), w - 1);
-                        int yy = Math.min(Math.max(y + (i / 5) - 2, 0), h - 1);
-                        int rgb = inPixels[xx + w * yy];
-                        float factor = kernel[i];
-                        red   += factor * ((rgb >> 16) & 0xff);
-                        green += factor * ((rgb >> 8) & 0xff);
-                        blue  += factor * (rgb & 0xff);
-                    }*/
 
-                    dstPixels[x+w*y*axis] = 0xff000000 |
-                        (Math.min((int)red, 255) << 16) |
-                        (Math.min((int)green, 255) << 8) |
-                        Math.min((int)blue, 255);
+                    dstPixels[b * l1 + offset] = 0xff000000 |
+                        (Math.min(Math.max((int)red, 0), 255) << 16) |
+                        (Math.min(Math.max((int)green, 0), 255) << 8) |
+                        Math.min(Math.max((int)blue, 0), 255);
 
                     int nextPixelIdx = b + halfWnd + 1;
-                    int rgb = inPixels[Math.min(nextPixelIdx, 2*(nB-1) - nextPixelIdx) * d1 + a * d2];
+                    int rgb = srcPixels[Math.min(nextPixelIdx, 2*(nB-1) - nextPixelIdx) * d1 + a * d2];
                     float nextRed   = (float)((rgb >> 16) & 0xff);
                     float nextGreen = (float)((rgb >> 8) & 0xff);
                     float nextBlue  = (float)(rgb & 0xff);
@@ -267,12 +254,18 @@ public class Canvas
                     blurWnd[3*idx+1] = nextGreen;
                     blurWnd[3*idx+2] = nextBlue;
                 }
+
+                if (dstPixels == row) {
+                    for (int b = 0; b < nB; b++)
+                        outPixels[b * d1 + a * d2] = row[b];
+                }
             }
 
-            if (axis == 0)
-                System.arraycopy(row, 0, inPixels, a * w, w);
-
-            dstPixels = outPixels;
+            if (outPixels != inPixels) {
+                dstPixels = outPixels;
+                srcPixels = outPixels;
+                shouldWriteToOutPixels = 1;
+            }
         }
     }
 }

@@ -223,7 +223,6 @@ public class Analyzer
 
         uiToken.onBatchStatsKnown(inputs.size(), determineUpdateCountPerImage(params, batchParams));
 
-        double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
         double imageResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
 
         boolean startedAnyImages = false;
@@ -260,7 +259,7 @@ public class Analyzer
             Throwable exception = null;
             boolean analyzeSucceeded = false;
             try {
-                result = analyze(data, inFile, inputImage, params, linearScalingFactor, sliceRunner, uiToken);
+                result = analyze(data, inFile, inputImage, params, sliceRunner, uiToken);
                 analyzeSucceeded = true;
                 uiToken.updateImageProgress("Saving image stats to Excel...");
                 writeResultToSheet(writer, result);
@@ -274,22 +273,16 @@ public class Analyzer
                 if (batchParams.shouldSaveResultImages) {
                     uiToken.updateImageProgress("Drawing overlay...");
 
-                    if (params.shouldIsolateBrightestChannelInOutput) {
-                        int area = inputImage.width * inputImage.height;
-                        int[] pixels = inputImage.pixels;
-                        int mask = 0xff000000 | (0xff << (8 * (2 - inputImage.brightestChannel)));
-                        for (int i = 0; i < area; i++)
-                            pixels[i] &= mask;
-                    }
-
                     drawOverlay(
                         params,
                         data.convexHull,
                         data.skelResult,
                         data.analysisImage.buf,
                         inputImage.pixels,
+                        inputImage.pixels,
                         inputImage.width,
-                        inputImage.height
+                        inputImage.height,
+                        inputImage.brightestChannel
                     );
 
                     try {
@@ -449,7 +442,6 @@ public class Analyzer
         File inFile,
         ArgbBuffer inputImage,
         AnalyzerParameters params,
-        double linearScalingFactor,
         ISliceRunner sliceRunner,
         IProgressToken uiToken
     ) {
@@ -581,6 +573,7 @@ public class Analyzer
         );
 
         double averageVesselDiameter = 0.0;
+        double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
 
         if (params.shouldComputeThickness)
         {
@@ -652,18 +645,40 @@ public class Analyzer
         IntVector convexHull,
         AnalyzeSkeleton2.Result skelResult,
         byte[] analysisImage,
-        int[] overlayImage,
+        int[] outputImage,
+        int[] inputImage,
         int width,
-        int height
+        int height,
+        int brightestChannel
     ) {
+        int area = width * height;
+
+        if (params.shouldIsolateBrightestChannelInOutput) {
+            if (params.shouldExpandOutputToGrayScale) {
+                int shift = 8 * (2 - brightestChannel);
+                for (int i = 0; i < area; i++) {
+                    int lum = (inputImage[i] >>> shift) & 0xff;
+                    outputImage[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
+                }
+            }
+            else {
+                int mask = 0xff << (8 * (2 - brightestChannel));
+                for (int i = 0; i < area; i++)
+                    outputImage[i] = 0xff000000 | (inputImage[i] & mask);
+            }
+        }
+        else {
+            for (int i = 0; i < area; i++)
+                outputImage[i] = inputImage[i] | 0xff000000;
+        }
+
         if (params.shouldDrawOutline)
         {
-            int area = width * height;
             int[] outlineScratch1 = IntBufferPool.acquireAsIs(area);
             int[] outlineScratch2 = IntBufferPool.acquireAsIs(area);
 
             Outline.drawOutline(
-                overlayImage,
+                outputImage,
                 outlineScratch1,
                 outlineScratch2,
                 params.outlineColor.getARGB(),
@@ -680,7 +695,7 @@ public class Analyzer
         if (params.shouldDrawConvexHull)
         {
             Canvas.drawLines(
-                overlayImage,
+                outputImage,
                 width,
                 height,
                 null,
@@ -695,7 +710,7 @@ public class Analyzer
         if (params.shouldDrawSkeleton)
         {
             Canvas.drawCircles(
-                overlayImage,
+                outputImage,
                 width,
                 height,
                 null,
@@ -706,7 +721,7 @@ public class Analyzer
                 params.skeletonSize
             );
             Canvas.drawCircles(
-                overlayImage,
+                outputImage,
                 width,
                 height,
                 skelResult.removedJunctions.buf,
@@ -721,7 +736,7 @@ public class Analyzer
         if (params.shouldDrawBranchPoints)
         {
             Canvas.drawCircles(
-                overlayImage,
+                outputImage,
                 width,
                 height,
                 skelResult.isolatedJunctions.buf,

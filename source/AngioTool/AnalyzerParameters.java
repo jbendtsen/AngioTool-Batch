@@ -31,6 +31,7 @@ public class AnalyzerParameters {
     public double convexHullSize;
     public boolean shouldScalePixelValues; // doScaling, ie. pixels that had values between min-max become between 0-255
     public boolean shouldIsolateBrightestChannelInOutput;
+    public boolean shouldExpandOutputToGrayScale;
     public boolean shouldComputeLacunarity;
     public boolean shouldComputeThickness;
 
@@ -64,6 +65,7 @@ public class AnalyzerParameters {
         double convexHullSize,
         boolean shouldScalePixelValues,
         boolean shouldIsolateBrightestChannelInOutput,
+        boolean shouldExpandOutputToGrayScale,
         boolean shouldComputeLacunarity,
         boolean shouldComputeThickness
     ) {
@@ -94,6 +96,7 @@ public class AnalyzerParameters {
         this.convexHullSize = convexHullSize;
         this.shouldScalePixelValues = shouldScalePixelValues;
         this.shouldIsolateBrightestChannelInOutput = shouldIsolateBrightestChannelInOutput;
+        this.shouldExpandOutputToGrayScale = shouldExpandOutputToGrayScale;
         this.shouldComputeLacunarity = shouldComputeLacunarity;
         this.shouldComputeThickness = shouldComputeThickness;
     }
@@ -118,6 +121,7 @@ public class AnalyzerParameters {
         p.shouldFillHoles = false;
         p.shouldRemoveSmallParticles = false;
         p.resizingFactor = 1.0;
+        p.shouldIsolateBrightestChannelInOutput = true;
         p.shouldComputeLacunarity = true;
         p.shouldComputeThickness = true;
         p.linearScalingFactor = 0.0;

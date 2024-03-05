@@ -1,6 +1,9 @@
 package AngioTool;
 
 import Pixels.ArgbBuffer;
+import Pixels.Canvas;
+import Utils.ISliceRunner;
+import Xlsx.SpreadsheetWriter;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -13,42 +16,32 @@ import java.awt.image.DataBufferInt;
 import java.io.File;
 import javax.swing.*;
 
-public class ImagingWindow extends JFrame implements ActionListener
+public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IProgressToken
 {
     public static class ImagingDisplay extends JPanel
     {
-        public boolean waiting_;
-        public ArgbBuffer source_;
+        ArgbBuffer source;
+        int[] rowScratch;
+        float[] blurWnd;
         int imgWidth;
         int imgHeight;
 
-        public BufferedImage drawingImage;
-        public Color backgroundColor;
-        public Rectangle areaRect = new Rectangle();
-
-        private float[] kernel = build5x5Kernel();
-
-        static float[] build5x5Kernel()
-        {
-            float[] k = new float[25];
-            final float s = 1.0f / 256.0f;
-            k[0] = k[4] = k[24] = k[20]  = s *  1;
-            k[1] = k[9] = k[23] = k[15]  = s *  4;
-            k[2] = k[14] = k[22] = k[10] = s *  6;
-            k[5] = k[3] = k[19] = k[21]  = s *  4;
-            k[6] = k[8] = k[18] = k[16]  = s *  9;
-            k[7] = k[13] = k[17] = k[11] = s * 20;
-            k[12] = s * 80;
-            return k;
-        }
+        BufferedImage drawingImage;
+        Color backgroundColor;
+        Rectangle areaRect;
+        Analyzer.Stats currentStats;
 
         public ImagingDisplay(ArgbBuffer source)
         {
-            this.source_ = source;
+            this.source = source;
             this.imgWidth = source.width;
             this.imgHeight = source.height;
+            this.rowScratch = new int[imgWidth];
+            this.blurWnd = new float[15 * 3];
             this.drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
             this.backgroundColor = new Color(0);
+            this.areaRect = new Rectangle();
+            this.currentStats = null;
         }
 
         @Override
@@ -97,27 +90,46 @@ public class ImagingWindow extends JFrame implements ActionListener
             }
         }
 
-        public void onImageWaiting()
+        public int[] getDrawingBuffer()
         {
-            int[] outPixels = ((DataBufferInt)drawingImage.getRaster().getDataBuffer()).getData();
-            float[] blurWnd = new float[15 * 3];
-            int[] coords = new int[2];
-
-            synchronized (source_) {
-
-            }
-
-            try {
-                javax.imageio.ImageIO.write(drawingImage, "png", new File("test.png"));
-            }
-            catch (Exception ex) {
-                ex.printStackTrace();
-            }
+            return ((DataBufferInt)drawingImage.getRaster().getDataBuffer()).getData();
         }
 
-        public void onImageFinished()
+        public void notifyImageProcessing(boolean shouldCopyFromSource)
         {
-            
+            this.currentStats = null;
+
+            int[] outPixels = getDrawingBuffer();
+            Canvas.blurArgbImage(
+                outPixels,
+                shouldCopyFromSource ? source.pixels : outPixels,
+                imgWidth,
+                imgHeight,
+                rowScratch,
+                blurWnd
+            );
+
+            this.repaint();
+        }
+
+        public void onImageFinished(AnalyzerParameters params, Analyzer.Scratch data, Analyzer.Stats stats)
+        {
+            this.currentStats = stats;
+
+            int[] outPixels = getDrawingBuffer();
+            Analyzer.drawOverlay(
+                params,
+                data.convexHull,
+                data.skelResult,
+                data.analysisImage.buf,
+                outPixels,
+                source.pixels,
+                imgWidth,
+                imgHeight,
+                source.brightestChannel
+            );
+
+            this.repaint();
         }
     }
 
@@ -133,6 +145,9 @@ public class ImagingWindow extends JFrame implements ActionListener
     JLabel labelSaveSpreadsheet = new JLabel();
     JButton btnSaveSpreadsheet = new JButton();
     JTextField textSaveSpreadsheet = new JTextField();
+
+    final Analyzer.Scratch analyzerScratch = new Analyzer.Scratch();
+    final ISliceRunner sliceRunner = new ISliceRunner.Parallel(Analyzer.threadPool);
 
     public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, File sourceFile)
     {
@@ -160,7 +175,7 @@ public class ImagingWindow extends JFrame implements ActionListener
 
     public void showDialog()
     {
-        imageUi.onImageWaiting();
+        imageUi.notifyImageProcessing(true);
         dispatchAnalysisTask();
 
         JPanel dialogPanel = new JPanel();
@@ -224,14 +239,48 @@ public class ImagingWindow extends JFrame implements ActionListener
         );
     }
 
+    void dispatchAnalysisTask()
+    {
+        final AnalyzerParameters params = parentFrame.buildAnalyzerParamsFromUi();
+
+        Analyzer.threadPool.submit(() -> {
+            Analyzer.Stats stats = Analyzer.analyze(
+                analyzerScratch,
+                inputFile,
+                imageUi.source,
+                params,
+                sliceRunner,
+                ImagingWindow.this
+            );
+            SwingUtilities.invokeLater(() -> {
+                imageUi.onImageFinished(params, analyzerScratch, stats);
+            });
+        });
+    }
+
     @Override
     public void actionPerformed(ActionEvent evt)
     {
         
     }
 
-    void dispatchAnalysisTask()
+    @Override public boolean isClosed() { return false; }
+    @Override public void notifyNoImages() {}
+    @Override public void onEnumerationStart() {}
+    @Override public void onBatchStatsKnown(int nImages, int maxProgressPerImage) {}
+    @Override public void notifyImageWasInvalid() {}
+    @Override public void onStartImage(String absPath) {}
+    @Override public void updateImageProgress(String statusMsg) {}
+
+    @Override
+    public void onImageDone(Throwable error)
     {
-    
+        // ...
+    }
+
+    @Override
+    public void onFinished(SpreadsheetWriter sw)
+    {
+        // ...
     }
 }

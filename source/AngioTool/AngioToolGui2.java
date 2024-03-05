@@ -339,6 +339,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener
             elemConvexHull.getValue(),
             false, // shouldScalePixelValues
             true,  // shouldIsolateBrightestChannelInOutput
+            false, // shouldExpandOutputToGrayScale
             cbComputeLacunarity.isSelected(),
             cbComputeThickness.isSelected()
         );
