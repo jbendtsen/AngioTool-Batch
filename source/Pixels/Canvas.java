@@ -212,25 +212,34 @@ public class Canvas
             d2 = temp;
 
             for (int a = 0; a < nA; a++) {
-                float sumRed = 0f, sumGreen = 0f, sumBlue = 0f;
-                for (int i = 0; i < halfWnd; i++) {
-                    int rgb = inPixels[(halfWnd - i) * d1 + a * d2];
-                    int altIdx = wndSize - i - 1;
-                    sumRed   += blurWnd[i*3]   = blurWnd[altIdx*3]   = (float)((rgb >> 16) & 0xff);
-                    sumGreen += blurWnd[i*3+1] = blurWnd[altIdx*3+1] = (float)((rgb >> 8) & 0xff);
-                    sumBlue  += blurWnd[i*3+2] = blurWnd[altIdx*3+2] = (float)(rgb & 0xff);
-                }
-                {
-                    int rgb = inPixels[a * d2];
-                    sumRed   += blurWnd[halfWnd*3]   = (float)((rgb >> 16) & 0xff);
-                    sumGreen += blurWnd[halfWnd*3+1] = (float)((rgb >> 8) & 0xff);
-                    sumBlue  += blurWnd[halfWnd*3+2] = (float)(rgb & 0xff);
+                float sumRed = 0f;
+                float sumGreen = 0f;
+                float sumBlue = 0f;
+                for (int i = 0; i < wndSize; i++) {
+                    int rgb = inPixels[Math.min(wndSize - i, nB - 1) * d1 + a * d2];
+                    sumRed   += blurWnd[i*3]   = (float)((rgb >> 16) & 0xff);
+                    sumGreen += blurWnd[i*3+1] = (float)((rgb >> 8) & 0xff);
+                    sumBlue  += blurWnd[i*3+2] = (float)(rgb & 0xff);
                 }
 
                 int offset = a * d2 * shouldWriteToOutPixels;
                 int l1 = Math.max(d1 * shouldWriteToOutPixels, 1);
 
                 for (int b = 0; b < nB; b++) {
+                    int nextIdx = b + halfWnd;
+                    int rgb = srcPixels[Math.min(nextIdx, 2*(nB-1) - nextIdx) * d1 + a * d2];
+                    float nextRed   = (float)((rgb >> 16) & 0xff);
+                    float nextGreen = (float)((rgb >> 8) & 0xff);
+                    float nextBlue  = (float)(rgb & 0xff);
+
+                    int idx = nextIdx % wndSize;
+                    sumRed   += nextRed   - blurWnd[3*idx];
+                    sumGreen += nextGreen - blurWnd[3*idx+1];
+                    sumBlue  += nextBlue  - blurWnd[3*idx+2];
+                    blurWnd[3*idx] = nextRed;
+                    blurWnd[3*idx+1] = nextGreen;
+                    blurWnd[3*idx+2] = nextBlue;
+
                     float red = sumRed / wndSize;
                     float green = sumGreen / wndSize;
                     float blue = sumBlue / wndSize;
@@ -239,20 +248,6 @@ public class Canvas
                         (Math.min(Math.max((int)red, 0), 255) << 16) |
                         (Math.min(Math.max((int)green, 0), 255) << 8) |
                         Math.min(Math.max((int)blue, 0), 255);
-
-                    int nextPixelIdx = b + halfWnd + 1;
-                    int rgb = srcPixels[Math.min(nextPixelIdx, 2*(nB-1) - nextPixelIdx) * d1 + a * d2];
-                    float nextRed   = (float)((rgb >> 16) & 0xff);
-                    float nextGreen = (float)((rgb >> 8) & 0xff);
-                    float nextBlue  = (float)(rgb & 0xff);
-                    int idx = b % wndSize;
-
-                    sumRed   += nextRed   - blurWnd[3*idx];
-                    sumGreen += nextGreen - blurWnd[3*idx+1];
-                    sumBlue  += nextBlue  - blurWnd[3*idx+2];
-                    blurWnd[3*idx] = nextRed;
-                    blurWnd[3*idx+1] = nextGreen;
-                    blurWnd[3*idx+2] = nextBlue;
                 }
 
                 if (dstPixels == row) {

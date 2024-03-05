@@ -43,6 +43,7 @@ public class Outline
         int[] readingScratch = outlineScratch1;
         int[] writingScratch = outlineScratch2;
 
+        Arrays.fill(readingScratch, 0, area, 0);
         Arrays.fill(writingScratch, 0, area, 0);
 
         byte firstInputPixel = image[0];
@@ -52,7 +53,7 @@ public class Outline
         readingScratch[0] = 0;
 
         for (int i = 0; i < iterations; i++) {
-            int shouldReadMask = (-iterations) >> 31;
+            int shouldReadMask = -i >> 31;
 
             for (int y = -1; y < height; y++) {
                 int topLeft = 0, topRight = 0, bottomLeft = 0, bottomRight = 0;

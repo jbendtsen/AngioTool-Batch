@@ -43,7 +43,7 @@ public class ImagingWindow extends JFrame implements ActionListener
             this.imgWidth = source.width;
             this.imgHeight = source.height;
             this.rowScratch = new int[Math.max(imgWidth, imgHeight)];
-            this.blurWnd = new float[15 * 3];
+            this.blurWnd = new float[25 * 3];
             this.drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
             this.backgroundColor = new Color(0);
             this.areaRect = new Rectangle();
