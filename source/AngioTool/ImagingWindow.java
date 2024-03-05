@@ -14,12 +14,18 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.File;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.*;
 
-public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IProgressToken
+public class ImagingWindow extends JFrame implements ActionListener
 {
     public static class ImagingDisplay extends JPanel
     {
+        boolean waiting = false;
+        AnalyzerParameters pendingParams = null;
+
         ArgbBuffer source;
         int[] rowScratch;
         float[] blurWnd;
@@ -36,7 +42,7 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
             this.source = source;
             this.imgWidth = source.width;
             this.imgHeight = source.height;
-            this.rowScratch = new int[imgWidth];
+            this.rowScratch = new int[Math.max(imgWidth, imgHeight)];
             this.blurWnd = new float[15 * 3];
             this.drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
             this.backgroundColor = new Color(0);
@@ -97,6 +103,7 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
 
         public void notifyImageProcessing(boolean shouldCopyFromSource)
         {
+            this.waiting = true;
             this.currentStats = null;
 
             int[] outPixels = getDrawingBuffer();
@@ -112,7 +119,7 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
             this.repaint();
         }
 
-        public void onImageFinished(AnalyzerParameters params, Analyzer.Scratch data, Analyzer.Stats stats)
+        public AnalyzerParameters onImageFinished(AnalyzerParameters params, Analyzer.Scratch data, Analyzer.Stats stats)
         {
             this.currentStats = stats;
 
@@ -129,9 +136,30 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
                 source.brightestChannel
             );
 
+            if (pendingParams != null) {
+                notifyImageProcessing(false);
+
+                AnalyzerParameters temp = pendingParams;
+                pendingParams = null;
+                return temp;
+            }
+
+            this.waiting = false;
             this.repaint();
+
+            return null;
         }
     }
+
+    public static final int MAX_WORKERS = 4;
+
+    public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
+        /* corePoolSize */ 1,
+        /* maximumPoolSize */ MAX_WORKERS,
+        /* keepAliveTime */ 30,
+        /* unit */ TimeUnit.SECONDS,
+        /* workQueue */ new LinkedBlockingQueue<>()
+    );
 
     AngioToolGui2 parentFrame;
     File inputFile;
@@ -173,10 +201,10 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
         this.textSaveSpreadsheet.setEnabled(false);
     }
 
-    public void showDialog()
+    public ImagingWindow showDialog()
     {
         imageUi.notifyImageProcessing(true);
-        dispatchAnalysisTask();
+        dispatchAnalysisTask(parentFrame.buildAnalyzerParamsFromUi());
 
         JPanel dialogPanel = new JPanel();
         GroupLayout layout = new GroupLayout(dialogPanel);
@@ -185,6 +213,13 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
         layout.setAutoCreateContainerGaps(true);
 
         arrangeUi(layout);
+
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent evt) {
+                parentFrame.imagingWindows.remove(ImagingWindow.this);
+            }
+        });
 
         this.getContentPane().add(dialogPanel);
         this.pack();
@@ -199,6 +234,19 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
 
         this.setLocation(700, 50);
         this.setVisible(true);
+
+        return this;
+    }
+
+    public void updateImage(AnalyzerParameters params)
+    {
+        if (imageUi.waiting) {
+            imageUi.pendingParams = params;
+            return;
+        }
+
+        imageUi.notifyImageProcessing(false);
+        dispatchAnalysisTask(params);
     }
 
     private void arrangeUi(GroupLayout layout)
@@ -239,21 +287,21 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
         );
     }
 
-    void dispatchAnalysisTask()
+    void dispatchAnalysisTask(AnalyzerParameters params)
     {
-        final AnalyzerParameters params = parentFrame.buildAnalyzerParamsFromUi();
-
-        Analyzer.threadPool.submit(() -> {
+        ImagingWindow.threadPool.submit(() -> {
             Analyzer.Stats stats = Analyzer.analyze(
                 analyzerScratch,
                 inputFile,
                 imageUi.source,
                 params,
                 sliceRunner,
-                ImagingWindow.this
+                null
             );
             SwingUtilities.invokeLater(() -> {
-                imageUi.onImageFinished(params, analyzerScratch, stats);
+                AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerScratch, stats);
+                if (nextParams != null)
+                    dispatchAnalysisTask(nextParams);
             });
         });
     }
@@ -262,25 +310,5 @@ public class ImagingWindow extends JFrame implements ActionListener, Analyzer.IP
     public void actionPerformed(ActionEvent evt)
     {
         
-    }
-
-    @Override public boolean isClosed() { return false; }
-    @Override public void notifyNoImages() {}
-    @Override public void onEnumerationStart() {}
-    @Override public void onBatchStatsKnown(int nImages, int maxProgressPerImage) {}
-    @Override public void notifyImageWasInvalid() {}
-    @Override public void onStartImage(String absPath) {}
-    @Override public void updateImageProgress(String statusMsg) {}
-
-    @Override
-    public void onImageDone(Throwable error)
-    {
-        // ...
-    }
-
-    @Override
-    public void onFinished(SpreadsheetWriter sw)
-    {
-        // ...
     }
 }

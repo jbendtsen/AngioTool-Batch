@@ -1,6 +1,7 @@
 package AngioTool;
 
 import Pixels.Rgb;
+import Utils.BatchUtils;
 import Utils.RefVector;
 
 public class AnalyzerParameters {
@@ -129,6 +130,47 @@ public class AnalyzerParameters {
         p.thresholdLow = 10;
         p.thresholdHigh = 50;
         return p;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (!(obj instanceof AnalyzerParameters))
+            return false;
+
+        AnalyzerParameters other = (AnalyzerParameters)obj;
+        return
+            other.shouldResizeImage == shouldResizeImage &&
+            other.resizingFactor == resizingFactor &&
+            other.shouldRemoveSmallParticles == shouldRemoveSmallParticles &&
+            other.removeSmallParticlesThreshold == removeSmallParticlesThreshold &&
+            other.shouldFillHoles == shouldFillHoles &&
+            other.fillHolesValue == fillHolesValue &&
+            BatchUtils.isDoubleArraySimilar(other.sigmas, sigmas) &&
+            other.thresholdHigh == thresholdHigh &&
+            other.thresholdLow == thresholdLow &&
+            other.shouldUseFastSkeletonizer == shouldUseFastSkeletonizer &&
+            other.shouldApplyLinearScale == shouldApplyLinearScale &&
+            other.linearScalingFactor == linearScalingFactor &&
+            other.shouldShowOverlayOrGallery == shouldShowOverlayOrGallery &&
+            other.shouldDrawOutline == shouldDrawOutline &&
+            other.outlineColor.value == outlineColor.value &&
+            other.outlineSize == outlineSize &&
+            other.shouldDrawSkeleton == shouldDrawSkeleton &&
+            other.skeletonColor.value == skeletonColor.value &&
+            other.skeletonSize == skeletonSize &&
+            other.shouldDrawBranchPoints == shouldDrawBranchPoints &&
+            other.branchingPointsColor.value == branchingPointsColor.value &&
+            other.branchingPointsSize == branchingPointsSize &&
+            other.shouldDrawConvexHull == shouldDrawConvexHull &&
+            other.convexHullColor.value == convexHullColor.value &&
+            other.convexHullSize == convexHullSize &&
+            other.shouldScalePixelValues == shouldScalePixelValues &&
+            other.shouldIsolateBrightestChannelInOutput == shouldIsolateBrightestChannelInOutput &&
+            other.shouldExpandOutputToGrayScale == shouldExpandOutputToGrayScale &&
+            other.shouldComputeLacunarity == shouldComputeLacunarity &&
+            other.shouldComputeThickness == shouldComputeThickness
+        ;
     }
 
     public RefVector<String> validate()

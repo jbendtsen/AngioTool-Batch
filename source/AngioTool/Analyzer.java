@@ -449,7 +449,8 @@ public class Analyzer
 
         byte[] analysisImage = data.analysisImage.buf;
 
-        uiToken.updateImageProgress("Calculating tubeness...");
+        if (uiToken != null)
+            uiToken.updateImageProgress("Calculating tubeness...");
 
         Tubeness.computeTubenessImage(
             data.tubeness,
@@ -466,7 +467,8 @@ public class Analyzer
 
         //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " tubeness.pgm");
 
-        uiToken.updateImageProgress("Filtering image...");
+        if (uiToken != null)
+            uiToken.updateImageProgress("Filtering image...");
 
         BatchUtils.thresholdFlexible(
             analysisImage,
@@ -488,7 +490,9 @@ public class Analyzer
         //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, "filtered.pgm");
 
         int[] particleBuf = data.i1.buf;
-        uiToken.updateImageProgress("Identifying shapes...");
+
+        if (uiToken != null)
+            uiToken.updateImageProgress("Identifying shapes...");
 
         Particles.computeShapes(
             data.particleScratch,
@@ -532,16 +536,19 @@ public class Analyzer
 
         if (params.shouldComputeLacunarity)
         {
-            uiToken.updateImageProgress("Computing lacunarity...");
+            if (uiToken != null)
+                uiToken.updateImageProgress("Computing lacunarity...");
 
             Lacunarity2.computeLacunarity(data.lacunarity, analysisImage, inputImage.width, inputImage.height, 10, 10, 5);
         }
 
-        uiToken.updateImageProgress("Building convex hull...");
+        if (uiToken != null)
+            uiToken.updateImageProgress("Building convex hull...");
 
         data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
 
-        uiToken.updateImageProgress("Computing skeleton...");
+        if (uiToken != null)
+            uiToken.updateImageProgress("Computing skeleton...");
 
         if (params.shouldUseFastSkeletonizer) {
             byte[] zha84ScratchImage = data.b3.buf;
@@ -577,7 +584,8 @@ public class Analyzer
 
         if (params.shouldComputeThickness)
         {
-            uiToken.updateImageProgress("Computing thickness...");
+            if (uiToken != null)
+                uiToken.updateImageProgress("Computing thickness...");
 
             int[] thicknessScratch = data.i2.buf;
             averageVesselDiameter = linearScalingFactor * VesselThickness.computeMedianVesselThickness(

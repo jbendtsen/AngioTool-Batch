@@ -20,6 +20,8 @@ import javax.swing.JOptionPane;
 
 public class BatchUtils
 {
+    public static final double EPSILON = Math.pow(2.0, -23);
+
     public static void thresholdFlexible(byte[] image, int width, int height, int low, int high)
     {
         if (low > high) {
@@ -304,6 +306,25 @@ public class BatchUtils
         }
         catch (Exception ignored) {}
         return defaultValue;
+    }
+
+    public static boolean isDoubleArraySimilar(double[] a, double[] b)
+    {
+        boolean aIsEmpty = a == null || a.length == 0;
+        boolean bIsEmpty = b == null || b.length == 0;
+        if (aIsEmpty)
+            return bIsEmpty;
+        if (bIsEmpty)
+            return aIsEmpty;
+        if (a.length != b.length)
+            return false;
+
+        int len = a.length;
+        for (int i = 0; i < len; i++)
+            if (Math.abs(a[i] - b[i]) >= EPSILON)
+                return false;
+
+        return true;
     }
 
     public static void setNewFontSizeOn(JComponent ui, int newSize)

@@ -2,14 +2,16 @@ package AngioTool;
 
 import Utils.BatchUtils;
 import Pixels.*;
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.*;
 import java.io.File;
+import java.util.LinkedList;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-public class AngioToolGui2 extends JFrame implements ActionListener
+public class AngioToolGui2 extends JFrame implements ActionListener, FocusListener
 {
     final JButton btnLoadImage = new JButton();
     final JButton btnStartBatch = new JButton();
@@ -38,7 +40,10 @@ public class AngioToolGui2 extends JFrame implements ActionListener
     final ColorSizeEntry elemSkeleton;
     final ColorSizeEntry elemConvexHull;
 
+    AnalyzerParameters latestAnalyzerParams = null;
     BatchParameters batchParams;
+
+    public final LinkedList<ImagingWindow> imagingWindows = new LinkedList<>();
 
     public AngioToolGui2(AnalyzerParameters analyzerParams, BatchParameters batchParams)
     {
@@ -106,6 +111,15 @@ public class AngioToolGui2 extends JFrame implements ActionListener
 
         arrangeUi(layout);
 
+        int nComponents = dialogPanel.getComponentCount();
+        for (int i = 0; i < nComponents; i++) {
+            Component elem = dialogPanel.getComponent(i);
+            if (elem instanceof AbstractButton)
+                ((AbstractButton)elem).addActionListener(this);
+            else
+                elem.addFocusListener(this);
+        }
+
         Container container = getContentPane();
         container.add(dialogPanel);
         this.pack();
@@ -131,7 +145,6 @@ public class AngioToolGui2 extends JFrame implements ActionListener
         button.setVerticalTextPosition(SwingConstants.BOTTOM);
         button.setHorizontalTextPosition(SwingConstants.CENTER);
         button.setText(text);
-        button.addActionListener(this);
     }
 
     private void arrangeUi(GroupLayout layout)
@@ -253,6 +266,20 @@ public class AngioToolGui2 extends JFrame implements ActionListener
             openBatchWindow();
         else if (source == btnHelp)
             openHelpWindow();
+        else
+            maybeUpdateImagingWindows();
+    }
+
+    @Override
+    public void focusGained(FocusEvent evt)
+    {
+        // ...
+    }
+
+    @Override
+    public void focusLost(FocusEvent evt)
+    {
+        maybeUpdateImagingWindows();
     }
 
     void openImageThenImagingWindow()
@@ -284,7 +311,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener
             return;
         }
 
-        new ImagingWindow(this, image, imageFile).showDialog();
+        imagingWindows.add(new ImagingWindow(this, image, imageFile).showDialog());
     }
 
     void openBatchWindow()
@@ -304,6 +331,19 @@ public class AngioToolGui2 extends JFrame implements ActionListener
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setCurrentDirectory(new File(batchParams.defaultPath));
         return fc.showOpenDialog(this) == 0 ? fc.getSelectedFile() : null;
+    }
+
+    void maybeUpdateImagingWindows()
+    {
+        AnalyzerParameters params = buildAnalyzerParamsFromUi();
+
+        if (latestAnalyzerParams != null && params.equals(latestAnalyzerParams))
+            return;
+
+        latestAnalyzerParams = params;
+
+        for (ImagingWindow iw : imagingWindows)
+            iw.updateImage(params);
     }
 
     public AnalyzerParameters buildAnalyzerParamsFromUi()
