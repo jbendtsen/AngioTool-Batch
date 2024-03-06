@@ -21,8 +21,10 @@ import javax.swing.*;
 
 public class ImagingWindow extends JFrame implements ActionListener
 {
-    public static class ImagingDisplay extends JPanel
+    public static class ImagingDisplay extends JPanel implements MouseMotionListener, MouseWheelListener
     {
+        public static final double ZOOM_BASE = 1.2;
+
         boolean waiting = false;
         boolean isTimerActive = false;
         AnalyzerParameters pendingParams = null;
@@ -39,6 +41,10 @@ public class ImagingWindow extends JFrame implements ActionListener
         int loadTicks;
         Rectangle areaRect;
         Analyzer.Stats currentStats;
+
+        int zoomLevels;
+        int zoomX;
+        int zoomY;
 
         final Timer loadingTimer = new Timer(100, new ActionListener() {
             @Override
@@ -69,6 +75,10 @@ public class ImagingWindow extends JFrame implements ActionListener
             this.areaRect = new Rectangle();
             this.currentStats = null;
 
+            this.zoomLevels = 0;
+            this.zoomX = 0;
+            this.zoomY = 0;
+
             final int dull = 64;
             final int factor = (256 - dull) / (wheelColors.length - 1);
             for (int i = 0; i < wheelColors.length; i++) {
@@ -94,33 +104,52 @@ public class ImagingWindow extends JFrame implements ActionListener
             }
 
             if (!waiting || !isTimerActive) {
+                double zoomRounding = (1 << (Math.min(Math.max(-this.zoomLevels + 2, 2), 16)));
+                double zoomFactor = Math.floor(Math.pow(ZOOM_BASE, this.zoomLevels) * zoomRounding + 0.5) / zoomRounding;
+
+                double apparentWidth = imgWidth * zoomFactor;
+                double apparentHeight = imgHeight * zoomFactor;
+
                 double wRatio = (double)imgWidth / (double)areaRect.width;
                 double hRatio = (double)imgHeight / (double)areaRect.height;
 
+                int canvasX = 0;
+                int canvasY = 0;
+                int canvasW = areaRect.width;
+                int canvasH = areaRect.height;
+
                 if (wRatio > hRatio && wRatio > 0.0) {
-                    int imgH = Math.min((int)(imgHeight / wRatio + 0.5), areaRect.height);
-                    int dH = areaRect.height - imgH;
-                    int imgY = (dH / 2) + (dH % 2);
-
-                    g.drawImage(drawingImage, 0, imgY, areaRect.width, imgH, backgroundColor, null);
-
-                    g.setColor(backgroundColor);
-                    g.fillRect(0, 0, areaRect.width, imgY);
-                    g.fillRect(0, imgY + imgH, areaRect.width, dH / 2);
+                    canvasH = Math.min((int)(apparentHeight / wRatio + 0.5), areaRect.height);
+                    int dH = areaRect.height - canvasH;
+                    canvasY = (dH / 2) + (dH % 2);
                 }
                 else if (wRatio < hRatio && hRatio > 0.0) {
-                    int imgW = Math.min((int)(imgWidth / hRatio + 0.5), areaRect.width);
-                    int dW = areaRect.width - imgW;
-                    int imgX = (dW / 2) + (dW % 2);
-
-                    g.drawImage(drawingImage, imgX, 0, imgW, areaRect.height, backgroundColor, null);
-
-                    g.setColor(backgroundColor);
-                    g.fillRect(0, 0, imgX, areaRect.height);
-                    g.fillRect(imgX + imgW, 0, dW / 2, areaRect.height);
+                    canvasW = Math.min((int)(apparentWidth / hRatio + 0.5), areaRect.width);
+                    int dW = areaRect.width - canvasW;
+                    canvasX = (dW / 2) + (dW % 2);
                 }
-                else {
-                    g.drawImage(drawingImage, 0, 0, areaRect.width, areaRect.height, backgroundColor, null);
+
+                g.drawImage(drawingImage,
+                    canvasX,
+                    canvasY,
+                    canvasW,
+                    canvasH,
+                    0,
+                    0,
+                    areaRect.width,
+                    areaRect.height,
+                    backgroundColor,
+                    null
+                );
+
+                g.setColor(backgroundColor);
+                if (canvasX > 0) {
+                    g.fillRect(0, canvasY, canvasX, canvasH);
+                    g.fillRect(canvasX + canvasW, canvasY, (areaRect.width - canvasW) / 2, canvasH);
+                }
+                if (canvasY > 0) {
+                    g.fillRect(0, 0, areaRect.width, canvasY);
+                    g.fillRect(0, canvasY + canvasH, areaRect.width, (areaRect.height - canvasH) / 2);
                 }
             }
 
@@ -137,6 +166,38 @@ public class ImagingWindow extends JFrame implements ActionListener
 
                 g.setColor(wheelColors[(loadTicks + i) % wheelColors.length]);
                 g.fillOval(centerX + x - 6, centerY + y - 6, 13, 13);
+            }
+        }
+
+        @Override
+        public void mouseDragged(MouseEvent evt)
+        {
+            if (zoomLevels > 0) {
+                int x = evt.getX();
+                int y = evt.getY();
+                if (x != this.zoomX || y != this.zoomY) {
+                    this.zoomX = x;
+                    this.zoomY = y;
+                    this.repaint();
+                }
+            }
+        }
+
+        @Override
+        public void mouseMoved(MouseEvent evt)
+        {
+            // ...
+        }
+
+        @Override
+        public void mouseWheelMoved(MouseWheelEvent evt)
+        {
+            int clicks = evt.getWheelRotation();
+            if (clicks != 0) {
+                this.zoomLevels -= clicks;
+                this.zoomX = evt.getX();
+                this.zoomY = evt.getY();
+                this.repaint();
             }
         }
 
