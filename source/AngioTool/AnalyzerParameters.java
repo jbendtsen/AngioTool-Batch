@@ -17,7 +17,6 @@ public class AnalyzerParameters {
     public boolean shouldUseFastSkeletonizer;
     public boolean shouldApplyLinearScale;
     public double linearScalingFactor;
-    public boolean shouldShowOverlayOrGallery;
     public boolean shouldDrawOutline;
     public Rgb outlineColor;
     public double outlineSize;
@@ -30,7 +29,6 @@ public class AnalyzerParameters {
     public boolean shouldDrawConvexHull;
     public Rgb convexHullColor;
     public double convexHullSize;
-    public boolean shouldScalePixelValues; // doScaling, ie. pixels that had values between min-max become between 0-255
     public boolean shouldIsolateBrightestChannelInOutput;
     public boolean shouldExpandOutputToGrayScale;
     public boolean shouldComputeLacunarity;
@@ -51,7 +49,6 @@ public class AnalyzerParameters {
         boolean shouldUseFastSkeletonizer,
         boolean shouldApplyLinearScale,
         double linearScalingFactor,
-        boolean shouldShowOverlayOrGallery,
         boolean shouldDrawOutline,
         Rgb outlineColor,
         double outlineSize,
@@ -64,7 +61,6 @@ public class AnalyzerParameters {
         boolean shouldDrawConvexHull,
         Rgb convexHullColor,
         double convexHullSize,
-        boolean shouldScalePixelValues,
         boolean shouldIsolateBrightestChannelInOutput,
         boolean shouldExpandOutputToGrayScale,
         boolean shouldComputeLacunarity,
@@ -82,7 +78,6 @@ public class AnalyzerParameters {
         this.shouldUseFastSkeletonizer = shouldUseFastSkeletonizer;
         this.shouldApplyLinearScale = shouldApplyLinearScale;
         this.linearScalingFactor = linearScalingFactor;
-        this.shouldShowOverlayOrGallery = shouldShowOverlayOrGallery;
         this.shouldDrawOutline = shouldDrawOutline;
         this.outlineColor = outlineColor;
         this.outlineSize = outlineSize;
@@ -95,7 +90,6 @@ public class AnalyzerParameters {
         this.shouldDrawConvexHull = shouldDrawConvexHull;
         this.convexHullColor = convexHullColor;
         this.convexHullSize = convexHullSize;
-        this.shouldScalePixelValues = shouldScalePixelValues;
         this.shouldIsolateBrightestChannelInOutput = shouldIsolateBrightestChannelInOutput;
         this.shouldExpandOutputToGrayScale = shouldExpandOutputToGrayScale;
         this.shouldComputeLacunarity = shouldComputeLacunarity;
@@ -113,16 +107,15 @@ public class AnalyzerParameters {
         p.skeletonSize = 5;
         p.branchingPointsSize = 8;
         p.convexHullSize = 1;
-        p.shouldShowOverlayOrGallery = true;
         p.shouldDrawOutline = true;
         p.shouldDrawSkeleton = true;
         p.shouldDrawBranchPoints = true;
         p.shouldDrawConvexHull = true;
-        p.shouldScalePixelValues = false;
         p.shouldFillHoles = false;
         p.shouldRemoveSmallParticles = false;
         p.resizingFactor = 1.0;
         p.shouldIsolateBrightestChannelInOutput = true;
+        p.shouldExpandOutputToGrayScale = false;
         p.shouldComputeLacunarity = true;
         p.shouldComputeThickness = true;
         p.linearScalingFactor = 0.0;
@@ -152,7 +145,6 @@ public class AnalyzerParameters {
             other.shouldUseFastSkeletonizer == shouldUseFastSkeletonizer &&
             other.shouldApplyLinearScale == shouldApplyLinearScale &&
             other.linearScalingFactor == linearScalingFactor &&
-            other.shouldShowOverlayOrGallery == shouldShowOverlayOrGallery &&
             other.shouldDrawOutline == shouldDrawOutline &&
             other.outlineColor.value == outlineColor.value &&
             other.outlineSize == outlineSize &&
@@ -165,7 +157,6 @@ public class AnalyzerParameters {
             other.shouldDrawConvexHull == shouldDrawConvexHull &&
             other.convexHullColor.value == convexHullColor.value &&
             other.convexHullSize == convexHullSize &&
-            other.shouldScalePixelValues == shouldScalePixelValues &&
             other.shouldIsolateBrightestChannelInOutput == shouldIsolateBrightestChannelInOutput &&
             other.shouldExpandOutputToGrayScale == shouldExpandOutputToGrayScale &&
             other.shouldComputeLacunarity == shouldComputeLacunarity &&

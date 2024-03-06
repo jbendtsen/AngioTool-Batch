@@ -39,6 +39,10 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     final ColorSizeEntry elemBranches;
     final ColorSizeEntry elemSkeleton;
     final ColorSizeEntry elemConvexHull;
+    final ButtonGroup groupImageRecolor = new ButtonGroup();
+    final JRadioButton rbImageOriginal = new JRadioButton();
+    final JRadioButton rbImageIsolated = new JRadioButton();
+    final JRadioButton rbImageGray = new JRadioButton();
 
     final JLabel labelMemory = new JLabel();
 
@@ -103,6 +107,19 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         elemBranches = new ColorSizeEntry("Branches:", analyzerParams.shouldDrawBranchPoints, analyzerParams.branchingPointsSize, analyzerParams.branchingPointsColor);
         elemSkeleton = new ColorSizeEntry("Skeleton:", analyzerParams.shouldDrawSkeleton, analyzerParams.skeletonSize, analyzerParams.skeletonColor);
         elemConvexHull = new ColorSizeEntry("Convex Hull:", analyzerParams.shouldDrawConvexHull, analyzerParams.convexHullSize, analyzerParams.convexHullColor);
+
+        rbImageOriginal.setText("Keep Original Colors");
+        rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
+
+        rbImageIsolated.setText("Isolate Brightest Channel");
+        rbImageIsolated.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && !analyzerParams.shouldExpandOutputToGrayScale);
+
+        rbImageGray.setText("Convert to Grayscale");
+        rbImageGray.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && analyzerParams.shouldExpandOutputToGrayScale);
+
+        groupImageRecolor.add(rbImageOriginal);
+        groupImageRecolor.add(rbImageIsolated);
+        groupImageRecolor.add(rbImageGray);
 
         updateMemoryMonitor();
 
@@ -214,7 +231,15 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                     ).addGap(20)
                 )
             )
-            .addComponent(labelMemory)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(labelMemory)
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup()
+                    .addComponent(rbImageOriginal)
+                    .addComponent(rbImageIsolated)
+                    .addComponent(rbImageGray)
+                )
+            )
         );
 
         final int MIN_PATH_WIDTH = 18;
@@ -274,7 +299,12 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 )
             )
             .addGap(8)
-            .addComponent(labelMemory)
+            .addComponent(rbImageOriginal)
+            .addComponent(rbImageIsolated)
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(labelMemory)
+                .addComponent(rbImageGray)
+            )
         );
     }
 
@@ -391,6 +421,22 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         ButtonModel skelType = groupSkeletonizer.getSelection();
         boolean shouldUseFastSkel = skelType == rbSkelFast.getModel();
 
+        ButtonModel recolorType = groupImageRecolor.getSelection();
+        boolean shouldIsolateChannel;
+        boolean shouldExpandToGrayScale;
+        if (recolorType == rbImageOriginal.getModel()) {
+            shouldIsolateChannel = false;
+            shouldExpandToGrayScale = false;
+        }
+        else if (recolorType == rbImageGray.getModel()) {
+            shouldIsolateChannel = true;
+            shouldExpandToGrayScale = true;
+        }
+        else {
+            shouldIsolateChannel = true;
+            shouldExpandToGrayScale = false;
+        }
+
         return new AnalyzerParameters(
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.getValue(),
@@ -404,7 +450,6 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             shouldUseFastSkel,
             elemLinearScaleFactor.cb.isSelected(),
             elemLinearScaleFactor.getValue(),
-            true, // shouldShowOverlayOrGallery
             elemOutline.cb.isSelected(),
             elemOutline.color,
             elemOutline.getValue(),
@@ -417,9 +462,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             elemConvexHull.cb.isSelected(),
             elemConvexHull.color,
             elemConvexHull.getValue(),
-            false, // shouldScalePixelValues
-            true,  // shouldIsolateBrightestChannelInOutput
-            false, // shouldExpandOutputToGrayScale
+            shouldIsolateChannel,
+            shouldExpandToGrayScale,
             cbComputeLacunarity.isSelected(),
             cbComputeThickness.isSelected()
         );
