@@ -81,29 +81,33 @@ public class ImageFile
                     int c = (int)xx + width * y2;
                     int d = x2 + width * y2;
 
-                    float redValue   = (float)((inputPixels[x + width * y] >>> 16) & 0xff);
-                    float greenValue = (float)((inputPixels[x + width * y] >>> 8) & 0xff);
-                    float blueValue  = (float)(inputPixels[x + width * y] & 0xff);
+                    float redValue   = (float)((inputPixels[x + originalWidth * y] >>> 16) & 0xff);
+                    float greenValue = (float)((inputPixels[x + originalWidth * y] >>> 8) & 0xff);
+                    float blueValue  = (float)(inputPixels[x + originalWidth * y] & 0xff);
 
-                    samples[a*4]   += redValue   * (1.0f - xNeigh) * (1.0f - yNeigh);
-                    samples[a*4+1] += greenValue * (1.0f - xNeigh) * (1.0f - yNeigh);
-                    samples[a*4+2] += blueValue  * (1.0f - xNeigh) * (1.0f - yNeigh);
-                    samples[a*4+3] += 1.0f;
+                    float fA = (1.0f - xNeigh) * (1.0f - yNeigh);
+                    samples[a*4]   += redValue   * fA;
+                    samples[a*4+1] += greenValue * fA;
+                    samples[a*4+2] += blueValue  * fA;
+                    samples[a*4+3] += fA;
 
-                    samples[b*4]   += redValue   * xNeigh * (1.0f - yNeigh);
-                    samples[b*4+1] += greenValue * xNeigh * (1.0f - yNeigh);
-                    samples[b*4+2] += blueValue  * xNeigh * (1.0f - yNeigh);
-                    samples[b*4+3] += 1.0f;
+                    float fB = xNeigh * (1.0f - yNeigh);
+                    samples[b*4]   += redValue   * fB;
+                    samples[b*4+1] += greenValue * fB;
+                    samples[b*4+2] += blueValue  * fB;
+                    samples[b*4+3] += fB;
 
-                    samples[c*4]   += redValue   * (1.0f - xNeigh) * yNeigh;
-                    samples[c*4+1] += greenValue * (1.0f - xNeigh) * yNeigh;
-                    samples[c*4+2] += blueValue  * (1.0f - xNeigh) * yNeigh;
-                    samples[c*4+3] += 1.0f;
+                    float fC = (1.0f - xNeigh) * yNeigh;
+                    samples[c*4]   += redValue   * fC;
+                    samples[c*4+1] += greenValue * fC;
+                    samples[c*4+2] += blueValue  * fC;
+                    samples[c*4+3] += fC;
 
-                    samples[d*4]   += redValue   * xNeigh * yNeigh;
-                    samples[d*4+1] += greenValue * xNeigh * yNeigh;
-                    samples[d*4+2] += blueValue  * xNeigh * yNeigh;
-                    samples[d*4+3] += 1.0f;
+                    float fD = xNeigh * yNeigh;
+                    samples[d*4]   += redValue   * fD;
+                    samples[d*4+1] += greenValue * fD;
+                    samples[d*4+2] += blueValue  * fD;
+                    samples[d*4+3] += fD;
                 }
             }
 
@@ -140,11 +144,13 @@ public class ImageFile
                     float xNeigh = (float)Math.abs(xFrac - 0.5);
                     float yNeigh = (float)Math.abs(yFrac - 0.5);
 
-                    int x2 = (int)(xFrac - 0.5) * 2 + 1 + (int)xx;
-                    int y2 = (int)(yFrac - 0.5) * 2 + 1 + (int)yy;
-                    int a = inputPixels[(int)xx + originalWidth * (int)yy];
-                    int b = inputPixels[x2 + originalWidth * (int)yy];
-                    int c = inputPixels[(int)xx + originalWidth * y2];
+                    int x1 = Math.min(Math.max((int)xx, 0), originalWidth-1);
+                    int y1 = Math.min(Math.max((int)yy, 0), originalHeight-1);
+                    int x2 = Math.min(Math.max((int)(xFrac - 0.5) * 2 + 1 + (int)xx, 0), originalWidth-1);
+                    int y2 = Math.min(Math.max((int)(yFrac - 0.5) * 2 + 1 + (int)yy, 0), originalHeight-1);
+                    int a = inputPixels[x1 + originalWidth * y1];
+                    int b = inputPixels[x2 + originalWidth * y1];
+                    int c = inputPixels[x1 + originalWidth * y2];
                     int d = inputPixels[x2 + originalWidth * y2];
 
                     float redValue =

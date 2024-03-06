@@ -20,8 +20,8 @@ public class Analyzer
     public static final int MAX_WORKERS = 24;
 
     public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
-        /* corePoolSize */ 2,
-        /* maximumPoolSize */ MAX_WORKERS + 4,
+        /* corePoolSize */ MAX_WORKERS,
+        /* maximumPoolSize */ MAX_WORKERS,
         /* keepAliveTime */ 30,
         /* unit */ TimeUnit.SECONDS,
         /* workQueue */ new LinkedBlockingQueue<>()
@@ -42,7 +42,7 @@ public class Analyzer
         void onEnumerationStart();
         void onBatchStatsKnown(int nImages, int maxProgressPerImage);
         void notifyImageWasInvalid();
-        void onStartImage(String absPath);
+        void onStartImage(String path);
         void updateImageProgress(String statusMsg);
         void onImageDone(Throwable error);
         void onFinished(SpreadsheetWriter sw);
@@ -252,7 +252,7 @@ public class Analyzer
                 continue;
             }
 
-            uiToken.onStartImage(inFile.getAbsolutePath());
+            uiToken.onStartImage(inFile.getName());
             startedAnyImages = true;
 
             Stats result = null;

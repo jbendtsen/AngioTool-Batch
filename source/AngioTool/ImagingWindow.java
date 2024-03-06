@@ -154,7 +154,7 @@ public class ImagingWindow extends JFrame implements ActionListener
     public static final int MAX_WORKERS = 4;
 
     public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
-        /* corePoolSize */ 1,
+        /* corePoolSize */ MAX_WORKERS,
         /* maximumPoolSize */ MAX_WORKERS,
         /* keepAliveTime */ 30,
         /* unit */ TimeUnit.SECONDS,

@@ -486,7 +486,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     boolean wasStartImageJustCalled = false;
 
     @Override
-    public void onStartImage(String absPath)
+    public void onStartImage(String path)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
@@ -494,10 +494,10 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
 
             wasStartImageJustCalled = true;
 
-            int pathLen = absPath.length();
+            int pathLen = path.length();
             String partialFileName = pathLen > 60 ?
-                absPath.substring(0, 29) + "..." + absPath.substring(pathLen - 29) :
-                absPath;
+                path.substring(0, 29) + "..." + path.substring(pathLen - 29) :
+                path;
 
             int current = overallProgress.getValue() + 1;
             String status = "" + current + "/" + overallProgress.getMaximum();

@@ -85,10 +85,10 @@ public class TiffDecoder {
 	}
 
 	final int getInt() throws IOException {
-		int b1 = in.get();
-		int b2 = in.get();
-		int b3 = in.get();
-		int b4 = in.get();
+		int b1 = in.get() & 0xff;
+		int b2 = in.get() & 0xff;
+		int b3 = in.get() & 0xff;
+		int b4 = in.get() & 0xff;
 		if (littleEndian)
 			return ((b4 << 24) + (b3 << 16) + (b2 << 8) + (b1 << 0));
 		else
@@ -100,8 +100,8 @@ public class TiffDecoder {
 	}
 
 	final int getShort() throws IOException {
-		int b1 = in.get();
-		int b2 = in.get();
+		int b1 = in.get() & 0xff;
+		int b2 = in.get() & 0xff;
 		if (littleEndian)
 			return ((b2<<8) + b1);
 		else
@@ -303,11 +303,11 @@ public class TiffDecoder {
 	}
 	
 	void dumpTag(int tag, int count, int value, ImageInfo fi) {
-		long lvalue = ((long)value)&0xffffffffL;
 		String name = getName(tag);
 		String cs = (count==1)?"":", count=" + count;
-		dInfo += "    " + tag + ", \"" + name + "\", value=" + lvalue + cs + "\n";
-		//System.out.println(tag + ", \"" + name + "\", value=" + value + cs + "\n");
+		String msg = "    " + tag + ", \"" + name + "\", value=" + value + cs + "\n";
+		dInfo += msg;
+		System.out.println(msg);
 	}
 
 	String getName(int tag) {
@@ -375,7 +375,6 @@ public class TiffDecoder {
 			fieldType = getShort();
 			count = getInt();
 			value = getValue(fieldType, count);
-			int lvalue = value;
 			if (debugMode && ifdCount<10) dumpTag(tag, count, value, fi);
 			switch (tag) {
 				case IMAGE_WIDTH: 
@@ -390,7 +389,7 @@ public class TiffDecoder {
 						fi.stripOffsets = new int[] {value};
 					else {
 						int saveLoc = in.position();
-						in.position(lvalue);
+						in.position(value);
 						fi.stripOffsets = new int[count];
 						for (int c=0; c<count; c++)
 							fi.stripOffsets[c] = getInt();
@@ -405,7 +404,7 @@ public class TiffDecoder {
 						fi.stripLengths = new int[] {value};
 					else {
 						int saveLoc = in.position();
-						in.position(lvalue);
+						in.position(value);
 						fi.stripLengths = new int[count];
 						for (int c=0; c<count; c++) {
 							if (fieldType==SHORT)
@@ -438,7 +437,7 @@ public class TiffDecoder {
 								error("Unsupported BitsPerSample: " + value);
 						} else if (count>1) {
 							int saveLoc = in.position();
-							in.position(lvalue);
+							in.position(value);
 							int bitDepth = getShort();
 							if (bitDepth==8)
 								fi.fileType = ImageInfo.GRAY8;
@@ -467,11 +466,11 @@ public class TiffDecoder {
 					fi.rowsPerStrip = value;
 					break;
 				case X_RESOLUTION:
-					double xScale = getRational(lvalue); 
+					double xScale = getRational(value); 
 					if (xScale!=0.0) fi.pixelWidth = 1.0/xScale; 
 					break;
 				case Y_RESOLUTION:
-					double yScale = getRational(lvalue); 
+					double yScale = getRational(value); 
 					if (yScale!=0.0) fi.pixelHeight = 1.0/yScale; 
 					break;
 				case RESOLUTION_UNIT:
@@ -524,7 +523,7 @@ public class TiffDecoder {
 					break;
 				case COLOR_MAP: 
 					if (count==768)
-						getColorMap(lvalue, fi);
+						getColorMap(value, fi);
 					break;
 				case TILE_WIDTH:
 					error("ImageJ cannot open tiled TIFFs.\nTry using the Bio-Formats plugin.");
@@ -545,7 +544,7 @@ public class TiffDecoder {
 					break;
 				case IMAGE_DESCRIPTION: 
 					if (ifdCount==1) {
-						byte[] s = getString(count, lvalue);
+						byte[] s = getString(count, value);
 						if (s!=null) saveImageDescription(s,fi);
 					}
 					break;
@@ -569,7 +568,7 @@ public class TiffDecoder {
 					break;
  				case META_DATA_BYTE_COUNTS: 
 					int saveLoc = in.position();
-					in.position(lvalue);
+					in.position(value);
 					metaDataCounts = new int[count];
 					for (int c=0; c<count; c++)
 						metaDataCounts[c] = getInt();
@@ -801,13 +800,13 @@ public class TiffDecoder {
 		
 	public ArrayList<ImageInfo> getTiffImages() throws IOException {
         int ifdOffset = OpenImageFileHeader();
-		if (ifdOffset<0L) {
+		if (ifdOffset<0) {
 			//in.close();
 			return null;
 		}
 
 		ArrayList<ImageInfo> images = new ArrayList<>();
-		while (ifdOffset>0L) {
+		while (ifdOffset>0) {
 			in.position(ifdOffset);
 			ImageInfo fi = OpenIFD();
 			if (fi!=null) {
