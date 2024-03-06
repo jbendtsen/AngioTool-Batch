@@ -24,6 +24,7 @@ public class ImagingWindow extends JFrame implements ActionListener
     public static class ImagingDisplay extends JPanel
     {
         boolean waiting = false;
+        boolean isTimerActive = false;
         AnalyzerParameters pendingParams = null;
 
         ArgbBuffer source;
@@ -34,8 +35,25 @@ public class ImagingWindow extends JFrame implements ActionListener
 
         BufferedImage drawingImage;
         Color backgroundColor;
+        Color[] wheelColors;
+        int loadTicks;
         Rectangle areaRect;
         Analyzer.Stats currentStats;
+
+        final Timer loadingTimer = new Timer(100, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                if (!waiting) {
+                    isTimerActive = false;
+                    loadingTimer.stop();
+                }
+                else {
+                    isTimerActive = true;
+                    loadTicks++;
+                    repaint();
+                }
+            }
+        });
 
         public ImagingDisplay(ArgbBuffer source)
         {
@@ -46,8 +64,17 @@ public class ImagingWindow extends JFrame implements ActionListener
             this.blurWnd = new float[25 * 3];
             this.drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
             this.backgroundColor = new Color(0);
+            this.wheelColors = new Color[8];
+            this.loadTicks = 0;
             this.areaRect = new Rectangle();
             this.currentStats = null;
+
+            final int dull = 64;
+            final int factor = (256 - dull) / (wheelColors.length - 1);
+            for (int i = 0; i < wheelColors.length; i++) {
+                int lum = dull + (wheelColors.length - i - 1) * factor;
+                wheelColors[i] = new Color(lum, lum, lum);
+            }
         }
 
         @Override
@@ -66,33 +93,50 @@ public class ImagingWindow extends JFrame implements ActionListener
                 return;
             }
 
-            double wRatio = (double)imgWidth / (double)areaRect.width;
-            double hRatio = (double)imgHeight / (double)areaRect.height;
+            if (!waiting || !isTimerActive) {
+                double wRatio = (double)imgWidth / (double)areaRect.width;
+                double hRatio = (double)imgHeight / (double)areaRect.height;
 
-            if (wRatio > hRatio && wRatio > 0.0) {
-                int imgH = Math.min((int)(imgHeight / wRatio + 0.5), areaRect.height);
-                int dH = areaRect.height - imgH;
-                int imgY = (dH / 2) + (dH % 2);
+                if (wRatio > hRatio && wRatio > 0.0) {
+                    int imgH = Math.min((int)(imgHeight / wRatio + 0.5), areaRect.height);
+                    int dH = areaRect.height - imgH;
+                    int imgY = (dH / 2) + (dH % 2);
 
-                g.drawImage(drawingImage, 0, imgY, areaRect.width, imgH, backgroundColor, null);
+                    g.drawImage(drawingImage, 0, imgY, areaRect.width, imgH, backgroundColor, null);
 
-                g.setColor(backgroundColor);
-                g.fillRect(0, 0, areaRect.width, imgY);
-                g.fillRect(0, imgY + imgH, areaRect.width, dH / 2);
+                    g.setColor(backgroundColor);
+                    g.fillRect(0, 0, areaRect.width, imgY);
+                    g.fillRect(0, imgY + imgH, areaRect.width, dH / 2);
+                }
+                else if (wRatio < hRatio && hRatio > 0.0) {
+                    int imgW = Math.min((int)(imgWidth / hRatio + 0.5), areaRect.width);
+                    int dW = areaRect.width - imgW;
+                    int imgX = (dW / 2) + (dW % 2);
+
+                    g.drawImage(drawingImage, imgX, 0, imgW, areaRect.height, backgroundColor, null);
+
+                    g.setColor(backgroundColor);
+                    g.fillRect(0, 0, imgX, areaRect.height);
+                    g.fillRect(imgX + imgW, 0, dW / 2, areaRect.height);
+                }
+                else {
+                    g.drawImage(drawingImage, 0, 0, areaRect.width, areaRect.height, backgroundColor, null);
+                }
             }
-            else if (wRatio < hRatio && hRatio > 0.0) {
-                int imgW = Math.min((int)(imgWidth / hRatio + 0.5), areaRect.width);
-                int dW = areaRect.width - imgW;
-                int imgX = (dW / 2) + (dW % 2);
 
-                g.drawImage(drawingImage, imgX, 0, imgW, areaRect.height, backgroundColor, null);
+            if (!waiting)
+                return;
 
-                g.setColor(backgroundColor);
-                g.fillRect(0, 0, imgX, areaRect.height);
-                g.fillRect(imgX + imgW, 0, dW / 2, areaRect.height);
-            }
-            else {
-                g.drawImage(drawingImage, 0, 0, areaRect.width, areaRect.height, backgroundColor, null);
+            int centerX = areaRect.width / 2;
+            int centerY = areaRect.height / 2;
+
+            for (int i = 0; i < wheelColors.length; i++) {
+                double angle = 2.0 * Math.PI * i / wheelColors.length;
+                int x = (int)(20.0 * Math.cos(angle) + 0.5);
+                int y = (int)(20.0 * Math.sin(angle) + 0.5);
+
+                g.setColor(wheelColors[(loadTicks + i) % wheelColors.length]);
+                g.fillOval(centerX + x - 6, centerY + y - 6, 13, 13);
             }
         }
 
@@ -116,6 +160,7 @@ public class ImagingWindow extends JFrame implements ActionListener
                 blurWnd
             );
 
+            loadingTimer.start();
             this.repaint();
         }
 

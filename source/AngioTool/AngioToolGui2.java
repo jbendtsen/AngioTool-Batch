@@ -11,7 +11,7 @@ import java.util.LinkedList;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-public class AngioToolGui2 extends JFrame implements ActionListener, FocusListener
+public class AngioToolGui2 extends JFrame implements ActionListener, FocusListener, KeyListener
 {
     final JButton btnLoadImage = new JButton();
     final JButton btnStartBatch = new JButton();
@@ -122,7 +122,22 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 ((AbstractButton)elem).addActionListener(this);
             else
                 elem.addFocusListener(this);
+
+            if (elem instanceof JTextField)
+                elem.addKeyListener(this);
         }
+
+        dialogPanel.addMouseListener(new MouseListener() {
+            @Override
+            public void mousePressed(MouseEvent evt) {
+                maybeUpdateImagingWindows();
+            }
+
+            @Override public void mouseClicked(MouseEvent evt) {}
+            @Override public void mouseEntered(MouseEvent evt) {}
+            @Override public void mouseExited(MouseEvent evt) {}
+            @Override public void mouseReleased(MouseEvent evt) {}
+        });
 
         Container container = getContentPane();
         container.add(dialogPanel);
@@ -275,15 +290,12 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             openHelpWindow();
         else
             maybeUpdateImagingWindows();
-
-        updateMemoryMonitor();
     }
 
     @Override
     public void focusGained(FocusEvent evt)
     {
         // ...
-        updateMemoryMonitor();
     }
 
     @Override
@@ -291,6 +303,16 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     {
         maybeUpdateImagingWindows();
     }
+
+    @Override
+    public void keyPressed(KeyEvent evt)
+    {
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER)
+            maybeUpdateImagingWindows();
+    }
+
+    @Override public void keyReleased(KeyEvent evt) {}
+    @Override public void keyTyped(KeyEvent evt) {}
 
     void openImageThenImagingWindow()
     {
@@ -322,16 +344,20 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         }
 
         imagingWindows.add(new ImagingWindow(this, image, imageFile).showDialog());
+
+        updateMemoryMonitor();
     }
 
     void openBatchWindow()
     {
         new BatchWindow(this, batchParams).showDialog();
+        updateMemoryMonitor();
     }
 
     void openHelpWindow()
     {
         BatchUtils.showDialogBox("Help", "Content goes here");
+        updateMemoryMonitor();
     }
 
     File openImageFile()
@@ -347,13 +373,17 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     {
         AnalyzerParameters params = buildAnalyzerParamsFromUi();
 
-        if (latestAnalyzerParams != null && params.equals(latestAnalyzerParams))
+        if (latestAnalyzerParams != null && params.equals(latestAnalyzerParams)) {
+            updateMemoryMonitor();
             return;
+        }
 
         latestAnalyzerParams = params;
 
         for (ImagingWindow iw : imagingWindows)
             iw.updateImage(params);
+
+        updateMemoryMonitor();
     }
 
     public AnalyzerParameters buildAnalyzerParamsFromUi()
