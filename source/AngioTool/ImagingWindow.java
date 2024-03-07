@@ -100,6 +100,12 @@ public class ImagingWindow extends JFrame implements ActionListener
             this.addMouseWheelListener(this);
         }
 
+        public static double getZoomFactor(int zoomIndex)
+        {
+            double rounding = (1 << (Math.min(Math.max(-zoomIndex + 2, 2), 16)));
+            return Math.floor(Math.pow(ZOOM_BASE, zoomIndex) * rounding + 0.5) / rounding;
+        }
+
         @Override
         public Dimension getPreferredSize()
         {
@@ -117,8 +123,7 @@ public class ImagingWindow extends JFrame implements ActionListener
             }
 
             if (!waiting || !isTimerActive) {
-                double zoomRounding = (1 << (Math.min(Math.max(-this.zoomLevels + 2, 2), 16)));
-                double zoomFactor = Math.floor(Math.pow(ZOOM_BASE, this.zoomLevels) * zoomRounding + 0.5) / zoomRounding;
+                double zoomFactor = getZoomFactor(this.zoomLevels);
 
                 double wRatio = (double)areaRect.width / (double)this.imgWidth;
                 double hRatio = (double)areaRect.height / (double)this.imgHeight;
@@ -214,11 +219,23 @@ public class ImagingWindow extends JFrame implements ActionListener
         {
             int clicks = evt.getWheelRotation();
             if (clicks != 0) {
-                this.zoomLevels -= clicks;
-                this.panStartX = evt.getX();
-                this.panStartY = evt.getY();
-                this.panX = this.panStartX;
-                this.panY = this.panStartY;
+                int prevZoom = this.zoomLevels;
+                this.zoomLevels = Math.min(Math.max(this.zoomLevels - clicks, -16), 32);
+
+                int x1 = evt.getX();
+                int y1 = evt.getY();
+                int halfW = this.areaRect.width / 2;
+                int halfH = this.areaRect.height / 2;
+                int dx = x1 - halfW;
+                int dy = y1 - halfH;
+                double dz = getZoomFactor(this.zoomLevels) / getZoomFactor(prevZoom);
+                int x2 = halfW + (int)(dx * dz + 0.5);
+                int y2 = halfH + (int)(dy * dz + 0.5);
+
+                this.panStartX = x2;
+                this.panStartY = y2;
+                this.panX = x1;
+                this.panY = y1;
                 this.repaint();
             }
         }
