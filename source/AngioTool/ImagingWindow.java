@@ -194,6 +194,9 @@ public class ImagingWindow extends JFrame implements ActionListener
         @Override
         public void mouseDragged(MouseEvent evt)
         {
+            if (waiting)
+                return;
+
             int x = evt.getX();
             int y = evt.getY();
             if (x != this.panX || y != this.panY) {
@@ -217,6 +220,9 @@ public class ImagingWindow extends JFrame implements ActionListener
         @Override
         public void mouseWheelMoved(MouseWheelEvent evt)
         {
+            if (waiting)
+                return;
+
             int clicks = evt.getWheelRotation();
             if (clicks != 0) {
                 int prevZoom = this.zoomLevels;
@@ -311,6 +317,16 @@ public class ImagingWindow extends JFrame implements ActionListener
 
     ImagingDisplay imageUi;
 
+    JLabel labelZoom = new JLabel();
+    JButton btnZoomIn = new JButton();
+    JButton btnZoomOut = new JButton();
+    JLabel labelPan = new JLabel();
+    JButton btnPanLeft = new JButton();
+    JButton btnPanUp = new JButton();
+    JButton btnPanRight = new JButton();
+    JButton btnPanDown = new JButton();
+    JCheckBox cbShowStats = new JCheckBox();
+
     JLabel labelSaveImage = new JLabel();
     JButton btnSaveImage = new JButton();
     JTextField textSaveImage = new JTextField();
@@ -329,26 +345,34 @@ public class ImagingWindow extends JFrame implements ActionListener
         this.imageUi = new ImagingDisplay(image);
         this.inputFile = sourceFile;
 
+        this.labelZoom.setText("Zoom:");
+        this.btnZoomIn.setIcon(AngioTool.ATPlus);
+        this.btnZoomOut.setIcon(AngioTool.ATMinus);
+
+        this.labelPan.setText("Move:");
+        this.btnPanLeft.setIcon(AngioTool.ATLeft);
+        this.btnPanUp.setIcon(AngioTool.ATUp);
+        this.btnPanDown.setIcon(AngioTool.ATDown);
+        this.btnPanRight.setIcon(AngioTool.ATRight);
+
+        this.cbShowStats.setText("Display stats");
+        this.cbShowStats.setSelected(true);
+
         this.labelSaveImage.setText("Save result image");
 
         this.btnSaveImage.addActionListener(this);
         this.btnSaveImage.setIcon(AngioTool.ATFolderSmall);
-        this.btnSaveImage.setEnabled(false);
-
-        this.textSaveImage.setEnabled(false);
 
         this.labelSaveSpreadsheet.setText("Save stats to spreadsheet");
 
         this.btnSaveSpreadsheet.addActionListener(this);
         this.btnSaveSpreadsheet.setIcon(AngioTool.ATExcelSmall);
-        this.btnSaveSpreadsheet.setEnabled(false);
-
-        this.textSaveSpreadsheet.setEnabled(false);
     }
 
     public ImagingWindow showDialog()
     {
         imageUi.notifyImageProcessing(true);
+        setUiInteractivity(false);
         dispatchAnalysisTask(parentFrame.buildAnalyzerParamsFromUi());
 
         JPanel dialogPanel = new JPanel();
@@ -391,13 +415,28 @@ public class ImagingWindow extends JFrame implements ActionListener
         }
 
         imageUi.notifyImageProcessing(false);
+        setUiInteractivity(false);
         dispatchAnalysisTask(params);
     }
 
     private void arrangeUi(GroupLayout layout)
     {
+        final int BS = 32;
+
         layout.setHorizontalGroup(layout.createParallelGroup()
             .addComponent(imageUi)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(labelZoom)
+                .addComponent(btnZoomIn, BS, BS, BS)
+                .addComponent(btnZoomOut, BS, BS, BS)
+                .addComponent(labelPan)
+                .addComponent(btnPanLeft, BS, BS, BS)
+                .addComponent(btnPanUp, BS, BS, BS)
+                .addComponent(btnPanDown, BS, BS, BS)
+                .addComponent(btnPanRight, BS, BS, BS)
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addComponent(cbShowStats)
+            )
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
                     .addComponent(labelSaveImage)
@@ -419,6 +458,17 @@ public class ImagingWindow extends JFrame implements ActionListener
 
         layout.setVerticalGroup(layout.createSequentialGroup()
             .addComponent(imageUi)
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                .addComponent(labelZoom)
+                .addComponent(btnZoomIn, BS, BS, BS)
+                .addComponent(btnZoomOut, BS, BS, BS)
+                .addComponent(labelPan)
+                .addComponent(btnPanLeft, BS, BS, BS)
+                .addComponent(btnPanUp, BS, BS, BS)
+                .addComponent(btnPanDown, BS, BS, BS)
+                .addComponent(btnPanRight, BS, BS, BS)
+                .addComponent(cbShowStats)
+            )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelSaveImage)
                 .addComponent(labelSaveSpreadsheet)
@@ -447,8 +497,25 @@ public class ImagingWindow extends JFrame implements ActionListener
                 AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerScratch, stats);
                 if (nextParams != null)
                     dispatchAnalysisTask(nextParams);
+                else
+                    setUiInteractivity(true);
             });
         });
+    }
+
+    void setUiInteractivity(boolean enabled)
+    {
+        btnZoomIn.setEnabled(enabled);
+        btnZoomOut.setEnabled(enabled);
+        btnPanLeft.setEnabled(enabled);
+        btnPanUp.setEnabled(enabled);
+        btnPanRight.setEnabled(enabled);
+        btnPanDown.setEnabled(enabled);
+        cbShowStats.setEnabled(enabled);
+        btnSaveImage.setEnabled(enabled);
+        textSaveImage.setEnabled(enabled);
+        btnSaveSpreadsheet.setEnabled(enabled);
+        textSaveSpreadsheet.setEnabled(enabled);
     }
 
     @Override
