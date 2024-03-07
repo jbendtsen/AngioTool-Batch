@@ -43,8 +43,13 @@ public class ImagingWindow extends JFrame implements ActionListener
         Analyzer.Stats currentStats;
 
         int zoomLevels;
-        int zoomX;
-        int zoomY;
+        boolean wasDragging;
+        int panStartX;
+        int panStartY;
+        int panX;
+        int panY;
+        double imageOriginX;
+        double imageOriginY;
 
         final Timer loadingTimer = new Timer(100, new ActionListener() {
             @Override
@@ -76,8 +81,13 @@ public class ImagingWindow extends JFrame implements ActionListener
             this.currentStats = null;
 
             this.zoomLevels = 0;
-            this.zoomX = 0;
-            this.zoomY = 0;
+            this.wasDragging = false;
+            this.panStartX = 0;
+            this.panStartY = 0;
+            this.panX = 0;
+            this.panY = 0;
+            this.imageOriginX = 0.5 * imgWidth;
+            this.imageOriginY = 0.5 * imgHeight;
 
             final int dull = 64;
             final int factor = (256 - dull) / (wheelColors.length - 1);
@@ -85,6 +95,9 @@ public class ImagingWindow extends JFrame implements ActionListener
                 int lum = dull + (wheelColors.length - i - 1) * factor;
                 wheelColors[i] = new Color(lum, lum, lum);
             }
+
+            this.addMouseMotionListener(this);
+            this.addMouseWheelListener(this);
         }
 
         @Override
@@ -98,7 +111,7 @@ public class ImagingWindow extends JFrame implements ActionListener
         {
             g.getClipBounds(areaRect);
 
-            if (areaRect.width <= 0 || areaRect.height <= 0) {
+            if (areaRect.width <= 0 || areaRect.height <= 0 || imgWidth <= 0 || imgHeight <= 0) {
                 super.paintComponent(g);
                 return;
             }
@@ -107,50 +120,54 @@ public class ImagingWindow extends JFrame implements ActionListener
                 double zoomRounding = (1 << (Math.min(Math.max(-this.zoomLevels + 2, 2), 16)));
                 double zoomFactor = Math.floor(Math.pow(ZOOM_BASE, this.zoomLevels) * zoomRounding + 0.5) / zoomRounding;
 
-                double apparentWidth = imgWidth * zoomFactor;
-                double apparentHeight = imgHeight * zoomFactor;
+                double wRatio = (double)areaRect.width / (double)this.imgWidth;
+                double hRatio = (double)areaRect.height / (double)this.imgHeight;
 
-                double wRatio = (double)imgWidth / (double)areaRect.width;
-                double hRatio = (double)imgHeight / (double)areaRect.height;
+                double scaleFactor = 1.0 / (zoomFactor * Math.min(wRatio, hRatio));
 
-                int canvasX = 0;
-                int canvasY = 0;
-                int canvasW = areaRect.width;
-                int canvasH = areaRect.height;
+                int dPanX = this.panStartX - this.panX;
+                if (dPanX != 0)
+                    this.imageOriginX += dPanX * scaleFactor;
 
-                if (wRatio > hRatio && wRatio > 0.0) {
-                    canvasH = Math.min((int)(apparentHeight / wRatio + 0.5), areaRect.height);
-                    int dH = areaRect.height - canvasH;
-                    canvasY = (dH / 2) + (dH % 2);
-                }
-                else if (wRatio < hRatio && hRatio > 0.0) {
-                    canvasW = Math.min((int)(apparentWidth / hRatio + 0.5), areaRect.width);
-                    int dW = areaRect.width - canvasW;
-                    canvasX = (dW / 2) + (dW % 2);
-                }
+                int dPanY = this.panStartY - this.panY;
+                if (dPanY != 0)
+                    this.imageOriginY += dPanY * scaleFactor;
+
+                this.panStartX = this.panX;
+                this.panStartY = this.panY;
+
+                int srcX = (int)(this.imageOriginX - areaRect.width * 0.5 * scaleFactor + 0.5);
+                int srcY = (int)(this.imageOriginY - areaRect.height * 0.5 * scaleFactor + 0.5);
+                int srcW = (int)(areaRect.width * scaleFactor + 0.5);
+                int srcH = (int)(areaRect.height * scaleFactor + 0.5);
+
+                int canvasX1 = Math.max((int)(-srcX / scaleFactor + 0.5), 0);
+                int canvasY1 = Math.max((int)(-srcY / scaleFactor + 0.5), 0);
+                int canvasX2 = Math.min((int)((this.imgWidth - srcX) / scaleFactor + 0.5), areaRect.width);
+                int canvasY2 = Math.min((int)((this.imgHeight - srcY) / scaleFactor + 0.5), areaRect.height);
 
                 g.drawImage(drawingImage,
-                    canvasX,
-                    canvasY,
-                    canvasW,
-                    canvasH,
-                    0,
-                    0,
-                    areaRect.width,
-                    areaRect.height,
+                    canvasX1,
+                    canvasY1,
+                    canvasX2,
+                    canvasY2,
+                    Math.max(srcX, 0),
+                    Math.max(srcY, 0),
+                    Math.min(srcX + srcW, this.imgWidth),
+                    Math.min(srcY + srcH, this.imgHeight),
                     backgroundColor,
                     null
                 );
 
                 g.setColor(backgroundColor);
-                if (canvasX > 0) {
-                    g.fillRect(0, canvasY, canvasX, canvasH);
-                    g.fillRect(canvasX + canvasW, canvasY, (areaRect.width - canvasW) / 2, canvasH);
-                }
-                if (canvasY > 0) {
-                    g.fillRect(0, 0, areaRect.width, canvasY);
-                    g.fillRect(0, canvasY + canvasH, areaRect.width, (areaRect.height - canvasH) / 2);
-                }
+                if (canvasX1 > 0)
+                    g.fillRect(0, canvasY1, canvasX1, canvasY2 - canvasY1);
+                if (canvasX2 < areaRect.width)
+                    g.fillRect(canvasX2, canvasY1, areaRect.width - canvasX2, canvasY2 - canvasY1);
+                if (canvasY1 > 0)
+                    g.fillRect(0, 0, areaRect.width, canvasY1);
+                if (canvasY2 < areaRect.height)
+                    g.fillRect(0, canvasY2, areaRect.width, areaRect.height - canvasY2);
             }
 
             if (!waiting)
@@ -172,21 +189,24 @@ public class ImagingWindow extends JFrame implements ActionListener
         @Override
         public void mouseDragged(MouseEvent evt)
         {
-            if (zoomLevels > 0) {
-                int x = evt.getX();
-                int y = evt.getY();
-                if (x != this.zoomX || y != this.zoomY) {
-                    this.zoomX = x;
-                    this.zoomY = y;
-                    this.repaint();
+            int x = evt.getX();
+            int y = evt.getY();
+            if (x != this.panX || y != this.panY) {
+                if (!wasDragging) {
+                    this.panStartX = x;
+                    this.panStartY = y;
                 }
+                this.panX = x;
+                this.panY = y;
+                this.wasDragging = true;
+                this.repaint();
             }
         }
 
         @Override
         public void mouseMoved(MouseEvent evt)
         {
-            // ...
+            this.wasDragging = false;
         }
 
         @Override
@@ -195,8 +215,10 @@ public class ImagingWindow extends JFrame implements ActionListener
             int clicks = evt.getWheelRotation();
             if (clicks != 0) {
                 this.zoomLevels -= clicks;
-                this.zoomX = evt.getX();
-                this.zoomY = evt.getY();
+                this.panStartX = evt.getX();
+                this.panStartY = evt.getY();
+                this.panX = this.panStartX;
+                this.panY = this.panStartY;
                 this.repaint();
             }
         }
