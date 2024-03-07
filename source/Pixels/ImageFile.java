@@ -361,7 +361,7 @@ public class ImageFile
         return existingImage;
     }
 
-    public static void saveImage(ArgbBuffer image, int layerIdx, String format, String absPath) throws IOException
+    public static void saveImage(ArgbBuffer image, String format, String absPath) throws IOException
     {
         if (format.length() == 3 && format.charAt(0) == 'p' && format.charAt(2) == 'm') {
             writePpm24(image.pixels, image.width, image.height, absPath);

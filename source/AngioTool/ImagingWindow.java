@@ -2,9 +2,12 @@ package AngioTool;
 
 import Pixels.ArgbBuffer;
 import Pixels.Canvas;
+import Pixels.ImageFile;
+import Utils.BatchUtils;
 import Utils.ISliceRunner;
-import Xlsx.SpreadsheetWriter;
+import Xlsx.*;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Rectangle;
@@ -14,6 +17,8 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -37,10 +42,12 @@ public class ImagingWindow extends JFrame implements ActionListener
 
         BufferedImage drawingImage;
         Color backgroundColor;
+        Color overlayBackColor;
         Color[] wheelColors;
         int loadTicks;
         Rectangle areaRect;
         Analyzer.Stats currentStats;
+        boolean shouldShowStats;
 
         int zoomLevels;
         boolean wasDragging;
@@ -66,7 +73,7 @@ public class ImagingWindow extends JFrame implements ActionListener
             }
         });
 
-        public ImagingDisplay(ArgbBuffer source)
+        public ImagingDisplay(ArgbBuffer source, boolean initiallyShowStats)
         {
             this.source = source;
             this.imgWidth = source.width;
@@ -75,10 +82,12 @@ public class ImagingWindow extends JFrame implements ActionListener
             this.blurWnd = new float[25 * 3];
             this.drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
             this.backgroundColor = new Color(0);
+            this.overlayBackColor = new Color(32, 48, 128, 192);
             this.wheelColors = new Color[8];
             this.loadTicks = 0;
             this.areaRect = new Rectangle();
             this.currentStats = null;
+            this.shouldShowStats = initiallyShowStats;
 
             this.zoomLevels = 0;
             this.wasDragging = false;
@@ -175,19 +184,22 @@ public class ImagingWindow extends JFrame implements ActionListener
                     g.fillRect(0, canvasY2, areaRect.width, areaRect.height - canvasY2);
             }
 
-            if (!waiting)
-                return;
+            if (waiting) {
+                int centerX = areaRect.width / 2;
+                int centerY = areaRect.height / 2;
 
-            int centerX = areaRect.width / 2;
-            int centerY = areaRect.height / 2;
+                for (int i = 0; i < wheelColors.length; i++) {
+                    double angle = 2.0 * Math.PI * i / wheelColors.length;
+                    int x = (int)(20.0 * Math.cos(angle) + 0.5);
+                    int y = (int)(20.0 * Math.sin(angle) + 0.5);
 
-            for (int i = 0; i < wheelColors.length; i++) {
-                double angle = 2.0 * Math.PI * i / wheelColors.length;
-                int x = (int)(20.0 * Math.cos(angle) + 0.5);
-                int y = (int)(20.0 * Math.sin(angle) + 0.5);
-
-                g.setColor(wheelColors[(loadTicks + i) % wheelColors.length]);
-                g.fillOval(centerX + x - 6, centerY + y - 6, 13, 13);
+                    g.setColor(wheelColors[(loadTicks + i) % wheelColors.length]);
+                    g.fillOval(centerX + x - 6, centerY + y - 6, 13, 13);
+                }
+            }
+            else if (shouldShowStats) {
+                g.setColor(overlayBackColor);
+                g.fillRect(4, 4, 324, 164);
             }
         }
 
@@ -224,10 +236,16 @@ public class ImagingWindow extends JFrame implements ActionListener
                 return;
 
             int clicks = evt.getWheelRotation();
-            if (clicks != 0) {
-                int prevZoom = this.zoomLevels;
-                this.zoomLevels = Math.min(Math.max(this.zoomLevels - clicks, -16), 32);
+            if (clicks != 0)
+                zoomBy(-clicks, evt);
+        }
 
+        public void zoomBy(int levels, MouseWheelEvent evt)
+        {
+            int prevZoom = this.zoomLevels;
+            this.zoomLevels = Math.min(Math.max(this.zoomLevels + levels, -16), 32);
+
+            if (evt != null) {
                 int x1 = evt.getX();
                 int y1 = evt.getY();
                 int halfW = this.areaRect.width / 2;
@@ -242,8 +260,23 @@ public class ImagingWindow extends JFrame implements ActionListener
                 this.panStartY = y2;
                 this.panX = x1;
                 this.panY = y1;
-                this.repaint();
             }
+
+            this.repaint();
+        }
+
+        public void panBy(int xUnits, int yUnits)
+        {
+            int size = Math.max(this.areaRect.width, this.areaRect.height) / 8;
+            this.panX = this.panStartX - xUnits * size;
+            this.panY = this.panStartY - yUnits * size;
+            this.repaint();
+        }
+
+        public void toggleStats(boolean enabled)
+        {
+            this.shouldShowStats = enabled;
+            this.repaint();
         }
 
         public int[] getDrawingBuffer()
@@ -314,6 +347,7 @@ public class ImagingWindow extends JFrame implements ActionListener
 
     AngioToolGui2 parentFrame;
     File inputFile;
+    String defaultPath;
 
     ImagingDisplay imageUi;
 
@@ -338,12 +372,13 @@ public class ImagingWindow extends JFrame implements ActionListener
     final Analyzer.Scratch analyzerScratch = new Analyzer.Scratch();
     final ISliceRunner sliceRunner = new ISliceRunner.Parallel(Analyzer.threadPool);
 
-    public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, File sourceFile)
+    public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, File sourceFile, String defaultPath)
     {
         super("Analysis - " + sourceFile.getName());
         this.parentFrame = uiFrame;
-        this.imageUi = new ImagingDisplay(image);
+        this.imageUi = new ImagingDisplay(image, true);
         this.inputFile = sourceFile;
+        this.defaultPath = defaultPath;
 
         this.labelZoom.setText("Zoom:");
         this.btnZoomIn.setIcon(AngioTool.ATPlus);
@@ -359,13 +394,9 @@ public class ImagingWindow extends JFrame implements ActionListener
         this.cbShowStats.setSelected(true);
 
         this.labelSaveImage.setText("Save result image");
-
-        this.btnSaveImage.addActionListener(this);
         this.btnSaveImage.setIcon(AngioTool.ATFolderSmall);
 
         this.labelSaveSpreadsheet.setText("Save stats to spreadsheet");
-
-        this.btnSaveSpreadsheet.addActionListener(this);
         this.btnSaveSpreadsheet.setIcon(AngioTool.ATExcelSmall);
     }
 
@@ -382,6 +413,13 @@ public class ImagingWindow extends JFrame implements ActionListener
         layout.setAutoCreateContainerGaps(true);
 
         arrangeUi(layout);
+
+        int nComponents = dialogPanel.getComponentCount();
+        for (int i = 0; i < nComponents; i++) {
+            Component elem = dialogPanel.getComponent(i);
+            if (elem instanceof AbstractButton)
+                ((AbstractButton)elem).addActionListener(this);
+        }
 
         this.addWindowListener(new WindowAdapter() {
             @Override
@@ -469,6 +507,7 @@ public class ImagingWindow extends JFrame implements ActionListener
                 .addComponent(btnPanRight, BS, BS, BS)
                 .addComponent(cbShowStats)
             )
+            .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelSaveImage)
                 .addComponent(labelSaveSpreadsheet)
@@ -518,9 +557,62 @@ public class ImagingWindow extends JFrame implements ActionListener
         textSaveSpreadsheet.setEnabled(enabled);
     }
 
+    void saveResultImage()
+    {
+        JFileChooser fc = BatchUtils.createFileChooser();
+        fc.setDialogTitle("Save Result Image");
+        fc.setDialogType(JFileChooser.SAVE_DIALOG);
+        fc.setCurrentDirectory(new File(defaultPath));
+
+        if (fc.showSaveDialog(this) != 0)
+            return;
+
+        String filePath = fc.getSelectedFile().getAbsolutePath();
+        String format = filePath.substring(Math.max(filePath.lastIndexOf('.'), 0));
+
+        try {
+            ImageFile.saveImage(imageUi.source, format, filePath);
+        }
+        catch (IOException ex) {
+            BatchUtils.showExceptionInDialogBox(ex);
+        }
+    }
+
+    void saveResultSpreadsheet()
+    {
+        String[] outStrings = new String[2];
+        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(outStrings, defaultPath, this);
+        if (sheets == null)
+            return;
+
+        defaultPath = outStrings[1];
+
+        // ...
+        //originalSheets = sheets;
+        //textExcel.setText(outStrings[0]);
+    }
+
     @Override
     public void actionPerformed(ActionEvent evt)
     {
-        
+        Object source = evt.getSource();
+        if (source == btnZoomIn)
+            imageUi.zoomBy(2, null);
+        else if (source == btnZoomOut)
+            imageUi.zoomBy(-2, null);
+        else if (source == btnPanLeft)
+            imageUi.panBy(-1, 0);
+        else if (source == btnPanUp)
+            imageUi.panBy(0, -1);
+        else if (source == btnPanDown)
+            imageUi.panBy(0, 1);
+        else if (source == btnPanRight)
+            imageUi.panBy(1, 0);
+        else if (source == cbShowStats)
+            imageUi.toggleStats(cbShowStats.isSelected());
+        else if (source == btnSaveImage)
+            saveResultImage();
+        else if (source == btnSaveSpreadsheet)
+            saveResultSpreadsheet();
     }
 }

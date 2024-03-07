@@ -293,7 +293,7 @@ public class Analyzer
                             inFile.getAbsolutePath();
                         String format = resolveImageFormat(batchParams.resultImageFormat);
 
-                        ImageFile.saveImage(inputImage, 0, format, basePath + " result." + format);
+                        ImageFile.saveImage(inputImage, format, basePath + " result." + format);
                     }
                     catch (Throwable ex) {
                         exception = ex;

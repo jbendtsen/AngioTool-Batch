@@ -2,6 +2,7 @@ package Utils;
 
 import AngioTool.NumberEntry;
 import AngioTool.ColorSizeEntry;
+import Xlsx.*;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.lang.reflect.Field;
@@ -10,13 +11,17 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashSet;
 import javax.swing.GroupLayout;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileFilter;
 
 public class BatchUtils
 {
@@ -410,5 +415,60 @@ public class BatchUtils
             );
 
         return sequentialGroup;
+    }
+
+    public static ArrayList<XlsxReader.SheetCells> openSpreadsheetForAppending(String[] outStrings, String defaultPath, JFrame parentFrame)
+    {
+        JFileChooser fc = BatchUtils.createFileChooser();
+        fc.setDialogTitle("Append to Excel spreadsheet");
+        fc.setDialogType(JFileChooser.SAVE_DIALOG);
+        fc.setCurrentDirectory(new File(defaultPath));
+        fc.setFileFilter(new FileFilter() {
+            @Override public boolean accept(File f) {
+                String name = f.getName();
+                return !f.isFile() || name.endsWith(".xls") || name.endsWith(".xlsx");
+            }
+            @Override public String getDescription() {
+                return "Excel Spreadsheet (.xls, .xlsx)";
+            }
+        });
+
+        if (fc.showOpenDialog(parentFrame) != 0) {
+            outStrings[0] = null;
+            return null;
+        }
+
+        File xlsxFile = fc.getSelectedFile();
+        if (!BatchUtils.hasAnyFileExtension(xlsxFile))
+            xlsxFile = new File(xlsxFile.getAbsolutePath() + ".xlsx");
+
+        String xlsxPath = xlsxFile.getAbsolutePath();
+        outStrings[0] = xlsxPath;
+
+        defaultPath = fc.getCurrentDirectory().getAbsolutePath();
+        outStrings[1] = defaultPath;
+
+        ArrayList<XlsxReader.SheetCells> sheets = null;
+        if (xlsxFile.exists()) {
+            try { sheets = XlsxReader.loadXlsxFromFile(xlsxPath); }
+            catch (IOException ignored) {}
+
+            if (sheets == null || sheets.isEmpty() || (sheets.get(0).flags & (1 << 31)) == 0) {
+                try {
+                    Files.copy(
+                        xlsxFile.toPath(),
+                        new File(BatchUtils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES
+                    );
+                }
+                catch (IOException ignored) {}
+            }
+        }
+
+        if (sheets == null)
+            sheets = new ArrayList<XlsxReader.SheetCells>();
+
+        return sheets;
     }
 }

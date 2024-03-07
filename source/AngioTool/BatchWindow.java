@@ -269,55 +269,13 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     }
 
     void selectExcelFile() {
-        JFileChooser fc = BatchUtils.createFileChooser();
-        fc.setDialogTitle("Append to Excel spreadsheet");
-        fc.setDialogType(JFileChooser.SAVE_DIALOG);
-        fc.setCurrentDirectory(new File(defaultPath));
-        fc.setFileFilter(new FileFilter() {
-            @Override public boolean accept(File f) {
-                String name = f.getName();
-                return !f.isFile() || name.endsWith(".xls") || name.endsWith(".xlsx");
-            }
-            @Override public String getDescription() {
-                return "Excel Spreadsheet (.xls, .xlsx)";
-            }
-        });
-
-        if (fc.showOpenDialog(this) != 0)
-            return;
-
-        defaultPath = fc.getCurrentDirectory().getAbsolutePath();
-
-        File xlsxFile = fc.getSelectedFile();
-        if (!BatchUtils.hasAnyFileExtension(xlsxFile))
-            xlsxFile = new File(xlsxFile.getAbsolutePath() + ".xlsx");
-
-        String xlsxPath = xlsxFile.getAbsolutePath();
-
-        ArrayList<XlsxReader.SheetCells> sheets = null;
-        if (xlsxFile.exists()) {
-            try { sheets = XlsxReader.loadXlsxFromFile(xlsxPath); }
-            catch (IOException ignored) {}
-
-            if (sheets == null || sheets.isEmpty() || (sheets.get(0).flags & (1 << 31)) == 0) {
-                try {
-                    Files.copy(
-                        xlsxFile.toPath(),
-                        new File(BatchUtils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
-                        StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.COPY_ATTRIBUTES
-                    );
-                }
-                catch (IOException ignored) {}
-            }
+        String[] outStrings = new String[2];
+        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(outStrings, defaultPath, this);
+        if (sheets != null) {
+            originalSheets = sheets;
+            defaultPath = outStrings[1];
+            textExcel.setText(outStrings[0]);
         }
-
-        if (sheets == null)
-            sheets = new ArrayList<XlsxReader.SheetCells>();
-
-        originalSheets = sheets;
-
-        textExcel.setText(xlsxFile.getAbsolutePath());
     }
 
     void selectResultFolder() {

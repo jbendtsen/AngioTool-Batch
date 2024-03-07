@@ -373,7 +373,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             return;
         }
 
-        imagingWindows.add(new ImagingWindow(this, image, imageFile).showDialog());
+        imagingWindows.add(new ImagingWindow(this, image, imageFile, batchParams.defaultPath).showDialog());
 
         updateMemoryMonitor();
     }
