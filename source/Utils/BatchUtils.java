@@ -2,6 +2,7 @@ package Utils;
 
 import AngioTool.NumberEntry;
 import AngioTool.ColorSizeEntry;
+import AngioTool.SimpleFileFilter;
 import Xlsx.*;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -457,15 +458,7 @@ public class BatchUtils
             fc.setDialogTitle("Append to Excel spreadsheet");
             fc.setDialogType(JFileChooser.SAVE_DIALOG);
             fc.setCurrentDirectory(new File(defaultPath));
-            fc.setFileFilter(new FileFilter() {
-                @Override public boolean accept(File f) {
-                    String name = f.getName();
-                    return !f.isFile() || name.endsWith(".xls") || name.endsWith(".xlsx");
-                }
-                @Override public String getDescription() {
-                    return "Excel Spreadsheet (.xls, .xlsx)";
-                }
-            });
+            fc.setFileFilter(new SimpleFileFilter("Excel Spreadsheet", "xls", "xlsx"));
 
             if (fc.showSaveDialog(parentFrame) != 0) {
                 outStrings[0] = null;

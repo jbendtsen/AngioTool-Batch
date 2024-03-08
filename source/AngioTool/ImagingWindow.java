@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
 
 public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 {
@@ -240,7 +241,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                         BatchUtils.formatDouble(junctionsAreaPercentage, 5) + "%"
                     );
                     statsStrings.add(
-                        "Vessels Length - Total, Average: " +
+                        "Vessels Length: Total, Average: " +
                         BatchUtils.formatDouble(currentStats.totalLength, 3) + ", " +
                         BatchUtils.formatDouble(currentStats.averageBranchLength, 3)
                     );
@@ -257,13 +258,13 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                     }
                     if (this.didComputeLacunarity) {
                         statsStrings.add(
-                            "E Lacunarity - Medial, Mean, Curve: " +
+                            "E Lacunarity: Medial, Mean, Curve: " +
                             BatchUtils.formatDouble(currentStats.ELacunarityMedial, 4) + ", " +
                             BatchUtils.formatDouble(currentStats.meanEl, 4) + ", " +
                             BatchUtils.formatDouble(currentStats.ELacunarityCurve, 4)
                         );
                         statsStrings.add(
-                            "F Lacunarity - Medial, Mean, Curve: " +
+                            "F Lacunarity: Medial, Mean, Curve: " +
                             BatchUtils.formatDouble(currentStats.FLacunarityMedial, 4) + ", " +
                             BatchUtils.formatDouble(currentStats.meanFl, 4) + ", " +
                             BatchUtils.formatDouble(currentStats.FLacunarityCurve, 4)
@@ -671,19 +672,40 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     void saveResultImage()
     {
         String filePath = textSaveImage.getText();
-        if (filePath == null || filePath.length() == 0) {
-            JFileChooser fc = BatchUtils.createFileChooser();
-            fc.setDialogTitle("Save Result Image");
-            fc.setDialogType(JFileChooser.SAVE_DIALOG);
-            fc.setCurrentDirectory(new File(defaultPath));
+        int extIdx = -1;
+        while (true) {
+            if (filePath == null || filePath.length() == 0) {
+                JFileChooser fc = BatchUtils.createFileChooser();
+                fc.setDialogTitle("Save Result Image");
+                fc.setDialogType(JFileChooser.SAVE_DIALOG);
+                fc.setCurrentDirectory(new File(defaultPath));
+                fc.addChoosableFileFilter(new SimpleFileFilter("JPEG file", "jpg", "jpeg"));
+                fc.addChoosableFileFilter(new SimpleFileFilter("GIF file", "gif"));
+                fc.addChoosableFileFilter(new SimpleFileFilter("PNG file", "png"));
+                fc.addChoosableFileFilter(new SimpleFileFilter("BMP file", "bmp"));
+                fc.addChoosableFileFilter(new SimpleFileFilter("TIFF file", "tiff", "tif"));
+                fc.addChoosableFileFilter(new SimpleFileFilter("PPM file", "ppm", "ppm"));
 
-            if (fc.showSaveDialog(this) != 0)
-                return;
+                if (fc.showSaveDialog(this) != 0)
+                    return;
 
-            filePath = fc.getSelectedFile().getAbsolutePath();
-        }
+                filePath = fc.getSelectedFile().getAbsolutePath();
 
-        String format = filePath.substring(filePath.lastIndexOf('.') + 1).toLowerCase();
+                FileFilter filter = fc.getFileFilter();
+                if (filter instanceof SimpleFileFilter)
+                    filePath = ((SimpleFileFilter)filter).tailorFileName(filePath);
+            }
+
+            extIdx = filePath.lastIndexOf('.');
+            if (extIdx <= 0 || extIdx < Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')))
+                BatchUtils.showDialogBox("Save Result Image", "No image format was specified.\nPlease select an image format, eg. jpg");
+            else
+                break;
+
+            filePath = null;
+        };
+
+        String format = filePath.substring(extIdx + 1).toLowerCase();
 
         try {
             ImageFile.saveImage(imageUi.drawingImage, format, filePath);
@@ -727,10 +749,6 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         catch (IOException ex) {
             BatchUtils.showExceptionInDialogBox(ex);
         }
-
-        // ...
-        //originalSheets = sheets;
-        //textExcel.setText(outStrings[0]);
     }
 
     @Override
