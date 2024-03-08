@@ -11,13 +11,16 @@ import java.util.Date;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Analyzer
 {
     public static final int MAX_WORKERS = 24;
+    public static final long NANOS_PER_SEC = 1000000000L;
 
     public static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
         /* corePoolSize */ MAX_WORKERS,
@@ -40,11 +43,9 @@ public class Analyzer
         boolean isClosed();
         void notifyNoImages();
         void onEnumerationStart();
-        void onBatchStatsKnown(int nImages, int maxProgressPerImage);
+        void onBatchStatsKnown(int nImages);
         void notifyImageWasInvalid();
-        void onStartImage(String path);
-        void updateImageProgress(String statusMsg);
-        void onImageDone(Throwable error);
+        void onImageDone(String absPath, Throwable error);
         void onFinished(SpreadsheetWriter sw);
     }
 
@@ -171,23 +172,120 @@ public class Analyzer
         }
     }
 
-    static int determineUpdateCountPerImage(AnalyzerParameters params, BatchParameters batchParams) {
-        int count = 6;
-        if (params.shouldDrawOutline && batchParams.shouldSaveResultImages)
-            count++;
-        if (params.shouldComputeLacunarity)
-            count++;
-        if (params.shouldDrawConvexHull && batchParams.shouldSaveResultImages)
-            count++;
-        if (params.shouldComputeThickness)
-            count++;
-        if (params.shouldDrawSkeleton && batchParams.shouldSaveResultImages)
-            count++;
-        if (params.shouldDrawBranchPoints && batchParams.shouldSaveResultImages)
-            count++;
-        if (batchParams.shouldSaveResultImages)
-            count++;
-        return count;
+    static class AnalysisInput
+    {
+        File file;
+        String baseOutputPath;
+
+        AnalysisInput(File file, String baseOutputPath)
+        {
+            this.file = file;
+            this.baseOutputPath = baseOutputPath;
+        }
+    }
+
+    static class AnalysisResult
+    {
+        File file;
+        Stats stats;
+        Throwable error;
+
+        AnalysisResult(File file, Stats stats, Throwable error)
+        {
+            this.file = file;
+            this.stats = stats;
+            this.error = error;
+        }
+    }
+
+    static class AnalysisWorkers
+    {
+        class Worker implements Runnable
+        {
+            @Override
+            public void run() {
+                ISliceRunner sliceRunner = new ISliceRunner.Series();
+                Scratch data = new Scratch();
+                ArgbBuffer inputImage = new ArgbBuffer();
+
+                double imageResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
+
+                AnalysisInput input;
+                while ((input = inQueue.poll()) != null) {
+                    if (cancellationToken.get())
+                        break;
+
+                    try {
+                        inputImage = ImageFile.openImageForAnalysis(
+                            inputImage,
+                            input.file.getAbsolutePath(),
+                            imageResizeFactor
+                        );
+                    }
+                    catch (Throwable ex) {
+                        ex.printStackTrace();
+                    }
+
+                    if (inputImage == null) {
+                        outQueue.add(new AnalysisResult(input.file, null, null));
+                        continue;
+                    }
+
+                    Stats result = null;
+                    Throwable error = null;
+                    boolean analyzeSucceeded = false;
+                    try {
+                        result = analyze(data, input.file, inputImage, params, sliceRunner);
+                        analyzeSucceeded = true;
+                        if (batchParams.shouldSaveResultImages)
+                            saveResultImage(params, batchParams, data, inputImage, input.baseOutputPath, imageFormat);
+                    }
+                    catch (Throwable ex) {
+                        cancellationToken.set(true);
+                        ex.printStackTrace();
+                        error = ex;
+                    }
+
+                    outQueue.add(new AnalysisResult(input.file, result, error));
+
+                    if (error != null)
+                        break;
+                }
+
+                data.close();
+            }
+        }
+
+        final ConcurrentLinkedQueue<AnalysisInput> inQueue;
+        final LinkedBlockingQueue<AnalysisResult> outQueue;
+        final AnalyzerParameters params;
+        final BatchParameters batchParams;
+        final IProgressToken uiToken;
+        final AtomicBoolean cancellationToken;
+        final String imageFormat;
+
+        RefVector<Worker> workers = new RefVector<>(Worker.class);
+
+        AnalysisWorkers(AnalysisInput[] inputs, String format, AnalyzerParameters params, BatchParameters batchParams, IProgressToken uiToken)
+        {
+            this.inQueue = new ConcurrentLinkedQueue<>();
+            this.outQueue = new LinkedBlockingQueue<>();
+            this.imageFormat = format;
+            this.params = params;
+            this.batchParams = batchParams;
+            this.uiToken = uiToken;
+            this.cancellationToken = new AtomicBoolean(false);
+
+            for (int i = 0; i < inputs.length; i++)
+                inQueue.add(inputs[i]);
+        }
+
+        Worker addWorker()
+        {
+            Worker w = new Worker();
+            workers.add(w);
+            return w;
+        }
     }
 
     public static void doBatchAnalysis(
@@ -196,6 +294,18 @@ public class Analyzer
         IProgressToken uiToken,
         ArrayList<XlsxReader.SheetCells> originalSheets
     ) {
+        if (batchParams.workerCount <= 0)
+            return;
+
+        String imageFormat;
+        try {
+            imageFormat = resolveImageFormat(batchParams.resultImageFormat);
+        }
+        catch (Exception ex) {
+            BatchUtils.showExceptionInDialogBox(ex);
+            return;
+        }
+
         uiToken.onEnumerationStart();
 
         ArrayList<File> inputs = new ArrayList<>();
@@ -221,107 +331,146 @@ public class Analyzer
             return;
         }
 
-        uiToken.onBatchStatsKnown(inputs.size(), determineUpdateCountPerImage(params, batchParams));
+        final int nImages = inputs.size();
+        uiToken.onBatchStatsKnown(nImages);
 
-        double imageResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
+        AnalysisInput[] analysisInputs = new AnalysisInput[nImages];
 
-        boolean startedAnyImages = false;
+        if (batchParams.shouldSaveImagesToSpecificFolder) {
+            for (int i = 0; i < nImages; i++) {
+                File f = inputs.get(i);
+                analysisInputs[i] = new AnalysisInput(f, resolveOutputPath(batchParams.resultImagesPath, outputPathMap, f));
+            }
+        }
+        else {
+            for (int i = 0; i < nImages; i++) {
+                File f = inputs.get(i);
+                analysisInputs[i] = new AnalysisInput(f, f.getAbsolutePath());
+            }
+        }
 
-        ISliceRunner sliceRunner = new ISliceRunner.Parallel(threadPool);
+        AnalysisWorkers workers = new AnalysisWorkers(
+            analysisInputs,
+            imageFormat,
+            params,
+            batchParams,
+            uiToken
+        );
 
-        Scratch data = new Scratch();
-        ArgbBuffer inputImage = new ArgbBuffer();
+        for (int i = 0; i < batchParams.workerCount; i++)
+            threadPool.submit(workers.addWorker());
 
-        for (File inFile : inputs) {
-            if (uiToken.isClosed())
-                return;
+        writer.shouldSaveAfterEveryRow = false;
 
+        long lastSpreadsheetTime = 0L;
+        boolean justSaved = false;
+        boolean wasInputQueueEmpty = false;
+        int nResults = 0;
+
+        while (nResults < nImages && !workers.cancellationToken.get()) {
+            if (uiToken.isClosed()) {
+                workers.cancellationToken.set(true);
+                break;
+            }
+
+            AnalysisResult result = null;
             try {
-                inputImage = ImageFile.openImageForAnalysis(
-                    inputImage,
-                    inFile.getAbsolutePath(),
-                    imageResizeFactor
-                );
+                result = workers.outQueue.poll(10, TimeUnit.SECONDS);
             }
-            catch (Throwable ex) {
-                ex.printStackTrace();
+            catch (InterruptedException ex) {
+                workers.cancellationToken.set(true);
+                break;
             }
 
-            if (inputImage == null) {
+            if (result == null) {
+                if (wasInputQueueEmpty)
+                    break;
+
+                wasInputQueueEmpty = workers.inQueue.peek() == null;
+                continue;
+            }
+
+            nResults++;
+
+            // if an error is detected here, then 'cancellationToken' has already been set
+            if (result.error != null) {
+                writer.shouldSaveAfterEveryRow = true;
+
+                try { writeError(writer, result.error, result.file); }
+                catch (Exception ignored) {}
+
+                uiToken.onImageDone(result.file.getAbsolutePath(), result.error);
+                BatchUtils.showExceptionInDialogBox(result.error);
+                break;
+            }
+            else if (result.stats == null) {
                 uiToken.notifyImageWasInvalid();
                 continue;
             }
 
-            uiToken.onStartImage(inFile.getName());
-            startedAnyImages = true;
+            justSaved = false;
 
-            Stats result = null;
-            Throwable exception = null;
-            boolean analyzeSucceeded = false;
+            long resultTime = System.nanoTime();
+            if (lastSpreadsheetTime == 0L || resultTime - lastSpreadsheetTime < 5 * NANOS_PER_SEC) {
+                writer.shouldSaveAfterEveryRow = true;
+                lastSpreadsheetTime = resultTime;
+                justSaved = true;
+            }
+
             try {
-                result = analyze(data, inFile, inputImage, params, sliceRunner, uiToken);
-                analyzeSucceeded = true;
-                uiToken.updateImageProgress("Saving image stats to Excel...");
-                writeResultToSheet(writer, result);
+                writeResultToSheet(writer, result.stats);
             }
-            catch (Throwable ex) {
-                ex.printStackTrace();
-                exception = ex;
-            }
-
-            if (exception == null) {
-                if (batchParams.shouldSaveResultImages) {
-                    uiToken.updateImageProgress("Drawing overlay...");
-
-                    drawOverlay(
-                        params,
-                        data.convexHull,
-                        data.skelResult,
-                        data.analysisImage.buf,
-                        inputImage.pixels,
-                        inputImage.pixels,
-                        inputImage.width,
-                        inputImage.height,
-                        inputImage.brightestChannel
-                    );
-
-                    try {
-                        uiToken.updateImageProgress("Saving result image...");
-
-                        String basePath = batchParams.shouldSaveImagesToSpecificFolder ?
-                            resolveOutputPath(batchParams.resultImagesPath, outputPathMap, inFile) :
-                            inFile.getAbsolutePath();
-                        String format = resolveImageFormat(batchParams.resultImageFormat);
-
-                        ImageFile.saveImage(inputImage, format, basePath + " result." + format);
-                    }
-                    catch (Throwable ex) {
-                        exception = ex;
-                    }
-                }
-            }
-            else if (!analyzeSucceeded) {
-                try {
-                    writeError(writer, exception, inFile);
-                }
-                catch (Exception ignored) {}
-            }
-
-            if (exception != null)
-                BatchUtils.showExceptionInDialogBox(exception);
-
-            uiToken.onImageDone(exception);
-
-            if (exception != null)
+            catch (IOException ex) {
+                workers.cancellationToken.set(true);
+                uiToken.onImageDone(result.file.getAbsolutePath(), ex);
+                BatchUtils.showExceptionInDialogBox(ex);
                 break;
+            }
+
+            writer.shouldSaveAfterEveryRow = false;
+            uiToken.onImageDone(result.file.getAbsolutePath(), null);
         }
 
-        data.close();
-
-        if (!startedAnyImages)
+        if (lastSpreadsheetTime == 0L) {
             uiToken.notifyNoImages();
-        else
-            uiToken.onFinished(writer);
+            return;
+        }
+
+        if (!justSaved) {
+            try {
+                writer.save();
+            }
+            catch (IOException ex) {
+                BatchUtils.showExceptionInDialogBox(ex);
+            }
+        }
+
+        writer.shouldSaveAfterEveryRow = true;
+        uiToken.onFinished(writer);
+    }
+
+    static void saveResultImage(
+        AnalyzerParameters params,
+        BatchParameters batchParams,
+        Scratch data,
+        ArgbBuffer inputImage,
+        String basePath,
+        String format
+    ) throws IOException
+    {
+        drawOverlay(
+            params,
+            data.convexHull,
+            data.skelResult,
+            data.analysisImage.buf,
+            inputImage.pixels,
+            inputImage.pixels,
+            inputImage.width,
+            inputImage.height,
+            inputImage.brightestChannel
+        );
+
+        ImageFile.saveImage(inputImage, format, basePath + " result." + format);
     }
 
     static String resolveOutputPath(
@@ -442,15 +591,11 @@ public class Analyzer
         File inFile,
         ArgbBuffer inputImage,
         AnalyzerParameters params,
-        ISliceRunner sliceRunner,
-        IProgressToken uiToken
+        ISliceRunner sliceRunner
     ) {
         data.reallocate(params, inputImage.width, inputImage.height, 1);
 
         byte[] analysisImage = data.analysisImage.buf;
-
-        if (uiToken != null)
-            uiToken.updateImageProgress("Calculating tubeness...");
 
         Tubeness.computeTubenessImage(
             data.tubeness,
@@ -466,9 +611,6 @@ public class Analyzer
         );
 
         //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " tubeness.pgm");
-
-        if (uiToken != null)
-            uiToken.updateImageProgress("Filtering image...");
 
         BatchUtils.thresholdFlexible(
             analysisImage,
@@ -490,9 +632,6 @@ public class Analyzer
         //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, "filtered.pgm");
 
         int[] particleBuf = data.i1.buf;
-
-        if (uiToken != null)
-            uiToken.updateImageProgress("Identifying shapes...");
 
         Particles.computeShapes(
             data.particleScratch,
@@ -535,20 +674,9 @@ public class Analyzer
         data.vesselPixelArea = BatchUtils.countForegroundPixels(analysisImage, inputImage.width, inputImage.height);
 
         if (params.shouldComputeLacunarity)
-        {
-            if (uiToken != null)
-                uiToken.updateImageProgress("Computing lacunarity...");
-
             Lacunarity2.computeLacunarity(data.lacunarity, analysisImage, inputImage.width, inputImage.height, 10, 10, 5);
-        }
-
-        if (uiToken != null)
-            uiToken.updateImageProgress("Building convex hull...");
 
         data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
-
-        if (uiToken != null)
-            uiToken.updateImageProgress("Computing skeleton...");
 
         if (params.shouldUseFastSkeletonizer) {
             byte[] zha84ScratchImage = data.b3.buf;
@@ -584,9 +712,6 @@ public class Analyzer
 
         if (params.shouldComputeThickness)
         {
-            if (uiToken != null)
-                uiToken.updateImageProgress("Computing thickness...");
-
             int[] thicknessScratch = data.i2.buf;
             averageVesselDiameter = linearScalingFactor * VesselThickness.computeMedianVesselThickness(
                 sliceRunner,

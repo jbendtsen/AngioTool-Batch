@@ -29,7 +29,7 @@ public class SimpleFileFilter extends FileFilter
     {
         String name = f.getName();
         if (!f.isFile())
-            return false;
+            return true;
 
         for (int i = 0; i < extList.length; i++) {
             if (name.endsWith(extList[i]))

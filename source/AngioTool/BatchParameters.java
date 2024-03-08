@@ -12,6 +12,7 @@ public class BatchParameters
     public boolean shouldSaveImagesToSpecificFolder;
     public String resultImagesPath;
     public String resultImageFormat;
+    public int workerCount;
 
     public BatchParameters() {}
 
@@ -22,7 +23,8 @@ public class BatchParameters
         boolean shouldSaveResultImages,
         boolean shouldSaveImagesToSpecificFolder,
         String resultImagesPath,
-        String resultImageFormat
+        String resultImageFormat,
+        int workerCount
     ) {
         this.defaultPath = defaultPath;
         this.inputImagePaths = inputImagePaths;
@@ -31,6 +33,7 @@ public class BatchParameters
         this.shouldSaveImagesToSpecificFolder = shouldSaveImagesToSpecificFolder;
         this.resultImagesPath = resultImagesPath;
         this.resultImageFormat = resultImageFormat;
+        this.workerCount = workerCount;
     }
 
     public static BatchParameters defaults()
@@ -38,6 +41,7 @@ public class BatchParameters
         BatchParameters params = new BatchParameters();
         params.defaultPath = "C:\\";
         params.resultImageFormat = "jpg";
+        params.workerCount = 4;
         return params;
     }
 
@@ -58,6 +62,11 @@ public class BatchParameters
             errors.add("Path to spreadsheet is missing");
         if (shouldSaveImagesToSpecificFolder && !BatchUtils.isValidPath(resultImagesPath))
             errors.add("Specific output folder was selected but not provided");
+        if (workerCount <= 0)
+            errors.add(
+                "Number of workers should be at least 1, optimally matching the number of processors (" +
+                Runtime.getRuntime().availableProcessors() + ")"
+            );
 
         return errors;
     }

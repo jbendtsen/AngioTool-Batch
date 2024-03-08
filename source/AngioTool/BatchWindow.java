@@ -40,13 +40,13 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     final JTextField textSaveResultsFolder = new JTextField();
     final JLabel labelResultsImageFormat = new JLabel();
     final JTextField textResultsImageFormat = new JTextField();
+    final JLabel labelWorkerCount = new JLabel();
+    final JTextField textWorkerCount = new JTextField();
 
     final JSeparator sepProgress = new JSeparator();
     final JLabel labelProgress = new JLabel();
     final JLabel overallLabel = new JLabel();
     final JProgressBar overallProgress = new JProgressBar();
-    final JLabel imageLabel = new JLabel();
-    final JProgressBar imageProgress = new JProgressBar();
     final JButton analyzeBtn = new JButton();
     final JButton cancelBtn = new JButton();
 
@@ -105,6 +105,9 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         labelResultsImageFormat.setText("Result image format: ");
         textResultsImageFormat.setText(params.resultImageFormat);
 
+        labelWorkerCount.setText("Number of workers: ");
+        textWorkerCount.setText("" + params.workerCount);
+
         //sepProgress
 
         labelProgress.setText("Progress");
@@ -113,10 +116,6 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         //overallLabel
         overallProgress.setValue(0);
         overallProgress.setStringPainted(true);
-
-        //imageLabel
-        imageProgress.setValue(0);
-        imageProgress.setStringPainted(true);
 
         analyzeBtn.setText("Run");
         analyzeBtn.addActionListener((ActionEvent e) -> BatchWindow.this.startAnalysis());
@@ -182,14 +181,16 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             )
             .addGroup(layout.createSequentialGroup()
                 .addComponent(labelResultsImageFormat)
-                .addComponent(textResultsImageFormat, 40, 60, 80)
+                .addComponent(textResultsImageFormat, 0, 0, 80)
+            )
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(labelWorkerCount)
+                .addComponent(textWorkerCount, 0, 0, 80)
             )
             .addComponent(sepProgress)
             .addComponent(labelProgress)
             .addComponent(overallLabel)
             .addComponent(overallProgress)
-            .addComponent(imageLabel)
-            .addComponent(imageProgress)
             .addGroup(GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addComponent(analyzeBtn)
                 .addComponent(cancelBtn)
@@ -220,16 +221,20 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
                 .addComponent(textSaveResultsFolder, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
-                .addComponent(labelResultsImageFormat)
-                .addComponent(textResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(labelResultsImageFormat)
+                    .addComponent(labelWorkerCount)
+                )
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(textResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                    .addComponent(textWorkerCount, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                )
             )
             .addGap(12)
             .addComponent(sepProgress)
             .addComponent(labelProgress)
             .addComponent(overallLabel)
             .addComponent(overallProgress)
-            .addComponent(imageLabel)
-            .addComponent(imageProgress)
             .addGroup(layout.createParallelGroup()
                 .addComponent(analyzeBtn)
                 .addComponent(cancelBtn)
@@ -317,7 +322,8 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             shouldSaveImages,
             shouldUseSpecificOutputFolder,
             textSaveResultsFolder.getText(),
-            textResultsImageFormat.getText()
+            textResultsImageFormat.getText(),
+            Integer.parseInt(textWorkerCount.getText())
         );
     }
 
@@ -338,15 +344,22 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             params = mainWindow.buildAnalyzerParamsFromUi();
         }
         catch (Throwable t) {
-            BatchUtils.showDialogBox("Parsing Error", "Invalid data in the form (" + t.getClass().getSimpleName() + ")");
+            BatchUtils.showDialogBox("Parsing Error", "Invalid data in the analysis form (" + t.getClass().getSimpleName() + ")");
             return;
         }
 
         RefVector<String> errors = params.validate();
 
-        BatchParameters batchParams = buildBatchParamsFromUi();
-        RefVector<String> batchErrors = batchParams.validate();
+        BatchParameters batchParams;
+        try {
+            batchParams = buildBatchParamsFromUi();
+        }
+        catch (Throwable t) {
+            BatchUtils.showDialogBox("Parsing Error", "Invalid data in the batch form (" + t.getClass().getSimpleName() + ")");
+            return;
+        }
 
+        RefVector<String> batchErrors = batchParams.validate();
         errors.add(batchErrors);
 
         if (errors.size > 0) {
@@ -391,7 +404,6 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
                 return;
 
             overallLabel.setText("No images were found!");
-            imageLabel.setText("");
             cancelBtn.setEnabled(false);
 
             updateWindowSize();
@@ -412,7 +424,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     }
 
     @Override
-    public void onBatchStatsKnown(int nImages, int maxProgressPerImage)
+    public void onBatchStatsKnown(int nImages)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
@@ -421,9 +433,6 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             overallLabel.setText("Analyzing images...");
             overallProgress.setValue(0);
             overallProgress.setMaximum(nImages);
-
-            imageProgress.setValue(0);
-            imageProgress.setMaximum(maxProgressPerImage);
 
             updateWindowSize();
         });
@@ -441,16 +450,15 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         });
     }
 
-    boolean wasStartImageJustCalled = false;
-
     @Override
-    public void onStartImage(String path)
+    public void onImageDone(String path, Throwable error)
     {
         SwingUtilities.invokeLater(() -> {
             if (isClosed.get())
                 return;
 
-            wasStartImageJustCalled = true;
+            if (error != null)
+                nErrors++;
 
             int pathLen = path.length();
             String partialFileName = pathLen > 60 ?
@@ -462,44 +470,11 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             if (nErrors > 0)
                 status += ", " + nErrors + (nErrors == 1 ? " error." : " errors.");
 
-            status += " Processing " + partialFileName + "...";
+            status += " Processed " + partialFileName + "...";
             overallLabel.setText(status);
-
-            imageProgress.setValue(0);
-
-            updateWindowSize();
-        });
-    }
-
-    @Override
-    public void updateImageProgress(String statusMsg)
-    {
-        SwingUtilities.invokeLater(() -> {
-            if (isClosed.get())
-                return;
-
-            int progress = wasStartImageJustCalled ? 0 : (imageProgress.getValue() + 1);
-            wasStartImageJustCalled = false;
-
-            imageLabel.setText(statusMsg);
-            imageProgress.setValue(progress);
-
-            updateWindowSize();
-        });
-    }
-
-    @Override
-    public void onImageDone(Throwable error)
-    {
-        SwingUtilities.invokeLater(() -> {
-            if (isClosed.get())
-                return;
-
-            if (error != null)
-                nErrors++;
-
-            imageProgress.setValue(imageProgress.getMaximum());
             overallProgress.setValue(overallProgress.getValue() + 1);
+
+            updateWindowSize();
         });
     }
 
@@ -525,8 +500,6 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             }
 
             overallLabel.setText(status);
-            imageLabel.setText("Saved Excel results to " + sw.fileName);
-            imageProgress.setValue(imageProgress.getMaximum());
             cancelBtn.setEnabled(false);
 
             updateWindowSize();

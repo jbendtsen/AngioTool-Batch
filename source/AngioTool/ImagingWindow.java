@@ -638,8 +638,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                 inputFile,
                 imageUi.source,
                 params,
-                sliceRunner,
-                null
+                sliceRunner
             );
             SwingUtilities.invokeLater(() -> {
                 AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerScratch, stats);

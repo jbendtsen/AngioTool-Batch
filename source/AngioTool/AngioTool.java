@@ -22,19 +22,6 @@ public class AngioTool
     public static final String PREFS_TXT = "AT_Prefs.txt";
     public static final String BATCH_TXT = "AT_BatchPrefs.txt";
 
-    public static String osName;
-    public static String osArch;
-    public static String osVersion;
-    public static String javaVersion;
-    public static String javaVmVersion;
-    public static String javaVmName;
-    public static final String LOOKANDFEEL = "System";
-    public static final String THEME = "Test";
-    //public static String ATDir;
-    //public static String prefsDir;
-    //public static String currentDir;
-    //public static String resultsPath;
-    //public static String ATClassCanonicalName;
     public static ImageIcon ATIcon;
     public static ImageIcon ATImage;
     public static ImageIcon ATFolder;
@@ -70,13 +57,6 @@ public class AngioTool
     {
         Class at = AngioTool.class;
         String canonicalName = at.getCanonicalName();
-
-        osName = System.getProperty("os.name");
-        osArch = System.getProperty("os.arch");
-        osVersion = System.getProperty("os.version");
-        javaVersion = System.getProperty("java.version");
-        javaVmName = System.getProperty("java.vm.name");
-        javaVmVersion = System.getProperty("java.vm.version");
 
         try {
             BufferedImage arrowImage = ImageIO.read(at.getResource("/images/arrow.png"));

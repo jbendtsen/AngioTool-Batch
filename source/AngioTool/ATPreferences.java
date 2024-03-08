@@ -18,8 +18,6 @@ import java.lang.reflect.Field;
 
 public class ATPreferences
 {
-    public static String separator = System.getProperty("file.separator");
-
     public static void savePreferences(Object params, String fileName)
     {
         StringBuilder sb = new StringBuilder();
@@ -224,10 +222,5 @@ public class ATPreferences
         if (!atFolder.exists())
             atFolder.mkdir();
         return atFolder;
-    }
-
-    public static String getFileSeparator()
-    {
-        return separator;
     }
 }
