@@ -757,7 +757,7 @@ public class Analyzer
         }
     }
 
-    static SpreadsheetWriter createWriterWithNewSheet(
+    public static SpreadsheetWriter createWriterWithNewSheet(
         ArrayList<XlsxReader.SheetCells> originalSheets,
         File folder,
         String sheetName
@@ -799,7 +799,7 @@ public class Analyzer
         return writer;
     }
 
-    static void writeResultToSheet(SpreadsheetWriter sw, Stats stats) throws IOException
+    public static void writeResultToSheet(SpreadsheetWriter sw, Stats stats) throws IOException
     {
         Date today = new Date();
         String dateOut = sw.dateFormatter.format(today);

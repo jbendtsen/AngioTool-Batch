@@ -568,24 +568,44 @@ public class ImagingWindow extends JFrame implements ActionListener
             return;
 
         String filePath = fc.getSelectedFile().getAbsolutePath();
-        String format = filePath.substring(Math.max(filePath.lastIndexOf('.'), 0));
+        System.out.println(filePath);
+        String format = filePath.substring(filePath.lastIndexOf('.') + 1);
+        System.out.println(format);
 
         try {
-            ImageFile.saveImage(imageUi.source, format, filePath);
+            ImageFile.saveImage(imageUi.drawingImage, format, filePath);
         }
-        catch (IOException ex) {
+        catch (Throwable ex) {
             BatchUtils.showExceptionInDialogBox(ex);
         }
     }
 
     void saveResultSpreadsheet()
     {
+        if (imageUi.currentStats == null)
+            return;
+
         String[] outStrings = new String[2];
         ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(outStrings, defaultPath, this);
         if (sheets == null)
             return;
 
         defaultPath = outStrings[1];
+
+        int fileNameOffset = outStrings[0].lastIndexOf('/');
+        if (fileNameOffset < 0)
+            fileNameOffset = outStrings[0].lastIndexOf('\\');
+
+        File folder = fileNameOffset > 0 ? new File(outStrings[0].substring(0, fileNameOffset)) : new File("");
+        String sheetName = outStrings[0].substring(fileNameOffset + 1);
+
+        try {
+            SpreadsheetWriter sw = Analyzer.createWriterWithNewSheet(sheets, folder, sheetName);
+            Analyzer.writeResultToSheet(sw, imageUi.currentStats);
+        }
+        catch (IOException ex) {
+            BatchUtils.showExceptionInDialogBox(ex);
+        }
 
         // ...
         //originalSheets = sheets;

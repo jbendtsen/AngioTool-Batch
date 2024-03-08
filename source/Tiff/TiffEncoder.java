@@ -35,7 +35,7 @@ public class TiffEncoder {
 		this.fi = fi;
 		fi.intelByteOrder = littleEndian;
 		bitsPerSample = 8;
-		samplesPerPixel = 1;
+		samplesPerPixel = fi.samplesPerPixel;
 		nEntries = 10;
 		int bytesPerPixel = 1;
 		int bpsSize = 0;
@@ -65,8 +65,8 @@ public class TiffEncoder {
 				break;
 			case ImageInfo.RGB:
 				photoInterp = 2;
-				samplesPerPixel = 3;
-				bytesPerPixel = 3;
+				samplesPerPixel = Math.max(samplesPerPixel, 3);
+				bytesPerPixel = samplesPerPixel;
 				bpsSize = BPS_DATA_SIZE;
 				break;
 			case ImageInfo.RGB48:
@@ -190,7 +190,7 @@ public class TiffEncoder {
 
 	private void write8BitImage(OutputStream out, byte[] pixels) throws IOException {
 		int bytesWritten = 0;
-		int size = fi.width*fi.height;
+		int size = fi.width*fi.height*samplesPerPixel;
 		int count = getWritingChunkSize(size);
 		while (bytesWritten<size) {
 			if ((bytesWritten + count)>size)
@@ -208,7 +208,7 @@ public class TiffEncoder {
 
 	private void write16BitImage(OutputStream out, short[] pixels)  throws IOException {
 		long bytesWritten = 0L;
-		long size = 2L*fi.width*fi.height;
+		long size = 2L*fi.width*fi.height*samplesPerPixel;
 		int count = getWritingChunkSize(size);
 		byte[] buffer = new byte[count];
 
@@ -286,7 +286,7 @@ public class TiffEncoder {
 
 	private void writeFloatImage(OutputStream out, float[] pixels)  throws IOException {
 		long bytesWritten = 0L;
-		long size = 4L*fi.width*fi.height;
+		long size = 4L*fi.width*fi.height*samplesPerPixel;
 		int count = getWritingChunkSize(size);
 		byte[] buffer = new byte[count];
 		int tmp;

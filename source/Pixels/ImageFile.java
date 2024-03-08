@@ -5,8 +5,7 @@ import Tiff.ImageReader;
 import Tiff.TiffDecoder;
 import Tiff.TiffEncoder;
 import Utils.*;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
+import java.awt.image.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -386,9 +385,6 @@ public class ImageFile
             try {
                 te.write(out);
             }
-            catch (Exception ex) {
-                ex.printStackTrace();
-            }
             finally {
                 out.close();
             }
@@ -397,6 +393,65 @@ public class ImageFile
             BufferedImage javaImage = new BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB);
             int[] outPixels = ((DataBufferInt)javaImage.getRaster().getDataBuffer()).getData();
             System.arraycopy(image.pixels, 0, outPixels, 0, image.width * image.height);
+            ImageIO.write(javaImage, format, new File(absPath));
+        }
+    }
+
+    public static void saveImage(BufferedImage javaImage, String format, String absPath) throws IOException
+    {
+        if (format.length() == 3 && format.charAt(0) == 'p' && format.charAt(2) == 'm') {
+            int[] pixels = ((DataBufferInt)javaImage.getRaster().getDataBuffer()).getData();
+            writePpm24(pixels, javaImage.getWidth(), javaImage.getHeight(), absPath);
+        }
+        else if ("tif".equals(format) || "tiff".equals(format)) {
+            OutputStream out = Files.newOutputStream(
+                FileSystems.getDefault().getPath("", absPath),
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE
+            );
+
+            Raster raster = javaImage.getRaster();
+            DataBuffer buffer = raster.getDataBuffer();
+            int nChannels = raster.getSampleModel().getNumBands();
+
+            ImageInfo fi = new ImageInfo();
+            fi.nImages = 1;
+            fi.width = javaImage.getWidth();
+            fi.height = javaImage.getHeight();
+            fi.samplesPerPixel = nChannels;
+
+            if (buffer instanceof DataBufferByte) {
+                fi.pixels = ((DataBufferByte)buffer).getData();
+                fi.fileType = ImageInfo.COLOR8;
+            }
+            else if (buffer instanceof DataBufferShort) {
+                fi.pixels = ((DataBufferShort)buffer).getData();
+                fi.fileType = nChannels == 3 ? ImageInfo.RGB48 : ImageInfo.GRAY16_SIGNED;
+            }
+            else if (buffer instanceof DataBufferUShort) {
+                fi.pixels = ((DataBufferUShort)buffer).getData();
+                fi.fileType = nChannels == 3 ? ImageInfo.RGB48 : ImageInfo.GRAY16_UNSIGNED;
+            }
+            else if (buffer instanceof DataBufferInt) {
+                fi.pixels = ((DataBufferInt)buffer).getData();
+                fi.fileType = ImageInfo.RGB;
+            }
+            else if (buffer instanceof DataBufferFloat) {
+                fi.pixels = ((DataBufferFloat)buffer).getData();
+                fi.fileType = ImageInfo.GRAY32_FLOAT;
+            }
+
+            TiffEncoder te = new TiffEncoder(fi);
+
+            try {
+                te.write(out);
+            }
+            finally {
+                out.close();
+            }
+        }
+        else {
             ImageIO.write(javaImage, format, new File(absPath));
         }
     }
