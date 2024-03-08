@@ -270,7 +270,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
 
     void selectExcelFile() {
         String[] outStrings = new String[2];
-        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(outStrings, defaultPath, this);
+        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(outStrings, null, defaultPath, this);
         if (sheets != null) {
             originalSheets = sheets;
             defaultPath = outStrings[1];

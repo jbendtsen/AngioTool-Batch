@@ -9,6 +9,7 @@ import Xlsx.*;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -362,10 +363,12 @@ public class ImagingWindow extends JFrame implements ActionListener
     JCheckBox cbShowStats = new JCheckBox();
 
     JLabel labelSaveImage = new JLabel();
+    JLabel labelImageWasSaved = new JLabel();
     JButton btnSaveImage = new JButton();
     JTextField textSaveImage = new JTextField();
 
     JLabel labelSaveSpreadsheet = new JLabel();
+    JLabel labelSpreadsheetWasSaved = new JLabel();
     JButton btnSaveSpreadsheet = new JButton();
     JTextField textSaveSpreadsheet = new JTextField();
 
@@ -394,9 +397,13 @@ public class ImagingWindow extends JFrame implements ActionListener
         this.cbShowStats.setSelected(true);
 
         this.labelSaveImage.setText("Save result image");
+        BatchUtils.setNewFontStyleOn(this.labelImageWasSaved, Font.ITALIC);
+        this.labelImageWasSaved.setHorizontalAlignment(SwingConstants.TRAILING);
         this.btnSaveImage.setIcon(AngioTool.ATFolderSmall);
 
         this.labelSaveSpreadsheet.setText("Save stats to spreadsheet");
+        BatchUtils.setNewFontStyleOn(this.labelSpreadsheetWasSaved, Font.ITALIC);
+        this.labelSpreadsheetWasSaved.setHorizontalAlignment(SwingConstants.TRAILING);
         this.btnSaveSpreadsheet.setIcon(AngioTool.ATExcelSmall);
     }
 
@@ -460,6 +467,7 @@ public class ImagingWindow extends JFrame implements ActionListener
     private void arrangeUi(GroupLayout layout)
     {
         final int BS = 32;
+        final int HS = 64;
 
         layout.setHorizontalGroup(layout.createParallelGroup()
             .addComponent(imageUi)
@@ -477,18 +485,26 @@ public class ImagingWindow extends JFrame implements ActionListener
             )
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
-                    .addComponent(labelSaveImage)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(labelSaveImage)
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(labelImageWasSaved, HS, HS, HS)
+                    )
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(btnSaveImage)
-                        .addComponent(textSaveImage)
+                        .addComponent(textSaveImage, 0, 0, Short.MAX_VALUE)
                     )
                 )
                 .addGap(20)
                 .addGroup(layout.createParallelGroup()
-                    .addComponent(labelSaveSpreadsheet)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(labelSaveSpreadsheet)
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(labelSpreadsheetWasSaved, HS, HS, HS)
+                    )
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(btnSaveSpreadsheet)
-                        .addComponent(textSaveSpreadsheet)
+                        .addComponent(textSaveSpreadsheet, 0, 0, Short.MAX_VALUE)
                     )
                 )
             )
@@ -510,7 +526,9 @@ public class ImagingWindow extends JFrame implements ActionListener
             .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelSaveImage)
+                .addComponent(labelImageWasSaved)
                 .addComponent(labelSaveSpreadsheet)
+                .addComponent(labelSpreadsheetWasSaved)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addComponent(btnSaveImage)
@@ -555,25 +573,32 @@ public class ImagingWindow extends JFrame implements ActionListener
         textSaveImage.setEnabled(enabled);
         btnSaveSpreadsheet.setEnabled(enabled);
         textSaveSpreadsheet.setEnabled(enabled);
+
+        labelImageWasSaved.setText("");
+        labelSpreadsheetWasSaved.setText("");
     }
 
     void saveResultImage()
     {
-        JFileChooser fc = BatchUtils.createFileChooser();
-        fc.setDialogTitle("Save Result Image");
-        fc.setDialogType(JFileChooser.SAVE_DIALOG);
-        fc.setCurrentDirectory(new File(defaultPath));
+        String filePath = textSaveImage.getText();
+        if (filePath == null || filePath.length() == 0) {
+            JFileChooser fc = BatchUtils.createFileChooser();
+            fc.setDialogTitle("Save Result Image");
+            fc.setDialogType(JFileChooser.SAVE_DIALOG);
+            fc.setCurrentDirectory(new File(defaultPath));
 
-        if (fc.showSaveDialog(this) != 0)
-            return;
+            if (fc.showSaveDialog(this) != 0)
+                return;
 
-        String filePath = fc.getSelectedFile().getAbsolutePath();
-        System.out.println(filePath);
-        String format = filePath.substring(filePath.lastIndexOf('.') + 1);
-        System.out.println(format);
+            filePath = fc.getSelectedFile().getAbsolutePath();
+        }
+
+        String format = filePath.substring(filePath.lastIndexOf('.') + 1).toLowerCase();
 
         try {
             ImageFile.saveImage(imageUi.drawingImage, format, filePath);
+            textSaveImage.setText(filePath);
+            labelImageWasSaved.setText("saved");
         }
         catch (Throwable ex) {
             BatchUtils.showExceptionInDialogBox(ex);
@@ -585,23 +610,29 @@ public class ImagingWindow extends JFrame implements ActionListener
         if (imageUi.currentStats == null)
             return;
 
+        String existingXlsxFile = textSaveSpreadsheet.getText();
         String[] outStrings = new String[2];
-        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(outStrings, defaultPath, this);
+
+        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(
+            outStrings,
+            existingXlsxFile,
+            defaultPath,
+            this
+        );
         if (sheets == null)
             return;
 
         defaultPath = outStrings[1];
 
-        int fileNameOffset = outStrings[0].lastIndexOf('/');
-        if (fileNameOffset < 0)
-            fileNameOffset = outStrings[0].lastIndexOf('\\');
-
-        File folder = fileNameOffset > 0 ? new File(outStrings[0].substring(0, fileNameOffset)) : new File("");
+        int fileNameOffset = BatchUtils.getFileNameOffset(outStrings[0]);
+        File folder = new File(outStrings[0].substring(0, fileNameOffset));
         String sheetName = outStrings[0].substring(fileNameOffset + 1);
 
         try {
             SpreadsheetWriter sw = Analyzer.createWriterWithNewSheet(sheets, folder, sheetName);
             Analyzer.writeResultToSheet(sw, imageUi.currentStats);
+            textSaveSpreadsheet.setText(outStrings[0]);
+            labelSpreadsheetWasSaved.setText("saved");
         }
         catch (IOException ex) {
             BatchUtils.showExceptionInDialogBox(ex);

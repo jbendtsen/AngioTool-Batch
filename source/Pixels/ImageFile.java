@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -393,7 +394,9 @@ public class ImageFile
             BufferedImage javaImage = new BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB);
             int[] outPixels = ((DataBufferInt)javaImage.getRaster().getDataBuffer()).getData();
             System.arraycopy(image.pixels, 0, outPixels, 0, image.width * image.height);
-            ImageIO.write(javaImage, format, new File(absPath));
+            boolean foundWriter = ImageIO.write(javaImage, format, new File(absPath));
+            if (!foundWriter)
+                throw new UnsupportedEncodingException("Failed to write image: unsupported format type \"" + format + "\"");
         }
     }
 
@@ -452,7 +455,9 @@ public class ImageFile
             }
         }
         else {
-            ImageIO.write(javaImage, format, new File(absPath));
+            boolean foundWriter = ImageIO.write(javaImage, format, new File(absPath));
+            if (!foundWriter)
+                throw new UnsupportedEncodingException("Failed to write image: unsupported format type \"" + format + "\"");
         }
     }
 

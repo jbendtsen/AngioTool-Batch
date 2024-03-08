@@ -229,9 +229,14 @@ public class BatchUtils
         return path != null && path.length() > 0;
     }
 
-    public static boolean hasAnyFileExtension(File f)
+    public static int getFileNameOffset(String path)
     {
-        return f.getName().contains(".");
+        int lastSlash = path.lastIndexOf('/');
+        if (lastSlash < 0)
+            lastSlash = path.lastIndexOf('\\');
+
+        // if 'path' contains neither a '/' nor a '\', then lastSlash will be -1, which suits us nicely.
+        return lastSlash + 1;
     }
 
     public static String getExtension(File f)
@@ -338,6 +343,12 @@ public class BatchUtils
         ui.setFont(new Font(font.getName(), font.getStyle(), newSize));
     }
 
+    public static void setNewFontStyleOn(JComponent ui, int newStyle)
+    {
+        Font font = ui.getFont();
+        ui.setFont(new Font(font.getName(), newStyle, font.getSize()));
+    }
+
     public static JFileChooser createFileChooser() {
         JFileChooser fc = new JFileChooser();
         fc.setPreferredSize(new Dimension(800, 500));
@@ -417,35 +428,49 @@ public class BatchUtils
         return sequentialGroup;
     }
 
-    public static ArrayList<XlsxReader.SheetCells> openSpreadsheetForAppending(String[] outStrings, String defaultPath, JFrame parentFrame)
-    {
-        JFileChooser fc = BatchUtils.createFileChooser();
-        fc.setDialogTitle("Append to Excel spreadsheet");
-        fc.setDialogType(JFileChooser.SAVE_DIALOG);
-        fc.setCurrentDirectory(new File(defaultPath));
-        fc.setFileFilter(new FileFilter() {
-            @Override public boolean accept(File f) {
-                String name = f.getName();
-                return !f.isFile() || name.endsWith(".xls") || name.endsWith(".xlsx");
-            }
-            @Override public String getDescription() {
-                return "Excel Spreadsheet (.xls, .xlsx)";
-            }
-        });
+    public static ArrayList<XlsxReader.SheetCells> openSpreadsheetForAppending(
+        String[] outStrings,
+        String existingXlsxFile,
+        String defaultPath,
+        JFrame parentFrame
+    ) {
+        File xlsxFile;
+        if (existingXlsxFile == null || existingXlsxFile.length() == 0) {
+            JFileChooser fc = BatchUtils.createFileChooser();
+            fc.setDialogTitle("Append to Excel spreadsheet");
+            fc.setDialogType(JFileChooser.SAVE_DIALOG);
+            fc.setCurrentDirectory(new File(defaultPath));
+            fc.setFileFilter(new FileFilter() {
+                @Override public boolean accept(File f) {
+                    String name = f.getName();
+                    return !f.isFile() || name.endsWith(".xls") || name.endsWith(".xlsx");
+                }
+                @Override public String getDescription() {
+                    return "Excel Spreadsheet (.xls, .xlsx)";
+                }
+            });
 
-        if (fc.showOpenDialog(parentFrame) != 0) {
-            outStrings[0] = null;
-            return null;
+            if (fc.showSaveDialog(parentFrame) != 0) {
+                outStrings[0] = null;
+                return null;
+            }
+
+            xlsxFile = fc.getSelectedFile();
+            if (!xlsxFile.getName().contains("."))
+                xlsxFile = new File(xlsxFile.getAbsolutePath() + ".xlsx");
+
+            defaultPath = fc.getCurrentDirectory().getAbsolutePath();
         }
+        else {
+            if (!existingXlsxFile.contains("."))
+                existingXlsxFile += ".xlsx";
 
-        File xlsxFile = fc.getSelectedFile();
-        if (!BatchUtils.hasAnyFileExtension(xlsxFile))
-            xlsxFile = new File(xlsxFile.getAbsolutePath() + ".xlsx");
+            xlsxFile = new File(existingXlsxFile);
+            defaultPath = xlsxFile.getParent();
+        }
 
         String xlsxPath = xlsxFile.getAbsolutePath();
         outStrings[0] = xlsxPath;
-
-        defaultPath = fc.getCurrentDirectory().getAbsolutePath();
         outStrings[1] = defaultPath;
 
         ArrayList<XlsxReader.SheetCells> sheets = null;
