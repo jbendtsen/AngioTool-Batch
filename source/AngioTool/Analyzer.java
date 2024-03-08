@@ -71,7 +71,7 @@ public class Analyzer
         public double averageVesselDiameter;
         public double ELacunarityMedial;
         public double ELacunarityCurve;
-        public double FLacuanrityMedial;
+        public double FLacunarityMedial;
         public double FLacunarityCurve;
         public double meanFl;
         public double meanEl;
@@ -625,7 +625,7 @@ public class Analyzer
         stats.ELacunarityCurve = data.lacunarity.elCurve;
         stats.ELacunarityMedial = data.lacunarity.elMedial;
         stats.FLacunarityCurve = data.lacunarity.flCurve;
-        stats.FLacuanrityMedial = data.lacunarity.flMedial;
+        stats.FLacunarityMedial = data.lacunarity.flMedial;
         stats.meanEl = data.lacunarity.elMean;
         stats.meanFl = data.lacunarity.flMean;
 
@@ -829,7 +829,7 @@ public class Analyzer
             stats.averageVesselDiameter,
             stats.ELacunarityMedial,
             stats.ELacunarityCurve,
-            stats.FLacuanrityMedial,
+            stats.FLacunarityMedial,
             stats.FLacunarityCurve,
             stats.meanFl,
             stats.meanEl

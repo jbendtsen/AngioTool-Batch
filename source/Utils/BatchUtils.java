@@ -205,7 +205,24 @@ public class BatchUtils
     {
         String str = "" + value;
         if (str.endsWith(".0"))
-        str = str.substring(0, str.length() - 2);
+            return str.substring(0, str.length() - 2);
+        return str;
+    }
+
+    public static String formatDouble(double value, int nFracDigits)
+    {
+        String str = "" + value;
+        if (str.endsWith(".0"))
+            return str.substring(0, str.length() - 2);
+
+        int dotIndex = str.indexOf('.');
+        if (dotIndex < 0)
+            return str;
+
+        int strLen = str.length();
+        if (dotIndex + nFracDigits + 1 < strLen)
+            return str.substring(0, dotIndex + nFracDigits + 1);
+
         return str;
     }
 

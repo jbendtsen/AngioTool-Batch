@@ -5,11 +5,13 @@ import Pixels.Canvas;
 import Pixels.ImageFile;
 import Utils.BatchUtils;
 import Utils.ISliceRunner;
+import Utils.RefVector;
 import Xlsx.*;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -25,7 +27,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.*;
 
-public class ImagingWindow extends JFrame implements ActionListener
+public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 {
     public static class ImagingDisplay extends JPanel implements MouseMotionListener, MouseWheelListener
     {
@@ -47,7 +49,13 @@ public class ImagingWindow extends JFrame implements ActionListener
         Color[] wheelColors;
         int loadTicks;
         Rectangle areaRect;
+
         Analyzer.Stats currentStats;
+        RefVector<String> statsStrings;
+        int statsWidth;
+        int statsLineHeight;
+        boolean didComputeLacunarity;
+        boolean didComputeThickness;
         boolean shouldShowStats;
 
         int zoomLevels;
@@ -87,7 +95,10 @@ public class ImagingWindow extends JFrame implements ActionListener
             this.wheelColors = new Color[8];
             this.loadTicks = 0;
             this.areaRect = new Rectangle();
+
             this.currentStats = null;
+            this.statsStrings = new RefVector<>(String.class);
+            this.statsWidth = 0;
             this.shouldShowStats = initiallyShowStats;
 
             this.zoomLevels = 0;
@@ -198,9 +209,82 @@ public class ImagingWindow extends JFrame implements ActionListener
                     g.fillOval(centerX + x - 6, centerY + y - 6, 13, 13);
                 }
             }
-            else if (shouldShowStats) {
+            else if (shouldShowStats && this.currentStats != null) {
+                if (this.statsStrings.size == 0) {
+                    double linearScaleFactor = currentStats.linearScalingFactor > 0.0 ? currentStats.linearScalingFactor : 1.0;
+                    double areaScaleFactor = linearScaleFactor * linearScaleFactor;
+                    double imageArea = currentStats.imageWidth * currentStats.imageHeight * areaScaleFactor;
+                    double allantoisPercentage = currentStats.allantoisMMArea * 100.0 / imageArea;
+                    double junctionsAreaPercentage = 100.0 * currentStats.junctionsPerScaledArea;
+
+                    statsStrings.add(
+                        "Width x Height: " +
+                        currentStats.imageWidth + " x " + currentStats.imageHeight
+                    );
+                    statsStrings.add(
+                        "Explant Area, %: " +
+                        BatchUtils.formatDouble(currentStats.allantoisMMArea, 2) + ", " +
+                        BatchUtils.formatDouble(allantoisPercentage, 3) + "%"
+                    );
+                    statsStrings.add(
+                        "Vessels Area, %: " +
+                        BatchUtils.formatDouble(currentStats.vesselMMArea, 2) + ", " +
+                        BatchUtils.formatDouble(currentStats.vesselPercentageArea, 3) + "%"
+                    );
+                    statsStrings.add(
+                        "Total Junctions: " +
+                        BatchUtils.formatDouble(currentStats.totalNJunctions)
+                    );
+                    statsStrings.add(
+                        "Junctions Density %: " +
+                        BatchUtils.formatDouble(junctionsAreaPercentage, 5) + "%"
+                    );
+                    statsStrings.add(
+                        "Vessels Length - Total, Average: " +
+                        BatchUtils.formatDouble(currentStats.totalLength, 3) + ", " +
+                        BatchUtils.formatDouble(currentStats.averageBranchLength, 3)
+                    );
+                    statsStrings.add(
+                        "End Points: " +
+                        currentStats.totalNEndPoints
+                    );
+
+                    if (this.didComputeThickness) {
+                        statsStrings.add(
+                            "Average Vessel Diameter: " +
+                            BatchUtils.formatDouble(currentStats.averageVesselDiameter, 3)
+                        );
+                    }
+                    if (this.didComputeLacunarity) {
+                        statsStrings.add(
+                            "E Lacunarity - Medial, Mean, Curve: " +
+                            BatchUtils.formatDouble(currentStats.ELacunarityMedial, 4) + ", " +
+                            BatchUtils.formatDouble(currentStats.meanEl, 4) + ", " +
+                            BatchUtils.formatDouble(currentStats.ELacunarityCurve, 4)
+                        );
+                        statsStrings.add(
+                            "F Lacunarity - Medial, Mean, Curve: " +
+                            BatchUtils.formatDouble(currentStats.FLacunarityMedial, 4) + ", " +
+                            BatchUtils.formatDouble(currentStats.meanFl, 4) + ", " +
+                            BatchUtils.formatDouble(currentStats.FLacunarityCurve, 4)
+                        );
+                    }
+
+                    FontMetrics metrics = g.getFontMetrics();
+                    int widestWidth = 0;
+                    for (int i = 0; i < statsStrings.size; i++)
+                        widestWidth = Math.max(widestWidth, metrics.stringWidth(statsStrings.buf[i]));
+
+                    this.statsWidth = widestWidth;
+                    this.statsLineHeight = metrics.getHeight();
+                }
+
                 g.setColor(overlayBackColor);
-                g.fillRect(4, 4, 324, 164);
+                g.fillRect(4, 4, this.statsWidth + 16, this.statsLineHeight * this.statsStrings.size + 16);
+
+                g.setColor(Color.WHITE);
+                for (int i = 0; i < this.statsStrings.size; i++)
+                    g.drawString(statsStrings.buf[i], 12, i * this.statsLineHeight + 24);
             }
         }
 
@@ -289,6 +373,7 @@ public class ImagingWindow extends JFrame implements ActionListener
         {
             this.waiting = true;
             this.currentStats = null;
+            this.statsStrings.size = 0;
 
             int[] outPixels = getDrawingBuffer();
             Canvas.blurArgbImage(
@@ -307,6 +392,9 @@ public class ImagingWindow extends JFrame implements ActionListener
         public AnalyzerParameters onImageFinished(AnalyzerParameters params, Analyzer.Scratch data, Analyzer.Stats stats)
         {
             this.currentStats = stats;
+            this.statsStrings.size = 0;
+            this.didComputeLacunarity = params.shouldComputeLacunarity;
+            this.didComputeThickness = params.shouldComputeThickness;
 
             int[] outPixels = getDrawingBuffer();
             Analyzer.drawOverlay(
@@ -400,11 +488,13 @@ public class ImagingWindow extends JFrame implements ActionListener
         BatchUtils.setNewFontStyleOn(this.labelImageWasSaved, Font.ITALIC);
         this.labelImageWasSaved.setHorizontalAlignment(SwingConstants.TRAILING);
         this.btnSaveImage.setIcon(AngioTool.ATFolderSmall);
+        this.textSaveImage.addKeyListener(this);
 
         this.labelSaveSpreadsheet.setText("Save stats to spreadsheet");
         BatchUtils.setNewFontStyleOn(this.labelSpreadsheetWasSaved, Font.ITALIC);
         this.labelSpreadsheetWasSaved.setHorizontalAlignment(SwingConstants.TRAILING);
         this.btnSaveSpreadsheet.setIcon(AngioTool.ATExcelSmall);
+        this.textSaveSpreadsheet.addKeyListener(this);
     }
 
     public ImagingWindow showDialog()
@@ -626,7 +716,7 @@ public class ImagingWindow extends JFrame implements ActionListener
 
         int fileNameOffset = BatchUtils.getFileNameOffset(outStrings[0]);
         File folder = new File(outStrings[0].substring(0, fileNameOffset));
-        String sheetName = outStrings[0].substring(fileNameOffset + 1);
+        String sheetName = outStrings[0].substring(fileNameOffset);
 
         try {
             SpreadsheetWriter sw = Analyzer.createWriterWithNewSheet(sheets, folder, sheetName);
@@ -665,5 +755,18 @@ public class ImagingWindow extends JFrame implements ActionListener
             saveResultImage();
         else if (source == btnSaveSpreadsheet)
             saveResultSpreadsheet();
+    }
+
+    @Override public void keyPressed(KeyEvent evt) {}
+    @Override public void keyReleased(KeyEvent evt) {}
+
+    @Override
+    public void keyTyped(KeyEvent evt)
+    {
+        Object source = evt.getSource();
+        if (source == textSaveImage)
+            labelImageWasSaved.setText("");
+        else if (source == textSaveSpreadsheet)
+            labelSpreadsheetWasSaved.setText("");
     }
 }
