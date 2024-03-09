@@ -707,7 +707,8 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         String format = filePath.substring(extIdx + 1).toLowerCase();
 
         try {
-            ImageFile.saveImage(imageUi.drawingImage, format, filePath);
+            DataBufferInt imageBuffer = (DataBufferInt)imageUi.drawingImage.getRaster().getDataBuffer();
+            ImageFile.saveImage(imageUi.drawingImage, imageBuffer, format, filePath);
             textSaveImage.setText(filePath);
             labelImageWasSaved.setText("saved");
         }

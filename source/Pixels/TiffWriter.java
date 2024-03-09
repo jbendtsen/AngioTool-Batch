@@ -1,75 +1,169 @@
 package Pixels;
 
+import Utils.ByteBufferPool;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
+import java.io.OutputStream;
+import java.util.Arrays;
 
 public class TiffWriter
 {
     static final int HEADER_SIZE = 0x8c;
 
     public static void writeUncompressedImage(
-        FileChannel outFile,
+        OutputStream outStream,
         int[] inputPixels,
         int width,
         int height
     ) throws IOException
     {
         if (width <= 0 || height <= 0)
-            throw new InvalidArgumentException("Invalid dimensions " + width + " x " + height);
+            throw new IllegalArgumentException("Invalid dimensions " + width + " x " + height);
 
         int bytesPerPixel = 3;
         int outDataSize = width * height * bytesPerPixel;
-        byte[] outputPixels = ByteBufferPool.acquireAsIs(HEADER_SIZE + outDataSize);
+        byte[] outputData = ByteBufferPool.acquireAsIs(HEADER_SIZE + outDataSize);
 
         try {
-            writeHeader(outputPixels, width, height, false);
-            writeUncompressedPixelData(outputPixels, HEADER_SIZE, width, height);
-            outFile.write(ByteBuffer.wrap(outputPixels, 0, HEADER_SIZE + outDataSize));
+            writeUncompressedTiffHeader(outputData, width, height);
+            writeUncompressedPixelData(outputData, HEADER_SIZE, inputPixels, width, height);
+            outStream.write(outputData, 0, HEADER_SIZE + outDataSize);
         }
         finally {
-            ByteBufferPool.release(outputPixels);
+            ByteBufferPool.release(outputData);
         }
     }
 
-    private static void writeHeader(
+    private static void writeUncompressedTiffHeader(
         byte[] b,
         int width,
-        int height,
-        boolean usingCompression
+        int height
     ) {
+        Arrays.fill(b, 0, HEADER_SIZE, (byte)0);
         int p = 0;
 
         // Tiff Type
         b[p++] = 'I';
         b[p++] = 'I';
         b[p++] = 0x2a;
-        b[p++] = 0;
 
         // First IFD offset (immediately after this field)
+        p = 4;
         b[p++] = 8;
-        b[p++] = 0;
-        b[p++] = 0;
-        b[p++] = 0;
-
-        // New Subfile Type: 00fe 0004 00000001 00000000
-        // Width:            0100 0004 00000001 width
-        //
 
         // Number of tags = 10
+        p = 8;
         b[p++] = 0xa;
-        b[p++] = 0;
+        p++;
 
-        fe 00 04 00 01 00 00 00 00 00 00 00 // New Subfile Type = 0
-        00 01 04 00 01 00 00 00 00 03 00 00 // Width
-        01 01 04 00 01 00 00 00 64 03 00 00 // Height
-        02 01 03 00 03 00 00 00 86 00 00 00 // Bits Per Sample = points to 0x86, 4 bytes after the last tag
-        03 01 03 00 01 00 00 00 01 00 00 00 // Compression = uncompressed
-        06 01 03 00 01 00 00 00 02 00 00 00 // Photometric Interpretation = 2 (RGB)
-        11 01 04 00 01 00 00 00 8c 00 00 00 // Strip Offsets (aka image offset)
-        15 01 03 00 01 00 00 00 03 00 00 00 // Samples Per Pixel = 3
-        16 01 04 00 01 00 00 00 64 03 00 00 // Rows Per Strip = Height
-        17 01 04 00 01 00 00 00 00 84 1e 00 // Strip Byte Counts = image data size, ie. width*height*3
+        // 254: New Subfile Type = 0
+        b[p] = (byte)0xfe;
+        b[p+2] = 4;
+        b[p+4] = 1;
+        p += 12;
 
-        00 00 00 00 08 00 08 00 08 00 // 4 bytes, then "short[] {8, 8, 8}"
+        // 256: Width
+        b[p+1] = 1;
+        b[p+2] = 4;
+        b[p+4] = 1;
+        p += 8;
+        b[p++] = (byte)width;
+        b[p++] = (byte)(width >> 8);
+        b[p++] = (byte)(width >> 16);
+        b[p++] = (byte)(width >> 24);
+
+        // 257: Height
+        b[p] = 1;
+        b[p+1] = 1;
+        b[p+2] = 4;
+        b[p+4] = 1;
+        p += 8;
+        b[p++] = (byte)height;
+        b[p++] = (byte)(height >> 8);
+        b[p++] = (byte)(height >> 16);
+        b[p++] = (byte)(height >> 24);
+
+        // 258: Bits Per Sample = 8,8,8: points to 0x86, 4 bytes after the last tag
+        b[p] = 2;
+        b[p+1] = 1;
+        b[p+2] = 3;
+        b[p+4] = 3;
+        b[p+8] = (byte)(HEADER_SIZE - 6);
+        p += 12;
+
+        // 259: Compression = uncompressed
+        b[p] = 3;
+        b[p+1] = 1;
+        b[p+2] = 3;
+        b[p+4] = 1;
+        b[p+8] = 1;
+        p += 12;
+
+        // 262: Photometric Interpretation = 2 (RGB)
+        b[p] = 6;
+        b[p+1] = 1;
+        b[p+2] = 3;
+        b[p+4] = 1;
+        b[p+8] = 2;
+        p += 12;
+
+        // 273: Strip Offsets (aka image offset)
+        b[p] = 17;
+        b[p+1] = 1;
+        b[p+2] = 4;
+        b[p+4] = 1;
+        b[p+8] = (byte)HEADER_SIZE;
+        p += 12;
+
+        // 277: Samples Per Pixel = 3
+        b[p] = 21;
+        b[p+1] = 1;
+        b[p+2] = 3;
+        b[p+4] = 1;
+        b[p+8] = 3;
+        p += 12;
+
+        // 278: Rows Per Strip = Height
+        b[p] = 22;
+        b[p+1] = 1;
+        b[p+2] = 4;
+        b[p+4] = 1;
+        p += 8;
+        b[p++] = (byte)height;
+        b[p++] = (byte)(height >> 8);
+        b[p++] = (byte)(height >> 16);
+        b[p++] = (byte)(height >> 24);
+
+        // 279: Strip Byte Counts = image data size, ie. width*height*3
+        int imageSize = width * height * 3;
+        b[p] = 23;
+        b[p+1] = 1;
+        b[p+2] = 4;
+        b[p+4] = 1;
+        p += 8;
+        b[p++] = (byte)imageSize;
+        b[p++] = (byte)(imageSize >> 8);
+        b[p++] = (byte)(imageSize >> 16);
+        b[p++] = (byte)(imageSize >> 24);
+
+        // 8,8,8 referenced by the "Bits Per Sample" tag
+        b[p+4] = 8;
+        b[p+6] = 8;
+        b[p+8] = 8;
+    }
+
+    private static void writeUncompressedPixelData(
+        byte[] outputBuffer,
+        int offset,
+        int[] inputPixels,
+        int width,
+        int height
+    ) {
+        int area = width * height;
+        for (int in = 0, out = offset; in < area; in++, out += 3) {
+            int rgb = inputPixels[in];
+            outputBuffer[out] = (byte)(rgb >> 16);
+            outputBuffer[out+1] = (byte)(rgb >> 8);
+            outputBuffer[out+2] = (byte)rgb;
+        }
     }
 }

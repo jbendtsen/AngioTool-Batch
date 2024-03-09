@@ -367,28 +367,7 @@ public class ImageFile
             writePpm24(image.pixels, image.width, image.height, absPath);
         }
         else if ("tif".equals(format) || "tiff".equals(format)) {
-            OutputStream out = Files.newOutputStream(
-                FileSystems.getDefault().getPath("", absPath),
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE
-            );
-
-            ImageInfo fi = new ImageInfo();
-            fi.nImages = 1;
-            fi.width = image.width;
-            fi.height = image.height;
-            fi.fileType = ImageInfo.RGB;
-            fi.pixels = image.pixels;
-
-            TiffEncoder te = new TiffEncoder(fi);
-
-            try {
-                te.write(out);
-            }
-            finally {
-                out.close();
-            }
+            writeUncompressedTiff(image.pixels, image.width, image.height, absPath);
         }
         else {
             BufferedImage javaImage = new BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB);
@@ -400,59 +379,20 @@ public class ImageFile
         }
     }
 
-    public static void saveImage(BufferedImage javaImage, String format, String absPath) throws IOException
+    public static void saveImage(
+        BufferedImage javaImage,
+        DataBufferInt dataBuffer,
+        String format,
+        String absPath
+    ) throws IOException
     {
         if (format.length() == 3 && format.charAt(0) == 'p' && format.charAt(2) == 'm') {
-            int[] pixels = ((DataBufferInt)javaImage.getRaster().getDataBuffer()).getData();
+            int[] pixels = dataBuffer.getData();
             writePpm24(pixels, javaImage.getWidth(), javaImage.getHeight(), absPath);
         }
         else if ("tif".equals(format) || "tiff".equals(format)) {
-            OutputStream out = Files.newOutputStream(
-                FileSystems.getDefault().getPath("", absPath),
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE
-            );
-
-            Raster raster = javaImage.getRaster();
-            DataBuffer buffer = raster.getDataBuffer();
-            int nChannels = raster.getSampleModel().getNumBands();
-
-            ImageInfo fi = new ImageInfo();
-            fi.nImages = 1;
-            fi.width = javaImage.getWidth();
-            fi.height = javaImage.getHeight();
-            fi.samplesPerPixel = nChannels;
-
-            if (buffer instanceof DataBufferByte) {
-                fi.pixels = ((DataBufferByte)buffer).getData();
-                fi.fileType = ImageInfo.COLOR8;
-            }
-            else if (buffer instanceof DataBufferShort) {
-                fi.pixels = ((DataBufferShort)buffer).getData();
-                fi.fileType = nChannels == 3 ? ImageInfo.RGB48 : ImageInfo.GRAY16_SIGNED;
-            }
-            else if (buffer instanceof DataBufferUShort) {
-                fi.pixels = ((DataBufferUShort)buffer).getData();
-                fi.fileType = nChannels == 3 ? ImageInfo.RGB48 : ImageInfo.GRAY16_UNSIGNED;
-            }
-            else if (buffer instanceof DataBufferInt) {
-                fi.pixels = ((DataBufferInt)buffer).getData();
-                fi.fileType = ImageInfo.RGB;
-            }
-            else if (buffer instanceof DataBufferFloat) {
-                fi.pixels = ((DataBufferFloat)buffer).getData();
-                fi.fileType = ImageInfo.GRAY32_FLOAT;
-            }
-
-            TiffEncoder te = new TiffEncoder(fi);
-
-            try {
-                te.write(out);
-            }
-            finally {
-                out.close();
-            }
+            int[] pixels = dataBuffer.getData();
+            writeUncompressedTiff(pixels, javaImage.getWidth(), javaImage.getHeight(), absPath);
         }
         else {
             boolean foundWriter = ImageIO.write(javaImage, format, new File(absPath));
@@ -468,6 +408,28 @@ public class ImageFile
         }
         catch (IOException ignored) {}
         return null;
+    }
+
+    public static void writeUncompressedTiff(
+        int[] pixels,
+        int width,
+        int height,
+        String absPath
+    ) throws IOException
+    {
+        OutputStream out = Files.newOutputStream(
+            FileSystems.getDefault().getPath("", absPath),
+            StandardOpenOption.TRUNCATE_EXISTING,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.WRITE
+        );
+
+        try {
+            TiffWriter.writeUncompressedImage(out, pixels, width, height);
+        }
+        finally {
+            out.close();
+        }
     }
 
     public static void writePgm(byte[] pixels, int width, int height, String title) {
