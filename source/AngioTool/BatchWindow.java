@@ -21,7 +21,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BatchWindow extends JFrame implements Analyzer.IProgressToken
 {
-    static int UNITS_GAP = 4;
+    static final int UNITS_GAP = 4;
+    static final double BALANCED_FACTOR = 0.75;
 
     final AngioToolGui2 mainWindow;
 
@@ -40,8 +41,9 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     final JTextField textSaveResultsFolder = new JTextField();
     final JLabel labelResultsImageFormat = new JLabel();
     final JTextField textResultsImageFormat = new JTextField();
-    final JLabel labelWorkerCount = new JLabel();
+    final JCheckBox cbWorkerCount = new JCheckBox();
     final JTextField textWorkerCount = new JTextField();
+    final JLabel labelWorkerCountHelp = new JLabel();
 
     final JSeparator sepProgress = new JSeparator();
     final JLabel labelProgress = new JLabel();
@@ -105,8 +107,14 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         labelResultsImageFormat.setText("Result image format: ");
         textResultsImageFormat.setText(params.resultImageFormat);
 
-        labelWorkerCount.setText("Number of workers: ");
-        textWorkerCount.setText("" + params.workerCount);
+        cbWorkerCount.setText("Job count: ");
+        cbWorkerCount.setSelected(false);
+
+        int nProcessors = Runtime.getRuntime().availableProcessors();
+        labelWorkerCountHelp.setText(
+            "Recommended job count: " + nProcessors + " for maximum throughput, " +
+            (int)(nProcessors * BALANCED_FACTOR) + " for balancing system resources"
+        );
 
         //sepProgress
 
@@ -184,9 +192,10 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
                 .addComponent(textResultsImageFormat, 0, 0, 80)
             )
             .addGroup(layout.createSequentialGroup()
-                .addComponent(labelWorkerCount)
+                .addComponent(cbWorkerCount)
                 .addComponent(textWorkerCount, 0, 0, 80)
             )
+            .addComponent(labelWorkerCountHelp)
             .addComponent(sepProgress)
             .addComponent(labelProgress)
             .addComponent(overallLabel)
@@ -223,13 +232,14 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addGroup(layout.createSequentialGroup()
                     .addComponent(labelResultsImageFormat)
-                    .addComponent(labelWorkerCount)
+                    .addComponent(cbWorkerCount)
                 )
                 .addGroup(layout.createSequentialGroup()
                     .addComponent(textResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
                     .addComponent(textWorkerCount, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
                 )
             )
+            .addComponent(labelWorkerCountHelp)
             .addGap(12)
             .addComponent(sepProgress)
             .addComponent(labelProgress)
@@ -315,6 +325,14 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             shouldUseSpecificOutputFolder = false;
         }
 
+        int workerCount;
+        try {
+            workerCount = Integer.parseInt(textWorkerCount.getText());
+        }
+        catch (Exception ex) {
+            workerCount = (int)(Runtime.getRuntime().availableProcessors() * BALANCED_FACTOR);
+        }
+
         return new BatchParameters(
             defaultPath,
             BatchUtils.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
@@ -323,7 +341,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             shouldUseSpecificOutputFolder,
             textSaveResultsFolder.getText(),
             textResultsImageFormat.getText(),
-            Integer.parseInt(textWorkerCount.getText())
+            workerCount
         );
     }
 
