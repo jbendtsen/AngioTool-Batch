@@ -2,6 +2,12 @@ package Pixels;
 
 public class BufferConverter
 {
+    static final int TYPE_NONE = 0;
+    static final int TYPE_BIT = 1;
+    static final int TYPE_BYTE = 2;
+    static final int TYPE_SHORT = 3;
+    static final int TYPE_FLOAT = 4;
+
     public static void getPackedArgbFromBits(
         int[] pixels,
         byte[] imageBuffer,

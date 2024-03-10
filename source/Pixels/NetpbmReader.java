@@ -7,12 +7,6 @@ import java.nio.channels.FileChannel;
 
 public class NetpbmReader
 {
-    static final int TYPE_NONE = 0;
-    static final int TYPE_BIT = 1;
-    static final int TYPE_BYTE = 2;
-    static final int TYPE_SHORT = 3;
-    static final int TYPE_FLOAT = 4;
-
     static final int ATTR_NONE = 0;
     static final int ATTR_WIDTH = 1;
     static final int ATTR_HEIGHT = 2;
