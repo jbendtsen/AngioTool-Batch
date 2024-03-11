@@ -1,5 +1,7 @@
 package Pixels;
 
+import static Pixels.BufferConverter.*;
+
 import Utils.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -202,9 +204,10 @@ public class NetpbmReader
             );
             */
 
+            int area = width * height;
             int[] pixels = shouldAllocateWithRecycler ?
-                IntBufferPool.acquireAsIs(width * height + 2) :
-                new int[width * height + 2];
+                IntBufferPool.acquireAsIs(area + 2) :
+                new int[area + 2];
 
             if (isAscii) {
                 if (sampleType == TYPE_FLOAT)
@@ -213,7 +216,7 @@ public class NetpbmReader
                     readPackedArgbFromAscii(header, dataOffset, fc, pixels, width, height, channels, (int)maxval);
             }
             else {
-                int size = width * height;
+                int size = area;
                 if (channels > 1)
                     size *= channels;
 
@@ -235,22 +238,30 @@ public class NetpbmReader
                         res = fc.read(tempBb);
                 }
 
-                if (sampleType == TYPE_BIT)
-                    BufferConverter.getPackedArgbFromBits(pixels, imageBuffer, size, width, height, channels, shouldInvert);
-                else if (sampleType == TYPE_BYTE)
-                    BufferConverter.getPackedArgbFromBytes(pixels, imageBuffer, size, width, height, channels, (int)maxval);
-                else if (sampleType == TYPE_SHORT)
-                    BufferConverter.getPackedArgbFromShorts(pixels, imageBuffer, size, width, height, channels, (int)maxval);
-                else if (sampleType == TYPE_FLOAT && maxval < 0.0)
-                    BufferConverter.getPackedArgbFromLittleEndianFloats(pixels, imageBuffer, size, width, height, channels, -maxval);
-                else if (sampleType == TYPE_FLOAT)
-                    BufferConverter.getPackedArgbFromFloats(pixels, imageBuffer, size, width, height, channels, maxval);
+                boolean isLittleEndian = false;
+                if (maxval < 0.0) {
+                    isLittleEndian = true;
+                    maxval = -maxval;
+                }
+
+                convertToPackedArgb(
+                    sampleType,
+                    isLittleEndian,
+                    pixels,
+                    imageBuffer,
+                    size,
+                    width,
+                    height,
+                    channels,
+                    (float)maxval,
+                    shouldInvert
+                );
 
                 ByteBufferPool.release(imageBuffer);
             }
 
-            pixels[pixels.length - 2] = width;
-            pixels[pixels.length - 1] = height;
+            pixels[area] = width;
+            pixels[area+1] = height;
             images.add(pixels);
         } while (res > 0 && images.size < maxImages);
 

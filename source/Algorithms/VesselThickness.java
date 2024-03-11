@@ -19,7 +19,7 @@ public class VesselThickness
         final int thresh = 200;
 
         try {
-            runner.runSlices(new Step1(scratch, input, width, height, thresh), maxWorkers, width, (width / 4) + 1);
+            runner.runSlices(new Step1(scratch, input, width, height, thresh), maxWorkers, height, (height / 4) + 1);
         }
         catch (Throwable ex) {
             ex.printStackTrace();

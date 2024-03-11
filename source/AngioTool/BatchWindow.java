@@ -378,7 +378,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         }
 
         RefVector<String> batchErrors = batchParams.validate();
-        errors.add(batchErrors);
+        errors.extend(batchErrors);
 
         if (errors.size > 0) {
             int nErrors = errors.size;

@@ -94,7 +94,7 @@ public class AngioTool
 
         AnalyzerParameters analyzerParams = new AnalyzerParameters();
         try {
-            errors.add(ATPreferences.load(analyzerParams, at, PREFS_TXT));
+            errors.extend(ATPreferences.load(analyzerParams, at, PREFS_TXT));
         }
         catch (Exception ex) {
             errors.add(BatchUtils.buildDialogMessageFromException(ex));
@@ -103,7 +103,7 @@ public class AngioTool
 
         BatchParameters batchParams = new BatchParameters();
         try {
-            errors.add(ATPreferences.load(batchParams, at, BATCH_TXT));
+            errors.extend(ATPreferences.load(batchParams, at, BATCH_TXT));
         }
         catch (Exception ex) {
             errors.add(BatchUtils.buildDialogMessageFromException(ex));

@@ -50,7 +50,7 @@ public interface ISliceRunner
                 threadPool.submit(() -> {
                     for (int j = off; j < length; j += workJump) {
                         int idx = j / atomSize;
-                        int chunkSize = Math.min(atomSize, length - off);
+                        int chunkSize = Math.min(atomSize, length - j);
 
                         ISliceCompute.Result res = new ISliceCompute.Result();
                         res.idx = idx;
