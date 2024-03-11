@@ -278,10 +278,15 @@ public class ImageFile
             fc.position(0);
 
             RefVector<int[]> images = null;
-            if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f'))
-                images = NetpbmReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
-            else if ((m0 == 'M' && m1 == 'M') || (m0 == 'I' && m1 == 'I'))
-                images = TiffReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
+            try {
+                if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f'))
+                    images = NetpbmReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
+                else if ((m0 == 'M' && m1 == 'M') || (m0 == 'I' && m1 == 'I'))
+                    images = TiffReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
+            }
+            catch (Throwable t) {
+                t.printStackTrace();
+            }
 
             if (images == null || images.size <= 0)
                 return null;
@@ -289,6 +294,8 @@ public class ImageFile
             inputPixels = images.buf[0];
             width  = inputPixels[inputPixels.length - 2];
             height = inputPixels[inputPixels.length - 1];
+
+            //System.out.println("Obtained " + width + " x " + height);
         }
         finally {
             if (fc != null) {

@@ -76,7 +76,8 @@ public class TiffReader
         fc.read(bb);
 
         final int extraOff = buf.length / 2;
-        int trueTagCount = getShort(buf, 8, isLittleEndian);
+        int trueTagCount = getShort(buf, 0, isLittleEndian);
+        //System.out.println("trueTagCount = " + trueTagCount);
 
         int width = 0;
         int height = 0;
@@ -85,7 +86,9 @@ public class TiffReader
         int channels = 0;
         int compression = 0;
         int firstStripOffset = 0;
+        int[] stripOffsets = null;
         int firstStripCount = 0;
+        int[] stripCounts = null;
         float minValue = 0f;
         float maxValue = 0f;
         boolean isFloat = false;
@@ -104,6 +107,8 @@ public class TiffReader
                 int attr = getShort(buf, t, isLittleEndian);
                 int type = getShort(buf, t+2, isLittleEndian);
                 int count = getInt(buf, t+4, isLittleEndian);
+                //System.out.println("attr = " + attr + ", type = " + type + ", count = " + count);
+
                 if (count == 1) {
                     int value = type == 3 ? getShort(buf, t+8, isLittleEndian) : getInt(buf, t+8, isLittleEndian);
                     if (attr == TAG_WIDTH)
@@ -144,8 +149,8 @@ public class TiffReader
                     long oldPos = fc.position();
                     try {
                         fc.position(offset);
+                        bb.limit(Math.min(extraOff + size, buf.length));
                         bb.position(extraOff);
-                        bb.limit(Math.min(size, buf.length - extraOff));
                         fc.read(bb);
                     }
                     catch (IOException ex) {
@@ -160,14 +165,39 @@ public class TiffReader
 
                         sampleLen = firstSampleLen;
                         channels = count;
-
-                        System.out.println("sampleLen: " + firstSampleLen + ", channels: " + count);
+                    }
+                    else if (attr == TAG_STRIP_OFFSETS) {
+                        stripOffsets = getArray(buf, extraOff, isLittleEndian, type, count);
+                        firstStripOffset = stripOffsets[0];
+                    }
+                    else if (attr == TAG_STRIP_COUNTS) {
+                        stripCounts = getArray(buf, extraOff, isLittleEndian, type, count);
+                        firstStripCount = stripCounts[0];
                     }
                 }
             }
 
             tagIndex += nTags;
         }
+
+        System.out.println("TiffReader: " +
+            "width = " + width +
+            ", height = " + height +
+            ", sampleType = " + sampleType +
+            ", sampleLen = " + sampleLen +
+            ", channels = " + channels +
+            ", compression = " + compression +
+            ", firstStripOffset = " + firstStripOffset +
+            ", firstStripCount = " + firstStripCount +
+            ", minValue = " + minValue +
+            ", maxValue = " + maxValue +
+            ", isFloat = " + isFloat +
+            ", shouldDiff = " + shouldDiff +
+            ", shouldInvert = " + shouldInvert
+        );
+
+        System.out.println("stripOffsets: " + BatchUtils.formatIntArray(stripOffsets, "" + firstStripOffset));
+        System.out.println("stripCounts: " + BatchUtils.formatIntArray(stripCounts, "" + firstStripCount));
 
         fc.position(ifdOffset + trueTagCount * 12 + 2);
         bb.position(0);
@@ -201,7 +231,6 @@ public class TiffReader
         size *= channels;
 
         byte[] imageData = ByteBufferPool.acquireAsIs(size);
-        fc.position(firstStripOffset);
 
         if (compression == COMPRESSION_LZW) {
             lzwDecompress();
@@ -213,9 +242,8 @@ public class TiffReader
             deflateDecompress();
         }
         else {
-            ByteBuffer dataBb = ByteBuffer.wrap(imageData);
-            dataBb.limit(size);
-            fc.read(dataBb);
+            fc.position(firstStripOffset);
+            fc.read(ByteBuffer.wrap(imageData, 0, size));
         }
 
         int[] pixels = shouldAllocateWithRecycler ?
@@ -235,8 +263,11 @@ public class TiffReader
             shouldInvert
         );
 
-        pixels[area] = width;
-        pixels[area+1] = height;
+        // When obtaining this buffer for the first time, we don't know the width or height,
+        // which means we don't know how long the buffer is supposed to be.
+        // That's why we write width and height to [length - 2] and [length - 1] instead of [area] and [area + 1]
+        pixels[pixels.length - 2] = width;
+        pixels[pixels.length - 1] = height;
         images.add(pixels);
 
         return nextIfdOffset;
@@ -272,5 +303,19 @@ public class TiffReader
             (buf[off+1] & 0xff) << 16 |
             (buf[off+2] & 0xff) << 8 |
             (buf[off+3] & 0xff);
+    }
+
+    static int[] getArray(byte[] buf, int off, boolean isLittleEndian, int type, int count)
+    {
+        int[] array = new int[count];
+        if (type == 3) {
+            for (int i = 0; i < count; i++)
+                array[i] = getShort(buf, off + i * 2, isLittleEndian);
+        }
+        else {
+            for (int i = 0; i < count; i++)
+                array[i] = getInt(buf, off + i * 4, isLittleEndian);
+        }
+        return array;
     }
 }

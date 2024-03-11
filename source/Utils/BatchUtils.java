@@ -188,6 +188,20 @@ public class BatchUtils
         return values;
     }
 
+    public static String formatIntArray(int[] array, String defaultValue)
+    {
+        if (array == null || array.length == 0)
+            return defaultValue;
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < array.length; i++) {
+            if (i != 0)
+                sb.append(", ");
+            sb.append("" + array[i]);
+        }
+        return sb.toString();
+    }
+
     public static String formatDoubleArray(double[] array, String defaultValue)
     {
         if (array == null || array.length == 0)

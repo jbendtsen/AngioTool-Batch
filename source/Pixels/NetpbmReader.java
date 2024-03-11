@@ -260,8 +260,11 @@ public class NetpbmReader
                 ByteBufferPool.release(imageBuffer);
             }
 
-            pixels[area] = width;
-            pixels[area+1] = height;
+            // When obtaining this buffer for the first time, we don't know the width or height,
+            // which means we don't know how long the buffer is supposed to be.
+            // That's why we write width and height to [length - 2] and [length - 1] instead of [area] and [area + 1]
+            pixels[pixels.length - 2] = width;
+            pixels[pixels.length - 1] = height;
             images.add(pixels);
         } while (res > 0 && images.size < maxImages);
 
