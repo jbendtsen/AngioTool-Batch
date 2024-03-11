@@ -498,7 +498,8 @@ public class Analyzer
         return new File(outFolderPath, inFile.getName()).getAbsolutePath();
     }
 
-    public static String resolveImageFormat(String str) throws Exception {
+    public static String resolveImageFormat(String str) throws Exception
+    {
         if (str == null || str.length() == 0)
             throw new Exception("File extension was null");
 
@@ -637,6 +638,7 @@ public class Analyzer
             data.particleScratch,
             particleBuf,
             analysisImage,
+            inputImage.pixels,
             inputImage.width,
             inputImage.height
         );
@@ -646,7 +648,8 @@ public class Analyzer
             particleBuf,
             analysisImage,
             inputImage.width,
-            inputImage.height
+            inputImage.height,
+            params.shouldFillBrightShapes ? params.brightShapeThresholdFactor : 0.0
         );
 
         if (params.shouldRemoveSmallParticles)

@@ -39,6 +39,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     final ColorSizeEntry elemBranches;
     final ColorSizeEntry elemSkeleton;
     final ColorSizeEntry elemConvexHull;
+    final NumberEntry elemFillBrightShapes;
     final ButtonGroup groupImageRecolor = new ButtonGroup();
     final JRadioButton rbImageOriginal = new JRadioButton();
     final JRadioButton rbImageIsolated = new JRadioButton();
@@ -107,6 +108,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         elemBranches = new ColorSizeEntry("Branches:", analyzerParams.shouldDrawBranchPoints, analyzerParams.branchingPointsSize, analyzerParams.branchingPointsColor);
         elemSkeleton = new ColorSizeEntry("Skeleton:", analyzerParams.shouldDrawSkeleton, analyzerParams.skeletonSize, analyzerParams.skeletonColor);
         elemConvexHull = new ColorSizeEntry("Convex Hull:", analyzerParams.shouldDrawConvexHull, analyzerParams.convexHullSize, analyzerParams.convexHullColor);
+
+        elemFillBrightShapes = new NumberEntry("Maximum Hole Brightness:", analyzerParams.shouldFillBrightShapes, analyzerParams.brightShapeThresholdFactor, "x");
 
         rbImageOriginal.setText("Keep Original Colors");
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
@@ -232,7 +235,10 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 )
             )
             .addGroup(layout.createSequentialGroup()
-                .addComponent(labelMemory)
+                .addGroup(layout.createParallelGroup()
+                    .addGroup(elemFillBrightShapes.addToGroup(layout.createSequentialGroup()))
+                    .addComponent(labelMemory)
+                )
                 .addGap(0, 0, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup()
                     .addComponent(rbImageOriginal)
@@ -299,8 +305,13 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 )
             )
             .addGap(8)
-            .addComponent(rbImageOriginal)
-            .addComponent(rbImageIsolated)
+            .addGroup(
+                elemFillBrightShapes.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(rbImageOriginal)
+                    .addComponent(rbImageIsolated)
+                )
+            )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelMemory)
                 .addComponent(rbImageGray)
@@ -440,6 +451,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         return new AnalyzerParameters(
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.getValue(),
+            elemFillBrightShapes.cb.isSelected(),
+            elemFillBrightShapes.getValue(),
             elemRemoveParticles.cb.isSelected(),
             elemRemoveParticles.getValue(),
             elemFillHoles.cb.isSelected(),

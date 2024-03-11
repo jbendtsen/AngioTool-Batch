@@ -13,10 +13,12 @@ public class Particles
         int pointMinY;
         int pointMaxX;
         int pointMaxY;
-    }
+        int totalBrightnessHigh;
+        int totalBrightnessLow;
+    };
     */
 
-    public static final int N_SHAPE_MEMBERS = 6;
+    public static final int N_SHAPE_MEMBERS = 8;
 
     public static class Scratch
     {
@@ -24,7 +26,7 @@ public class Particles
         public IntVector spanIndex = new IntVector();
     }
 
-    public static void computeShapes(Scratch data, int[] regions, byte[] image, int width, int height)
+    public static void computeShapes(Scratch data, int[] regions, byte[] image, int[] originalRgb, int width, int height)
     {
         data.shapes.size = 0;
         data.spanIndex.size = 0;
@@ -124,47 +126,99 @@ public class Particles
                 if (y > (data.shapes.buf[idx + 5] / width))
                     data.shapes.buf[idx + 5] = pos;
 
+                int rgb = originalRgb[x + width * y];
+                int lum = ((rgb >> 16) & 0xff) + ((rgb >> 8) & 0xff) + (rgb & 0xff);
+
+                long totalBrightness = (long)data.shapes.buf[idx + 6] << 32L | (data.shapes.buf[idx + 7] & 0xFFFFffffL);
+                totalBrightness += lum;
+                data.shapes.buf[idx + 6] = (int)(totalBrightness >> 32L);
+                data.shapes.buf[idx + 7] = (int)(totalBrightness & 0xFFFFffffL);
+
                 regions[pos] = r;
             }
         }
     }
 
-    public static void removeVesselVoids(Scratch data, int[] regions, byte[] image, int width, int height)
+    public static void removeVesselVoids(Scratch data, int[] regions, byte[] image, int width, int height, double similarityFactor)
     {
-        for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS) {
-            // if this shape is white, then skip
-            int shapeArea = data.shapes.buf[i] & 0x7fffFFFF;
-            if (data.shapes.buf[i] <= 0)
-                continue;
+        double averageBrightness = 0.0;
+        double averageWhiteShapeBrightness = 0.0;
 
-            int xMin = data.shapes.buf[i+2] % width;
-            int yMin = data.shapes.buf[i+3] / width;
-            int xMax = data.shapes.buf[i+4] % width;
-            int yMax = data.shapes.buf[i+5] / width;
+        if (similarityFactor > 0.0) {
+            int nFoundShapes = 0;
+            int nWhiteShapes = 0;
 
-            int shapeW = (xMax - xMin + 1);
-            int shapeH = (yMax - yMin + 1);
-            double occupied = (double)shapeArea / (double)(shapeW * shapeH);
-            double sdr = shapeW > shapeH ?
-                (double)shapeH / (double)shapeW :
-                (double)shapeW / (double)shapeH;
-            double boxness = occupied * sdr;
+            for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS) {
+                int shapeArea = data.shapes.buf[i];
+                double area = (double)(shapeArea & 0x7fffFFFF);
+                if (area <= 0.0)
+                    continue;
 
-            double highestDistance = 0.0;
-            for (int a = 2; a <= 4; a++) {
-                int xa = data.shapes.buf[i+a] % width;
-                int ya = data.shapes.buf[i+a] / width;
-                for (int b = a+1; b <= 5; b++) {
-                    int xb = data.shapes.buf[i+b] % width;
-                    int yb = data.shapes.buf[i+b] / width;
-                    double dx = xa - xb;
-                    double dy = ya - yb;
-                    highestDistance = Math.max(highestDistance, Math.sqrt(dx*dx + dy*dy));
+                long totalLum = (long)data.shapes.buf[i + 6] << 32L | (data.shapes.buf[i + 7] & 0xFFFFffffL);
+                double avg = (double)totalLum / area;
+
+                averageBrightness += avg;
+                nFoundShapes++;
+                if (shapeArea < 0) {
+                    averageWhiteShapeBrightness += avg;
+                    nWhiteShapes++;
                 }
             }
 
+            if (nFoundShapes > 0)
+                averageBrightness /= nFoundShapes;
+            if (nWhiteShapes > 0)
+                averageWhiteShapeBrightness /= nWhiteShapes;
+        }
+
+        for (int i = 0; i < data.shapes.size; i += N_SHAPE_MEMBERS) {
+            // if this shape is white, then skip
+            int shapeArea = data.shapes.buf[i];
+            if (shapeArea <= 0)
+                continue;
+
             // decide if shape should be filled with white
-            if (boxness <= 0.09375 || shapeArea / highestDistance <= 16.0) {
+            boolean shouldFill = false;
+
+            if (similarityFactor > 0.0) {
+                long totalLum = (long)data.shapes.buf[i + 6] << 32L | (data.shapes.buf[i + 7] & 0xFFFFffffL);
+                double avg = (double)totalLum / (double)shapeArea;
+
+                if (avg >= similarityFactor * averageWhiteShapeBrightness)
+                    shouldFill = true;
+            }
+
+            if (!shouldFill) {
+                int xMin = data.shapes.buf[i+2] % width;
+                int yMin = data.shapes.buf[i+3] / width;
+                int xMax = data.shapes.buf[i+4] % width;
+                int yMax = data.shapes.buf[i+5] / width;
+
+                int shapeW = (xMax - xMin + 1);
+                int shapeH = (yMax - yMin + 1);
+                double occupied = (double)shapeArea / (double)(shapeW * shapeH);
+                double sdr = shapeW > shapeH ?
+                    (double)shapeH / (double)shapeW :
+                    (double)shapeW / (double)shapeH;
+                double boxness = occupied * sdr;
+
+                double highestDistance = 0.0;
+                for (int a = 2; a <= 4; a++) {
+                    int xa = data.shapes.buf[i+a] % width;
+                    int ya = data.shapes.buf[i+a] / width;
+                    for (int b = a+1; b <= 5; b++) {
+                        int xb = data.shapes.buf[i+b] % width;
+                        int yb = data.shapes.buf[i+b] / width;
+                        double dx = xa - xb;
+                        double dy = ya - yb;
+                        highestDistance = Math.max(highestDistance, Math.sqrt(dx*dx + dy*dy));
+                    }
+                }
+
+                shouldFill = boxness <= 0.09375 || shapeArea / highestDistance <= 16.0;
+            }
+            
+            if (shouldFill) {
                 int firstPoint = data.shapes.buf[i + 1];
                 int neighbor;
                 if ((firstPoint % width) > 0)

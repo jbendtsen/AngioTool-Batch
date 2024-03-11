@@ -7,6 +7,8 @@ import Utils.RefVector;
 public class AnalyzerParameters {
     public boolean shouldResizeImage;
     public double resizingFactor;
+    public boolean shouldFillBrightShapes;
+    public double brightShapeThresholdFactor;
     public boolean shouldRemoveSmallParticles;
     public double removeSmallParticlesThreshold;
     public boolean shouldFillHoles;
@@ -39,6 +41,8 @@ public class AnalyzerParameters {
     public AnalyzerParameters(
         boolean shouldResizeImage,
         double resizingFactor,
+        boolean shouldFillBrightShapes,
+        double brightShapeThresholdFactor,
         boolean shouldRemoveSmallParticles,
         double removeSmallParticlesThreshold,
         boolean shouldFillHoles,
@@ -68,6 +72,8 @@ public class AnalyzerParameters {
     ) {
         this.shouldResizeImage = shouldResizeImage;
         this.resizingFactor = resizingFactor;
+        this.shouldFillBrightShapes = shouldFillBrightShapes;
+        this.brightShapeThresholdFactor = brightShapeThresholdFactor;
         this.shouldRemoveSmallParticles = shouldRemoveSmallParticles;
         this.removeSmallParticlesThreshold = removeSmallParticlesThreshold;
         this.shouldFillHoles = shouldFillHoles;
@@ -111,6 +117,8 @@ public class AnalyzerParameters {
         p.shouldDrawSkeleton = true;
         p.shouldDrawBranchPoints = true;
         p.shouldDrawConvexHull = true;
+        p.shouldFillBrightShapes = false;
+        p.brightShapeThresholdFactor = 1.5;
         p.shouldFillHoles = false;
         p.shouldRemoveSmallParticles = false;
         p.resizingFactor = 1.0;
@@ -135,6 +143,8 @@ public class AnalyzerParameters {
         return
             other.shouldResizeImage == shouldResizeImage &&
             other.resizingFactor == resizingFactor &&
+            other.shouldFillBrightShapes == shouldFillBrightShapes &&
+            other.brightShapeThresholdFactor == brightShapeThresholdFactor &&
             other.shouldRemoveSmallParticles == shouldRemoveSmallParticles &&
             other.removeSmallParticlesThreshold == removeSmallParticlesThreshold &&
             other.shouldFillHoles == shouldFillHoles &&
@@ -170,6 +180,8 @@ public class AnalyzerParameters {
 
         if (shouldResizeImage && resizingFactor <= 0.0)
             errors.add("Image resize factor must be >0 (not " + resizingFactor + ")");
+        if (shouldFillBrightShapes && brightShapeThresholdFactor <= 0.0)
+            errors.add("Shape fill threshold must be >0% (not " + (brightShapeThresholdFactor * 100.0) + "%)");
         if (shouldRemoveSmallParticles && removeSmallParticlesThreshold <= 0.0)
             errors.add("Remove particles threshold must be >0 (not " + removeSmallParticlesThreshold + ")");
         if (shouldFillHoles && fillHolesValue <= 0.0)

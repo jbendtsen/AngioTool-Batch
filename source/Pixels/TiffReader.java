@@ -77,11 +77,6 @@ public class TiffReader
 
         final int extraOff = buf.length / 2;
         int trueTagCount = getShort(buf, 8, isLittleEndian);
-        int nTags = Math.min(trueTagCount, extraOff / 12);
-
-        bb.position(0);
-        bb.limit(nTags * 12);
-        fc.read(bb);
 
         int width = 0;
         int height = 0;
@@ -97,70 +92,81 @@ public class TiffReader
         boolean shouldDiff = false;
         boolean shouldInvert = false;
 
-        for (int i = 0, t = 0; i < nTags; i++, t += 12) {
-            int attr = getShort(buf, t, isLittleEndian);
-            int type = getShort(buf, t+2, isLittleEndian);
-            int count = getInt(buf, t+4, isLittleEndian);
-            if (count == 1) {
-                int value = type == 3 ? getShort(buf, t+8, isLittleEndian) : getInt(buf, t+8, isLittleEndian);
-                if (attr == TAG_WIDTH)
-                    width = value;
-                else if (attr == TAG_HEIGHT)
-                    height = value;
-                else if (attr == TAG_BITS_PER_SAMPLE)
-                    sampleLen = value;
-                else if (attr == TAG_SAMPLES_PER_PIXEL)
-                    channels = value;
-                else if (attr == TAG_PHOTOMETRIC_INTERPRETATION)
-                    shouldInvert = value == 0;
-                else if (attr == TAG_COMPRESSION)
-                    compression = value;
-                else if (attr == TAG_PREDICTOR)
-                    shouldDiff = value == 2;
-                else if (attr == TAG_SAMPLE_FORMAT)
-                    isFloat = value == 3;
-                else if (attr == TAG_MIN_VALUE)
-                    minValue = Float.intBitsToFloat(value);
-                else if (attr == TAG_MAX_VALUE)
-                    maxValue = Float.intBitsToFloat(value);
-                else if (attr == TAG_STRIP_OFFSETS)
-                    firstStripOffset = value;
-                else if (attr == TAG_STRIP_COUNTS)
-                    firstStripCount = value;
+        int tagIndex = 0;
+        while (tagIndex < trueTagCount) {
+            int nTags = Math.min(trueTagCount - tagIndex, extraOff / 12);
+
+            bb.position(0);
+            bb.limit(nTags * 12);
+            fc.read(bb);
+
+            for (int i = 0, t = 0; i < nTags; i++, t += 12) {
+                int attr = getShort(buf, t, isLittleEndian);
+                int type = getShort(buf, t+2, isLittleEndian);
+                int count = getInt(buf, t+4, isLittleEndian);
+                if (count == 1) {
+                    int value = type == 3 ? getShort(buf, t+8, isLittleEndian) : getInt(buf, t+8, isLittleEndian);
+                    if (attr == TAG_WIDTH)
+                        width = value;
+                    else if (attr == TAG_HEIGHT)
+                        height = value;
+                    else if (attr == TAG_BITS_PER_SAMPLE)
+                        sampleLen = value;
+                    else if (attr == TAG_SAMPLES_PER_PIXEL)
+                        channels = value;
+                    else if (attr == TAG_PHOTOMETRIC_INTERPRETATION)
+                        shouldInvert = value == 0;
+                    else if (attr == TAG_COMPRESSION)
+                        compression = value;
+                    else if (attr == TAG_PREDICTOR)
+                        shouldDiff = value == 2;
+                    else if (attr == TAG_SAMPLE_FORMAT)
+                        isFloat = value == 3;
+                    else if (attr == TAG_MIN_VALUE)
+                        minValue = Float.intBitsToFloat(value);
+                    else if (attr == TAG_MAX_VALUE)
+                        maxValue = Float.intBitsToFloat(value);
+                    else if (attr == TAG_STRIP_OFFSETS)
+                        firstStripOffset = value;
+                    else if (attr == TAG_STRIP_COUNTS)
+                        firstStripCount = value;
+                }
+                else if (
+                    attr == TAG_BITS_PER_SAMPLE ||
+                    attr == TAG_STRIP_OFFSETS ||
+                    attr == TAG_STRIP_COUNTS ||
+                    attr == TAG_MIN_VALUE ||
+                    attr == TAG_MAX_VALUE
+                ) {
+                    int offset = getInt(buf, t+8, isLittleEndian);
+                    int size = count * (type == 3 ? 2 : 4);
+
+                    long oldPos = fc.position();
+                    try {
+                        fc.position(offset);
+                        bb.position(extraOff);
+                        bb.limit(Math.min(size, buf.length - extraOff));
+                        fc.read(bb);
+                    }
+                    catch (IOException ex) {
+                        continue;
+                    }
+                    finally {
+                        fc.position(oldPos);
+                    }
+
+                    if (attr == TAG_BITS_PER_SAMPLE) {
+                        int firstSampleLen = type == 3 ? getShort(buf, extraOff, isLittleEndian) : getInt(buf, extraOff, isLittleEndian);
+
+                        sampleLen = firstSampleLen;
+                        channels = count;
+
+                        System.out.println("sampleLen: " + firstSampleLen + ", channels: " + count);
+                    }
+                }
             }
-            else if (
-                attr == TAG_BITS_PER_SAMPLE ||
-                attr == TAG_STRIP_OFFSETS ||
-                attr == TAG_STRIP_COUNTS ||
-                attr == TAG_MIN_VALUE ||
-                attr == TAG_MAX_VALUE
-            ) {
-                int offset = getInt(buf, t+8, isLittleEndian);
-                int size = count * (type == 3 ? 2 : 4);
 
-                long oldPos = fc.position();
-                try {
-                    fc.position(offset);
-                    bb.position(extraOff);
-                    bb.limit(Math.min(size, buf.length - extraOff));
-                    fc.read(bb);
-                }
-                catch (IOException ex) {
-                    continue;
-                }
-                finally {
-                    fc.position(oldPos);
-                }
-
-                if (attr == TAG_BITS_PER_SAMPLE) {
-                    int firstSampleLen = type == 3 ? getShort(buf, extraOff, isLittleEndian) : getInt(buf, extraOff, isLittleEndian);
-
-                    sampleLen = firstSampleLen;
-                    channels = count;
-
-                    System.out.println("sampleLen: " + firstSampleLen + ", channels: " + count);
-                }
-            }
+            tagIndex += nTags;
         }
 
         fc.position(ifdOffset + trueTagCount * 12 + 2);
