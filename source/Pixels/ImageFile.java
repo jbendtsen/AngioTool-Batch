@@ -295,7 +295,7 @@ public class ImageFile
             width  = inputPixels[inputPixels.length - 2];
             height = inputPixels[inputPixels.length - 1];
 
-            //System.out.println("Obtained " + width + " x " + height);
+            System.out.println("Obtained " + width + " x " + height);
         }
         finally {
             if (fc != null) {

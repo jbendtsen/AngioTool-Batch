@@ -247,14 +247,15 @@ public class NetpbmReader
                 convertToPackedArgb(
                     sampleType,
                     isLittleEndian,
+                    false,
+                    shouldInvert && sampleType == TYPE_BIT,
                     pixels,
                     imageBuffer,
                     size,
                     width,
                     height,
                     channels,
-                    (float)maxval,
-                    shouldInvert
+                    (float)maxval
                 );
 
                 ByteBufferPool.release(imageBuffer);

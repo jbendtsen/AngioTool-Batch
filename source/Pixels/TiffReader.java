@@ -6,6 +6,8 @@ import Utils.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
+import java.util.zip.Inflater;
 
 public class TiffReader
 {
@@ -17,6 +19,7 @@ public class TiffReader
     static final int TAG_STRIP_OFFSETS = 273;
     static final int TAG_SAMPLES_PER_PIXEL = 277;
     static final int TAG_STRIP_COUNTS = 279;
+    static final int TAG_PLANAR_CONFIGURATION = 284;
     static final int TAG_PREDICTOR = 317;
     static final int TAG_SAMPLE_FORMAT = 339;
     static final int TAG_MIN_VALUE = 340;
@@ -26,6 +29,11 @@ public class TiffReader
     static final int COMPRESSION_ADOBE_DEFLATE = 8;
     static final int COMPRESSION_PACKBITS = 32773;
     static final int COMPRESSION_DEFLATE = 32946;
+
+    static final int DC_NONE = 0;
+    static final int DC_LZW = 1;
+    static final int DC_PACKBITS = 2;
+    static final int DC_DEFLATE = 3;
 
     public static RefVector<int[]> readArgbImages(
         FileChannel fc,
@@ -92,8 +100,8 @@ public class TiffReader
         float minValue = 0f;
         float maxValue = 0f;
         boolean isFloat = false;
-        boolean shouldDiff = false;
-        boolean shouldInvert = false;
+        boolean isPlanar = false;
+        boolean shouldDiffOrInvert = false;
 
         int tagIndex = 0;
         while (tagIndex < trueTagCount) {
@@ -119,12 +127,14 @@ public class TiffReader
                         sampleLen = value;
                     else if (attr == TAG_SAMPLES_PER_PIXEL)
                         channels = value;
+                    else if (attr == TAG_PLANAR_CONFIGURATION)
+                        isPlanar = value == 2;
                     else if (attr == TAG_PHOTOMETRIC_INTERPRETATION)
-                        shouldInvert = value == 0;
+                        shouldDiffOrInvert = value == 0;
                     else if (attr == TAG_COMPRESSION)
                         compression = value;
                     else if (attr == TAG_PREDICTOR)
-                        shouldDiff = value == 2;
+                        shouldDiffOrInvert = value == 2;
                     else if (attr == TAG_SAMPLE_FORMAT)
                         isFloat = value == 3;
                     else if (attr == TAG_MIN_VALUE)
@@ -192,8 +202,8 @@ public class TiffReader
             ", minValue = " + minValue +
             ", maxValue = " + maxValue +
             ", isFloat = " + isFloat +
-            ", shouldDiff = " + shouldDiff +
-            ", shouldInvert = " + shouldInvert
+            ", isPlanar = " + isPlanar +
+            ", shouldDiffOrInvert = " + shouldDiffOrInvert
         );
 
         System.out.println("stripOffsets: " + BatchUtils.formatIntArray(stripOffsets, "" + firstStripOffset));
@@ -208,6 +218,20 @@ public class TiffReader
 
         if (width <= 0 || height <= 0)
             return nextIfdOffset;
+
+        int dcMode = DC_NONE;
+        switch (compression) {
+            case COMPRESSION_LZW:
+                dcMode = DC_LZW;
+                break;
+            case COMPRESSION_PACKBITS:
+                dcMode = DC_PACKBITS;
+                break;
+            case COMPRESSION_DEFLATE:
+            case COMPRESSION_ADOBE_DEFLATE:
+                dcMode = DC_DEFLATE;
+                break;
+        }
 
         if (sampleLen == 1)
             sampleType = TYPE_BIT;
@@ -232,18 +256,12 @@ public class TiffReader
 
         byte[] imageData = ByteBufferPool.acquireAsIs(size);
 
-        if (compression == COMPRESSION_LZW) {
-            lzwDecompress();
-        }
-        else if (compression == COMPRESSION_PACKBITS) {
-            packbitsDecompress();
-        }
-        else if (compression == COMPRESSION_DEFLATE || compression == COMPRESSION_ADOBE_DEFLATE) {
-            deflateDecompress();
-        }
-        else {
+        if (dcMode == DC_NONE) {
             fc.position(firstStripOffset);
             fc.read(ByteBuffer.wrap(imageData, 0, size));
+        }
+        else {
+            decompress(dcMode, fc, imageData, size, stripOffsets, stripCounts);
         }
 
         int[] pixels = shouldAllocateWithRecycler ?
@@ -253,15 +271,18 @@ public class TiffReader
         convertToPackedArgb(
             sampleType,
             isLittleEndian,
+            isPlanar,
+            shouldDiffOrInvert,
             pixels,
             imageData,
             size,
             width,
             height,
             channels,
-            maxValue,
-            shouldInvert
+            maxValue
         );
+
+        ByteBufferPool.release(imageData);
 
         // When obtaining this buffer for the first time, we don't know the width or height,
         // which means we don't know how long the buffer is supposed to be.
@@ -273,9 +294,195 @@ public class TiffReader
         return nextIfdOffset;
     }
 
-    static void lzwDecompress() {}
-    static void packbitsDecompress() {}
-    static void deflateDecompress() {}
+    static void decompress(
+        int mode,
+        FileChannel fc,
+        byte[] outData,
+        int outSize,
+        int[] offsets,
+        int[] lengths
+    ) throws IOException
+    {
+        int nStrips = Math.min(offsets.length, lengths.length);
+        int inputSize = getLargestElement(lengths, nStrips);
+        byte[] strip = ByteBufferPool.acquireAsIs(inputSize);
+        ByteBuffer bb = ByteBuffer.wrap(strip);
+
+        BitReader br = new BitReader();
+        IntVector lzwTableAndHeap = new IntVector();
+
+        int outOffset = 0;
+
+        for (int i = 0; i < nStrips; i++) {
+            bb.position(0);
+            bb.limit(lengths[i]);
+            fc.position(offsets[i]);
+            fc.read(bb);
+
+            if (mode == DC_LZW)
+                outOffset = lzwDecompressStrip(outData, outOffset, outSize, strip, lengths[i], br, lzwTableAndHeap);
+            if (mode == DC_PACKBITS)
+                outOffset = packbitsDecompressStrip(outData, outOffset, outSize, strip, lengths[i]);
+            if (mode == DC_DEFLATE)
+                outOffset = deflateDecompressStrip(outData, outOffset, outSize, strip, lengths[i]);
+        }
+
+        ByteBufferPool.release(strip);
+    }
+
+    static int lzwDecompressStrip(byte[] outData, int outOffset, int outSize, byte[] strip, int length, BitReader br, IntVector lzwTableAndHeap)
+    {
+        br.reset(strip, 0, length);
+
+        final int lzwTableSize = 2 * 16384;
+        int lzwHeapSize = 256;
+        lzwTableAndHeap.resize(lzwTableSize + lzwHeapSize);
+        Arrays.fill(lzwTableAndHeap.buf, 0, lzwTableSize + lzwHeapSize, 0);
+
+        int oldCode = 0;
+        int bitsToRead = 9;
+        int nextSymbol = 258;
+
+        while (true) {
+            int code = br.getBits(bitsToRead);
+            //System.out.println("LZW code: " + code);
+            if (code == 257 || code == -1)
+                break;
+
+            boolean isClear = code == 256;
+            if (isClear) {
+                for (int i = 0; i < 512; i += 2) {
+                    lzwTableAndHeap.buf[i] = lzwTableSize + (i >> 1);
+                    lzwTableAndHeap.buf[i+1] = 1;
+                }
+                for (int i = 0; i < 256; i++)
+                    lzwTableAndHeap.buf[lzwTableSize + i] = i;
+
+                nextSymbol = 258;
+                bitsToRead = 9;
+                oldCode = code = br.getBits(bitsToRead);
+                if (code == 257 || code == -1)
+                    break;
+            }
+
+            if (code < nextSymbol || isClear) {
+                int[] th = lzwTableAndHeap.buf;
+                int off = th[2*code];
+                int len = th[2*code+1];
+                for (int i = 0; i < len && outOffset+i < outSize; i++)
+                    outData[outOffset+i] = (byte)(th[off + (i>>2)] >>> ((i&3)*8));
+
+                outOffset += len;
+                if (outOffset >= outSize)
+                    break;
+
+                if (isClear)
+                    continue;
+
+                int oldOff = th[2*oldCode];
+                int oldLen = th[2*oldCode+1];
+                int firstCurrent = th[off] & 0xff;
+
+                int lastElem = oldOff + (oldLen >> 2);
+                int nextSymbolOffset = lzwTableAndHeap.addFromSelf(oldOff, (oldLen + 3) >> 2);
+
+                if ((oldLen & 3) == 0)
+                    lzwTableAndHeap.add(firstCurrent);
+                else
+                    lzwTableAndHeap.buf[lastElem] |= firstCurrent << (8*(oldLen & 3));
+
+                lzwTableAndHeap.buf[2*nextSymbol] = nextSymbolOffset;
+                lzwTableAndHeap.buf[2*nextSymbol+1] = oldLen + 1;
+            }
+            else {
+                int oldOff = lzwTableAndHeap.buf[2*oldCode];
+                int oldLen = lzwTableAndHeap.buf[2*oldCode+1];
+                int firstOld = lzwTableAndHeap.buf[oldOff] & 0xff;
+
+                int lastElem = oldOff + (oldLen >> 2);
+                int nextSymbolOffset = lzwTableAndHeap.addFromSelf(oldOff, (oldLen + 3) >> 2);
+
+                if ((oldLen & 3) == 0)
+                    lzwTableAndHeap.add(firstOld);
+                else
+                    lzwTableAndHeap.buf[lastElem] |= firstOld << (8*(oldLen & 3));
+
+                int[] th = lzwTableAndHeap.buf;
+                th[2*nextSymbol] = nextSymbolOffset;
+                th[2*nextSymbol+1] = oldLen + 1;
+
+                int len = oldLen + 1;
+                for (int i = 0; i < len && outOffset+i < outSize; i++)
+                    outData[outOffset+i] = (byte)(th[nextSymbolOffset + (i>>2)] >>> ((i&3)*8));
+
+                outOffset += len;
+                if (outOffset >= outSize)
+                    break;
+            }
+
+            bitsToRead = 32 - Integer.numberOfLeadingZeros(++nextSymbol + 1);
+            oldCode = code;
+        }
+
+        return outOffset;
+    }
+
+    static int packbitsDecompressStrip(byte[] outData, int outOffset, int outSize, byte[] strip, int length)
+    {
+        boolean isRepeat = false;
+        int left = 0;
+        for (int i = 0; i < length && outOffset < outSize; i++) {
+            if (left == 0) {
+                int mode = strip[i];
+                isRepeat = mode < 0;
+                left = Math.abs(mode) + 1;
+                continue;
+            }
+
+            if (isRepeat) {
+                byte b = strip[i];
+                for (int j = 0; j < left && outOffset+j < outSize; j++)
+                    outData[outOffset+j] = b;
+                outOffset += left;
+                left = 0;
+            }
+            else {
+                outData[outOffset++] = strip[i];
+                left--;
+            }
+        }
+
+        return outOffset;
+    }
+
+    static int deflateDecompressStrip(byte[] outData, int outOffset, int outSize, byte[] strip, int length)
+    {
+        Inflater inflater = new Inflater();
+        inflater.setInput(strip, 0, length);
+
+        try {
+            while (!inflater.finished() && outOffset < outSize) {
+                int res = inflater.inflate(outData, outOffset, outSize - outOffset);
+                if (res <= 0)
+                    break;
+                outOffset += res;
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        inflater.end();
+        return outOffset;
+    }
+
+    static int getLargestElement(int[] array, int count)
+    {
+        int result = 0;
+        for (int i = 0; i < count; i++)
+            result = Math.max(result, array[i]);
+        return result;
+    }
 
     static int getShort(byte[] buf, int off, boolean isLittleEndian)
     {

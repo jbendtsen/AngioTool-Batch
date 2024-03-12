@@ -285,7 +285,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
                 g.setColor(Color.WHITE);
                 for (int i = 0; i < this.statsStrings.size; i++)
-                    g.drawString(statsStrings.buf[i], 12, i * this.statsLineHeight + 24);
+                    g.drawString(statsStrings.buf[i], 12, (i+1) * this.statsLineHeight + 8);
             }
         }
 

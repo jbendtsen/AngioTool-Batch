@@ -8,7 +8,6 @@ package Utils;
 public class <bigtype>Vector {
     public <type>[] buf;
     public int size;
-    public int sp;
 
     public <bigtype>Vector(int initialCap) {
         this.buf = new <type>[initialCap];
@@ -27,12 +26,10 @@ public class <bigtype>Vector {
             newCap = (int)((float)newCap * 1.7f) + 1;
 
         if (newCap > oldCap) {
-            <type>[] newBuf = new <type>[newCap-sp];
+            <type>[] newBuf = new <type>[newCap];
             if (buf != null && oldCap > 0)
-                System.arraycopy(buf, sp, newBuf, 0, oldCap-sp);
+                System.arraycopy(buf, 0, newBuf, 0, oldCap);
             buf = newBuf;
-            newSize -= sp;
-            sp = 0;
         }
 
         size = newSize;
@@ -53,6 +50,14 @@ public class <bigtype>Vector {
         if (off >= 0 && len > 0 && off+len <= data.length) {
             resize(this.size + len);
             System.arraycopy(data, off, this.buf, this.size-len, len);
+        }
+        return this.size - len;
+    }
+
+    public int addFromSelf(int off, int len) {
+        if (off >= 0 && len > 0 && off+len <= this.size) {
+            resize(this.size + len);
+            System.arraycopy(this.buf, off, this.buf, this.size-len, len);
         }
         return this.size - len;
     }
@@ -90,9 +95,9 @@ public class <bigtype>Vector {
     }
 
     public <type>[] copy() {
-        <type>[] array = new <type>[size-sp];
+        <type>[] array = new <type>[size];
         if (size > 0)
-            System.arraycopy(this.buf, sp, array, 0, size-sp);
+            System.arraycopy(this.buf, 0, array, 0, size);
         return array;
     }
 }

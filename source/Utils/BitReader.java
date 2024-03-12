@@ -3,16 +3,28 @@ package Utils;
 public class BitReader
 {
     public byte[] data;
+    public int byteSize;
     public int bitPos;
 
-    public BitReader(byte[] data) {
-        this.data = data;
+    public BitReader()
+    {
+        this.data = null;
+        this.byteSize = 0;
+        this.bitPos = 0;
     }
 
-    public int getBits(int nBits) {
+    public void reset(byte[] data, int offset, int length)
+    {
+        this.data = data;
+        this.byteSize = Math.min(data.length, length);
+        this.bitPos = offset * 8;
+    }
+
+    public int getBits(int nBits)
+    {
         if (nBits <= 0 || nBits > 32)
             throw new IllegalArgumentException();
-        if (bitPos + nBits > data.length * 8)
+        if (bitPos + nBits > byteSize * 8)
             return -1;
 
         int bits = 0;

@@ -11,17 +11,18 @@ public class BufferConverter
     public static void convertToPackedArgb(
         int sampleType,
         boolean isLittleEndian,
+        boolean isPlanar,
+        boolean shouldDiffOrInvert,
         int[] pixels,
         byte[] imageBuffer,
         int size,
         int width,
         int height,
         int channels,
-        float maxval,
-        boolean shouldInvert
+        float maxval
     ) {
         if (sampleType == TYPE_BIT)
-            BufferConverter.getPackedArgbFromBits(pixels, imageBuffer, size, width, height, channels, shouldInvert);
+            BufferConverter.getPackedArgbFromBits(pixels, imageBuffer, size, width, height, channels, shouldDiffOrInvert);
         else if (sampleType == TYPE_BYTE)
             BufferConverter.getPackedArgbFromBytes(pixels, imageBuffer, size, width, height, channels, (int)maxval);
         else if (sampleType == TYPE_SHORT && isLittleEndian)
@@ -114,6 +115,66 @@ public class BufferConverter
                 for (int i = 0; i < len; i++) {
                     int lum = Math.min(Math.max(factor * (imageBuffer[i] & 0xff), 0), 255);
                     pixels[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
+                }
+            }
+        }
+        else if (channels == 2) {
+            int len = Math.min(size, area * 2);
+            if (maxval == 255) {
+                for (int in = 0, out = 0; in < len; in += 2, out++) {
+                    int a = imageBuffer[in] & 0xff;
+                    int b = imageBuffer[in+1] & 0xff;
+                    pixels[out] = 0xff000000 | (a << 8) | b;
+                }
+            }
+            else {
+                int factor = 256 / (maxval + 1);
+                for (int in = 0, out = 0; in < len; in += 2, out++) {
+                    int a = Math.min(Math.max(factor * (imageBuffer[in] & 0xff), 0), 255);
+                    int b = Math.min(Math.max(factor * (imageBuffer[in+1] & 0xff), 0), 255);
+                    pixels[out] = 0xff000000 | (a << 8) | b;
+                }
+            }
+        }
+        else if (channels == 3) {
+            int len = Math.min(size, area * 3);
+            if (maxval == 255) {
+                for (int in = 0, out = 0; in < len; in += 3, out++) {
+                    int r = imageBuffer[in] & 0xff;
+                    int g = imageBuffer[in+1] & 0xff;
+                    int b = imageBuffer[in+2] & 0xff;
+                    pixels[out] = 0xff000000 | (r << 16) | (g << 8) | b;
+                }
+            }
+            else {
+                int factor = 256 / (maxval + 1);
+                for (int in = 0, out = 0; in < len; in += 3, out++) {
+                    int r = Math.min(Math.max(factor * (imageBuffer[in] & 0xff), 0), 255);
+                    int g = Math.min(Math.max(factor * (imageBuffer[in+1] & 0xff), 0), 255);
+                    int b = Math.min(Math.max(factor * (imageBuffer[in+2] & 0xff), 0), 255);
+                    pixels[out] = 0xff000000 | (r << 16) | (g << 8) | b;
+                }
+            }
+        }
+        else if (channels == 4) {
+            int len = Math.min(size, area * 4);
+            if (maxval == 255) {
+                for (int in = 0, out = 0; in < len; in += 4, out++) {
+                    int a = imageBuffer[in] & 0xff;
+                    int r = imageBuffer[in+1] & 0xff;
+                    int g = imageBuffer[in+2] & 0xff;
+                    int b = imageBuffer[in+3] & 0xff;
+                    pixels[out] = (a << 24) | (r << 16) | (g << 8) | b;
+                }
+            }
+            else {
+                int factor = 256 / (maxval + 1);
+                for (int in = 0, out = 0; in < len; in += 4, out++) {
+                    int a = Math.min(Math.max(factor * (imageBuffer[in] & 0xff), 0), 255);
+                    int r = Math.min(Math.max(factor * (imageBuffer[in+1] & 0xff), 0), 255);
+                    int g = Math.min(Math.max(factor * (imageBuffer[in+2] & 0xff), 0), 255);
+                    int b = Math.min(Math.max(factor * (imageBuffer[in+3] & 0xff), 0), 255);
+                    pixels[out] = (a << 24) | (r << 16) | (g << 8) | b;
                 }
             }
         }
