@@ -60,8 +60,8 @@ public class TiffReader
         int ifdOffset = getInt(buf, 4, isLittleEndian);
 
         for (int i = 0; i < maxImages; i++) {
-            int nextIfdOffset = readImage(images, ifdOffset, isLittleEndian, fc, bb, buf, shouldAllocateWithRecycler);
-            if (nextIfdOffset == 0)
+            ifdOffset = readImage(images, ifdOffset, isLittleEndian, fc, bb, buf, shouldAllocateWithRecycler);
+            if (ifdOffset == 0)
                 break;
         }
 
@@ -221,6 +221,9 @@ public class TiffReader
 
         int dcMode = DC_NONE;
         switch (compression) {
+            case 0:
+            case 1:
+                break;
             case COMPRESSION_LZW:
                 dcMode = DC_LZW;
                 break;
@@ -231,6 +234,8 @@ public class TiffReader
             case COMPRESSION_ADOBE_DEFLATE:
                 dcMode = DC_DEFLATE;
                 break;
+            default:
+                throw new IOException("TiffReader: unsupported compression type (" + compression + ")");
         }
 
         if (sampleLen == 1)
