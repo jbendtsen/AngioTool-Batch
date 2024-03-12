@@ -88,17 +88,19 @@ public class BufferConverter
 
         for (int y = 0; y < nRows; y++) {
             for (int x = 1; x < width; x++) {
-                short cur  =
-                    (imageBuffer[(2*sampleGap*(x + width*y))+endian] & 0xff) << 8 |
-                    (imageBuffer[(2*sampleGap*(x + width*y))+(endian^1)] & 0xff);
-                short prev =
-                    (imageBuffer[(2*sampleGap*(x-1+width*y))+endian] & 0xff) << 8 |
-                    (imageBuffer[(2*sampleGap*(x-1+width*y))+(endian^1)] & 0xff);
+                short cur  = (short)(
+                    (imageBuffer[2*sampleGap*(x + width*y)+endian] & 0xff) << 8 |
+                    (imageBuffer[2*sampleGap*(x + width*y)+(endian^1)] & 0xff)
+                );
+                short prev = (short)(
+                    (imageBuffer[2*sampleGap*(x-1+width*y)+endian] & 0xff) << 8 |
+                    (imageBuffer[2*sampleGap*(x-1+width*y)+(endian^1)] & 0xff)
+                );
 
                 cur += prev;
 
-                imageBuffer[2*sampleGap*(x+width*y))+endian]     = (byte)(cur >> 8);
-                imageBuffer[2*sampleGap*(x+width*y))+(endian^1)] = (byte)cur;
+                imageBuffer[2*sampleGap*(x+width*y)+endian]     = (byte)(cur >> 8);
+                imageBuffer[2*sampleGap*(x+width*y)+(endian^1)] = (byte)cur;
             }
         }
     }
@@ -586,7 +588,7 @@ public class BufferConverter
         }
     }
 
-    public static void getPackedArgbFromFloats(
+    public static void getPackedArgbFromFloatsPlanar(
         int[] pixels,
         byte[] imageBuffer,
         int size,
