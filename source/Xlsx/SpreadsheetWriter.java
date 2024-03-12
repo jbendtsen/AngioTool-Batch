@@ -47,8 +47,8 @@ public class SpreadsheetWriter {
     public SpreadsheetWriter(File parentFolder, String name) {
         this.parentFolder = parentFolder;
         this.fileName = name;
-        this.dateFormatter = DateFormat.getDateInstance(2, new Locale("en", "US"));
-        this.timeFormatter = DateFormat.getTimeInstance(2, new Locale("en", "US"));
+        this.dateFormatter = DateFormat.getDateInstance(2, Locale.US);
+        this.timeFormatter = DateFormat.getTimeInstance(2, Locale.US);
         this.stringsMap = new HashMap<>();
         this.stringsList = new RefVector<>(String.class);
         this.totalStringCount = 0;

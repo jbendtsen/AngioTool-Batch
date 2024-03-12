@@ -70,9 +70,10 @@ public class BufferConverter
         int nRows,
         int sampleGap
     ) {
+        int stride = sampleGap * width;
         for (int y = 0; y < nRows; y++) {
-            for (int x = 1; x < width; x++)
-                imageBuffer[sampleGap*(x+width*y)] += imageBuffer[sampleGap*(x-1+width*y)];
+            for (int p = sampleGap; p < stride; p++)
+                imageBuffer[p+stride*y] += imageBuffer[p-sampleGap+stride*y];
         }
     }
 
@@ -85,22 +86,24 @@ public class BufferConverter
         boolean isLittleEndian
     ) {
         int endian = isLittleEndian ? 1 : 0;
+        int bytesPerPixel = 2 * sampleGap;
+        int stride = bytesPerPixel * width;
 
         for (int y = 0; y < nRows; y++) {
-            for (int x = 1; x < width; x++) {
+            for (int p = bytesPerPixel; p < stride; p += 2) {
                 short cur  = (short)(
-                    (imageBuffer[2*sampleGap*(x + width*y)+endian] & 0xff) << 8 |
-                    (imageBuffer[2*sampleGap*(x + width*y)+(endian^1)] & 0xff)
+                    (imageBuffer[p+stride*y + endian] & 0xff) << 8 |
+                    (imageBuffer[p+stride*y + (endian^1)] & 0xff)
                 );
                 short prev = (short)(
-                    (imageBuffer[2*sampleGap*(x-1+width*y)+endian] & 0xff) << 8 |
-                    (imageBuffer[2*sampleGap*(x-1+width*y)+(endian^1)] & 0xff)
+                    (imageBuffer[p-bytesPerPixel+stride*y + endian] & 0xff) << 8 |
+                    (imageBuffer[p-bytesPerPixel+stride*y + (endian^1)] & 0xff)
                 );
 
                 cur += prev;
 
-                imageBuffer[2*sampleGap*(x+width*y)+endian]     = (byte)(cur >> 8);
-                imageBuffer[2*sampleGap*(x+width*y)+(endian^1)] = (byte)cur;
+                imageBuffer[p+stride*y + endian]     = (byte)(cur >> 8);
+                imageBuffer[p+stride*y + (endian^1)] = (byte)cur;
             }
         }
     }
@@ -127,26 +130,30 @@ public class BufferConverter
             s3 = 0;
         }
 
+        int bytesPerPixel = 4 * sampleGap;
+        int stride = bytesPerPixel * width;
+
         for (int y = 0; y < nRows; y++) {
-            for (int x = 4; x < 4*width; x += 4) {
+            for (int p = bytesPerPixel; p < stride; p += 4) {
+                int pos = p+stride*y;
                 float cur = Float.intBitsToFloat(
-                    (imageBuffer[x] & 0xff) << s0 |
-                    (imageBuffer[x+1] & 0xff) << s1 |
-                    (imageBuffer[x+2] & 0xff) << s2 |
-                    (imageBuffer[x+3] & 0xff) << s3
+                    (imageBuffer[pos] & 0xff) << s0 |
+                    (imageBuffer[pos+1] & 0xff) << s1 |
+                    (imageBuffer[pos+2] & 0xff) << s2 |
+                    (imageBuffer[pos+3] & 0xff) << s3
                 );
                 float prev = Float.intBitsToFloat(
-                    (imageBuffer[x-4] & 0xff) << s0 |
-                    (imageBuffer[x-3] & 0xff) << s1 |
-                    (imageBuffer[x-2] & 0xff) << s2 |
-                    (imageBuffer[x-1] & 0xff) << s3
+                    (imageBuffer[pos-bytesPerPixel] & 0xff) << s0 |
+                    (imageBuffer[pos-bytesPerPixel+1] & 0xff) << s1 |
+                    (imageBuffer[pos-bytesPerPixel+2] & 0xff) << s2 |
+                    (imageBuffer[pos-bytesPerPixel+3] & 0xff) << s3
                 );
 
                 int bits = Float.floatToRawIntBits(cur + prev);
-                imageBuffer[x]   = (byte)(bits >> s0);
-                imageBuffer[x+1] = (byte)(bits >> s1);
-                imageBuffer[x+2] = (byte)(bits >> s2);
-                imageBuffer[x+3] = (byte)(bits >> s3);
+                imageBuffer[pos]   = (byte)(bits >> s0);
+                imageBuffer[pos+1] = (byte)(bits >> s1);
+                imageBuffer[pos+2] = (byte)(bits >> s2);
+                imageBuffer[pos+3] = (byte)(bits >> s3);
             }
         }
     }

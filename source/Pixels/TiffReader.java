@@ -190,6 +190,7 @@ public class TiffReader
             tagIndex += nTags;
         }
 
+        /*
         System.out.println("TiffReader: " +
             "width = " + width +
             ", height = " + height +
@@ -205,9 +206,9 @@ public class TiffReader
             ", isPlanar = " + isPlanar +
             ", shouldDiffOrInvert = " + shouldDiffOrInvert
         );
-
         System.out.println("stripOffsets: " + BatchUtils.formatIntArray(stripOffsets, "" + firstStripOffset));
         System.out.println("stripCounts: " + BatchUtils.formatIntArray(stripCounts, "" + firstStripCount));
+        */
 
         fc.position(ifdOffset + trueTagCount * 12 + 2);
         bb.position(0);
@@ -370,63 +371,57 @@ public class TiffReader
                     break;
             }
 
-            if (code < nextSymbol || isClear) {
-                int[] th = lzwTableAndHeap.buf;
-                int off = th[2*code];
-                int len = th[2*code+1];
-                for (int i = 0; i < len && outOffset+i < outSize; i++)
-                    outData[outOffset+i] = (byte)(th[off + (i>>2)] >>> ((i&3)*8));
+            int toAddOff = 0;
+            int toAddLen = 0;
 
-                outOffset += len;
-                if (outOffset >= outSize)
-                    break;
-
-                if (isClear)
-                    continue;
-
-                int oldOff = th[2*oldCode];
-                int oldLen = th[2*oldCode+1];
-                int firstCurrent = th[off] & 0xff;
-
-                int lastElem = oldOff + (oldLen >> 2);
-                int nextSymbolOffset = lzwTableAndHeap.addFromSelf(oldOff, (oldLen + 3) >> 2);
-
-                if ((oldLen & 3) == 0)
-                    lzwTableAndHeap.add(firstCurrent);
-                else
-                    lzwTableAndHeap.buf[lastElem] |= firstCurrent << (8*(oldLen & 3));
-
-                lzwTableAndHeap.buf[2*nextSymbol] = nextSymbolOffset;
-                lzwTableAndHeap.buf[2*nextSymbol+1] = oldLen + 1;
+            if (isClear) {
+                toAddOff = lzwTableAndHeap.buf[2*code];
+                toAddLen = lzwTableAndHeap.buf[2*code+1];
             }
             else {
                 int oldOff = lzwTableAndHeap.buf[2*oldCode];
                 int oldLen = lzwTableAndHeap.buf[2*oldCode+1];
-                int firstOld = lzwTableAndHeap.buf[oldOff] & 0xff;
 
-                int lastElem = oldOff + (oldLen >> 2);
+                int firstOffset;
+                if (code < nextSymbol) {
+                    toAddOff = lzwTableAndHeap.buf[2*code];
+                    toAddLen = lzwTableAndHeap.buf[2*code+1];
+                    firstOffset = toAddOff;
+                }
+                else {
+                    firstOffset = oldOff;
+                }
+
                 int nextSymbolOffset = lzwTableAndHeap.addFromSelf(oldOff, (oldLen + 3) >> 2);
 
+                int firstByte = lzwTableAndHeap.buf[firstOffset] & 0xff;
                 if ((oldLen & 3) == 0)
-                    lzwTableAndHeap.add(firstOld);
+                    lzwTableAndHeap.add(firstByte);
                 else
-                    lzwTableAndHeap.buf[lastElem] |= firstOld << (8*(oldLen & 3));
+                    lzwTableAndHeap.buf[nextSymbolOffset + (oldLen >> 2)] |= firstByte << (8*(oldLen & 3));
 
-                int[] th = lzwTableAndHeap.buf;
-                th[2*nextSymbol] = nextSymbolOffset;
-                th[2*nextSymbol+1] = oldLen + 1;
+                lzwTableAndHeap.buf[2*nextSymbol] = nextSymbolOffset;
+                lzwTableAndHeap.buf[2*nextSymbol+1] = oldLen + 1;
 
-                int len = oldLen + 1;
-                for (int i = 0; i < len && outOffset+i < outSize; i++)
-                    outData[outOffset+i] = (byte)(th[nextSymbolOffset + (i>>2)] >>> ((i&3)*8));
-
-                outOffset += len;
-                if (outOffset >= outSize)
-                    break;
+                if (code >= nextSymbol) {
+                    toAddOff = nextSymbolOffset;
+                    toAddLen = oldLen + 1;
+                }
             }
 
-            bitsToRead = 32 - Integer.numberOfLeadingZeros(++nextSymbol + 1);
-            oldCode = code;
+            int[] th = lzwTableAndHeap.buf;
+            for (int i = 0; i < toAddLen && outOffset+i < outSize; i++)
+                outData[outOffset+i] = (byte)(th[toAddOff + (i>>2)] >>> ((i&3)*8));
+
+            outOffset += toAddLen;
+            if (outOffset >= outSize)
+                break;
+
+            if (!isClear) {
+                nextSymbol++;
+                bitsToRead = 32 - Integer.numberOfLeadingZeros(nextSymbol + 1);
+                oldCode = code;
+            }
         }
 
         return outOffset;
