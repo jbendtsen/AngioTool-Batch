@@ -149,40 +149,57 @@ public class TiffReader
                 else if (
                     attr == TAG_BITS_PER_SAMPLE ||
                     attr == TAG_STRIP_OFFSETS ||
-                    attr == TAG_STRIP_COUNTS ||
-                    attr == TAG_MIN_VALUE ||
-                    attr == TAG_MAX_VALUE
+                    attr == TAG_STRIP_COUNTS
+                    // TODO: add TAG_MIN_VALUE and TAG_MAX_VALUE, since there can be multiple mins and maxes
                 ) {
                     int offset = getInt(buf, t+8, isLittleEndian);
-                    int size = count * (type == 3 ? 2 : 4);
+                    int bytesPerElem = (type == 3 ? 2 : 4);
+                    int size = count * bytesPerElem;
+
+                    if (attr == TAG_STRIP_OFFSETS)
+                        stripOffsets = null;
+                    if (attr == TAG_STRIP_COUNTS)
+                        stripCounts = null;
 
                     long oldPos = fc.position();
                     try {
                         fc.position(offset);
-                        bb.limit(Math.min(extraOff + size, buf.length));
-                        bb.position(extraOff);
-                        fc.read(bb);
+                        int bytesTotal = 0;
+                        while (bytesTotal < size) {
+                            bb.limit(Math.min(extraOff + size - bytesTotal, buf.length));
+                            bb.position(extraOff);
+                            long res = fc.read(bb);
+                            if (res <= 0)
+                                break;
+
+                            int available = (int)res / bytesPerElem;
+
+                            if (attr == TAG_BITS_PER_SAMPLE) {
+                                int firstSampleLen = type == 3 ? getShort(buf, extraOff, isLittleEndian) : getInt(buf, extraOff, isLittleEndian);
+
+                                sampleLen = firstSampleLen;
+                                channels = count;
+                                break;
+                            }
+                            else if (attr == TAG_STRIP_OFFSETS) {
+                                if (stripOffsets == null)
+                                    stripOffsets = new int[count];
+                                getArray(stripOffsets, bytesTotal / bytesPerElem, buf, extraOff, available, type, isLittleEndian);
+                            }
+                            else if (attr == TAG_STRIP_COUNTS) {
+                                if (stripCounts == null)
+                                    stripCounts = new int[count];
+                                getArray(stripCounts, bytesTotal / bytesPerElem, buf, extraOff, available, type, isLittleEndian);
+                            }
+
+                            bytesTotal += (int)res;
+                        }
                     }
                     catch (IOException ex) {
                         continue;
                     }
                     finally {
                         fc.position(oldPos);
-                    }
-
-                    if (attr == TAG_BITS_PER_SAMPLE) {
-                        int firstSampleLen = type == 3 ? getShort(buf, extraOff, isLittleEndian) : getInt(buf, extraOff, isLittleEndian);
-
-                        sampleLen = firstSampleLen;
-                        channels = count;
-                    }
-                    else if (attr == TAG_STRIP_OFFSETS) {
-                        stripOffsets = getArray(buf, extraOff, isLittleEndian, type, count);
-                        firstStripOffset = stripOffsets[0];
-                    }
-                    else if (attr == TAG_STRIP_COUNTS) {
-                        stripCounts = getArray(buf, extraOff, isLittleEndian, type, count);
-                        firstStripCount = stripCounts[0];
                     }
                 }
             }
@@ -274,7 +291,7 @@ public class TiffReader
             IntBufferPool.acquireAsIs(area + 2) :
             new int[area + 2];
 
-        convertToPackedArgb(
+        int pixelsFilled = convertToPackedArgb(
             sampleType,
             isLittleEndian,
             isPlanar,
@@ -287,6 +304,9 @@ public class TiffReader
             channels,
             maxValue
         );
+
+        if (pixelsFilled < area)
+            Arrays.fill(pixels, pixelsFilled, area, 0);
 
         ByteBufferPool.release(imageData);
 
@@ -512,17 +532,35 @@ public class TiffReader
             (buf[off+3] & 0xff);
     }
 
-    static int[] getArray(byte[] buf, int off, boolean isLittleEndian, int type, int count)
+    static void getArray(int[] out, int outOff, byte[] in, int inOff, int count, int type, boolean isLittleEndian)
     {
-        int[] array = new int[count];
+        int s0, s1, s2, s3;
+        if (isLittleEndian) {
+            s0 = 0;
+            s1 = 8;
+            s2 = 16;
+            s3 = 24;
+        }
+        else {
+            s0 = 24;
+            s1 = 16;
+            s2 = 8;
+            s3 = 0;
+        }
+
         if (type == 3) {
             for (int i = 0; i < count; i++)
-                array[i] = getShort(buf, off + i * 2, isLittleEndian);
+                out[outOff+i] =
+                    (in[inOff + 2*i] & 0xff) << s0 |
+                    (in[inOff + 2*i + 1] & 0xff) << s1;
         }
         else {
             for (int i = 0; i < count; i++)
-                array[i] = getInt(buf, off + i * 4, isLittleEndian);
+                out[outOff+i] =
+                    (in[inOff + 4*i] & 0xff) << s0 |
+                    (in[inOff + 4*i + 1] & 0xff) << s1 |
+                    (in[inOff + 4*i + 2] & 0xff) << s2 |
+                    (in[inOff + 4*i + 3] & 0xff) << s3;
         }
-        return array;
     }
 }

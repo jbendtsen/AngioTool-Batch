@@ -203,6 +203,10 @@ public class ImageFile
         String fileName = file.getName();
         int fileNameLen = fileName.length();
 
+        // Don't bother loading Windows thumbnail caches
+        if (fileName.endsWith("Thumbs.db"))
+            return null;
+
         if (fileName.endsWith(".tif") || fileName.endsWith(".tiff") || (fileName.charAt(fileNameLen - 3) == 'p' && fileName.charAt(fileNameLen - 1) == 'm')) {
             try {
                 input = loadTiffOrNetpbm(existingImage, file, shouldAllocateWithRecycler);
@@ -210,8 +214,10 @@ public class ImageFile
             catch (IOException ex) {
                 firstException = ex;
             }
-            if (input == null)
+            if (input == null) {
+                System.err.println("Loading " + file.getAbsolutePath() + " with custom reader failed, abdicating to ImageIO");
                 input = loadFromImageIO(existingImage, file, shouldAllocateWithRecycler);
+            }
         }
         else {
             try {
@@ -285,7 +291,10 @@ public class ImageFile
                     images = TiffReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
             }
             catch (Throwable t) {
+                System.err.println(file.getAbsolutePath());
                 t.printStackTrace();
+                if (t instanceof IOException)
+                    throw (IOException)t;
             }
 
             if (images == null || images.size <= 0)

@@ -8,7 +8,7 @@ public class BufferConverter
     static final int TYPE_SHORT = 3;
     static final int TYPE_FLOAT = 4;
 
-    public static void convertToPackedArgb(
+    public static int convertToPackedArgb(
         int sampleType,
         boolean isLittleEndian,
         boolean isPlanar,
@@ -43,24 +43,26 @@ public class BufferConverter
 
         if (isPlanar) {
             if (sampleType == TYPE_BIT)
-                getPackedArgbFromBitsPlanar(pixels, imageBuffer, size, width, height, channels, shouldDiffOrInvert);
+                return getPackedArgbFromBitsPlanar(pixels, imageBuffer, size, width, height, channels, shouldDiffOrInvert);
             else if (sampleType == TYPE_BYTE)
-                getPackedArgbFromBytesPlanar(pixels, imageBuffer, size, width, height, channels, (int)maxval);
+                return getPackedArgbFromBytesPlanar(pixels, imageBuffer, size, width, height, channels, (int)maxval);
             else if (sampleType == TYPE_SHORT)
-                getPackedArgbFromShortsPlanar(pixels, imageBuffer, size, width, height, channels, (int)maxval, isLittleEndian);
+                return getPackedArgbFromShortsPlanar(pixels, imageBuffer, size, width, height, channels, (int)maxval, isLittleEndian);
             else if (sampleType == TYPE_FLOAT)
-                getPackedArgbFromFloatsPlanar(pixels, imageBuffer, size, width, height, channels, maxval, isLittleEndian);
+                return getPackedArgbFromFloatsPlanar(pixels, imageBuffer, size, width, height, channels, maxval, isLittleEndian);
         }
         else {
             if (sampleType == TYPE_BIT)
-                getPackedArgbFromBits(pixels, imageBuffer, size, width, height, channels, shouldDiffOrInvert);
+                return getPackedArgbFromBits(pixels, imageBuffer, size, width, height, channels, shouldDiffOrInvert);
             else if (sampleType == TYPE_BYTE)
-                getPackedArgbFromBytes(pixels, imageBuffer, size, width, height, channels, (int)maxval);
+                return getPackedArgbFromBytes(pixels, imageBuffer, size, width, height, channels, (int)maxval);
             else if (sampleType == TYPE_SHORT)
-                getPackedArgbFromShorts(pixels, imageBuffer, size, width, height, channels, (int)maxval, isLittleEndian);
+                return getPackedArgbFromShorts(pixels, imageBuffer, size, width, height, channels, (int)maxval, isLittleEndian);
             else if (sampleType == TYPE_FLOAT)
-                getPackedArgbFromFloats(pixels, imageBuffer, size, width, height, channels, maxval, isLittleEndian);
+                return getPackedArgbFromFloats(pixels, imageBuffer, size, width, height, channels, maxval, isLittleEndian);
         }
+
+        return 0;
     }
 
     public static void diffSamplesHorizontallyAsBytes(
@@ -71,7 +73,12 @@ public class BufferConverter
         int sampleGap
     ) {
         int stride = sampleGap * width;
-        for (int y = 0; y < nRows; y++) {
+        if (stride <= 0)
+            return;
+
+        int rows = Math.min(nRows, size / stride);
+
+        for (int y = 0; y < rows; y++) {
             for (int p = sampleGap; p < stride; p++)
                 imageBuffer[p+stride*y] += imageBuffer[p-sampleGap+stride*y];
         }
@@ -88,8 +95,12 @@ public class BufferConverter
         int endian = isLittleEndian ? 1 : 0;
         int bytesPerPixel = 2 * sampleGap;
         int stride = bytesPerPixel * width;
+        if (stride <= 0)
+            return;
 
-        for (int y = 0; y < nRows; y++) {
+        int rows = Math.min(nRows, size / stride);
+
+        for (int y = 0; y < rows; y++) {
             for (int p = bytesPerPixel; p < stride; p += 2) {
                 short cur  = (short)(
                     (imageBuffer[p+stride*y + endian] & 0xff) << 8 |
@@ -132,8 +143,12 @@ public class BufferConverter
 
         int bytesPerPixel = 4 * sampleGap;
         int stride = bytesPerPixel * width;
+        if (stride <= 0)
+            return;
 
-        for (int y = 0; y < nRows; y++) {
+        int rows = Math.min(nRows, size / stride);
+
+        for (int y = 0; y < rows; y++) {
             for (int p = bytesPerPixel; p < stride; p += 4) {
                 int pos = p+stride*y;
                 float cur = Float.intBitsToFloat(
@@ -158,7 +173,7 @@ public class BufferConverter
         }
     }
 
-    public static void getPackedArgbFromBits(
+    public static int getPackedArgbFromBits(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -169,8 +184,10 @@ public class BufferConverter
     ) {
         int xorValue = shouldInvert ? (1 << 24) - 1 : 0;
         int area = width * height;
+        int trueSize = Math.min(size, Math.max(channels, 1) * (area + 7) / 8);
+
         if (channels <= 1) {
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < trueSize; i++) {
                 byte c = imageBuffer[i];
                 for (int j = 0; j < 8 && i*8+j < area; j++)
                     pixels[i*8+j] = 0xff000000 | (xorValue ^ -((c >> (7-j)) & 1));
@@ -180,7 +197,7 @@ public class BufferConverter
             int ch = 0;
             int idx = 0;
             int argb = 0xff000000;
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < trueSize; i++) {
                 byte c = imageBuffer[i];
                 for (int j = 0; j < 8; j++) {
                     argb = (argb << 8) | (xorValue ^ -((c >> (7-j)) & 1));
@@ -198,7 +215,7 @@ public class BufferConverter
             int ch = 0;
             int idx = 0;
             int argb = 0;
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < trueSize; i++) {
                 byte c = imageBuffer[i];
                 for (int j = 0; j < 8; j++) {
                     if (ch < 4)
@@ -212,9 +229,11 @@ public class BufferConverter
                 }
             }
         }
+
+        return Math.min(area, (size * 8) / Math.max(channels, 1));
     }
 
-    public static void getPackedArgbFromBitsPlanar(
+    public static int getPackedArgbFromBitsPlanar(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -225,9 +244,9 @@ public class BufferConverter
     ) {
         int xorValue = shouldInvert ? (1 << 24) - 1 : 0;
         int area = width * height;
-        int planeSize = (area + 7) / 8;
+        int planeSize = Math.min(size, (area + 7) / 8);
 
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < planeSize; i++) {
             byte v = imageBuffer[i];
             for (int j = 0; j < 8 && i*8+j < area; j++)
                 pixels[i*8+j] = 0xff000000 | (xorValue ^ -((v >> (7-j)) & 1));
@@ -235,15 +254,17 @@ public class BufferConverter
 
         for (int ch = 1; ch < channels; ch++) {
             int mask = 0xff << (8*ch);
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < planeSize && ch*planeSize+i < size; i++) {
                 byte v = imageBuffer[ch*planeSize+i];
                 for (int j = 0; j < 8 && i*8+j < area; j++)
                     pixels[i*8+j] = (pixels[i*8+j] & ~mask) | ((xorValue ^ -((v >> (7-j)) & 1)) & mask);
             }
         }
+
+        return Math.min(area, size * 8);
     }
 
-    public static void getPackedArgbFromBytes(
+    public static int getPackedArgbFromBytes(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -366,9 +387,11 @@ public class BufferConverter
                 }
             }
         }
+
+        return Math.min(area, size / Math.min(Math.max(channels, 1), 4));
     }
 
-    public static void getPackedArgbFromBytesPlanar(
+    public static int getPackedArgbFromBytesPlanar(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -409,9 +432,11 @@ public class BufferConverter
                 }
             }
         }
+
+        return Math.min(size, area);
     }
 
-    public static void getPackedArgbFromShorts(
+    public static int getPackedArgbFromShorts(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -479,9 +504,11 @@ public class BufferConverter
                 }
             }
         }
+
+        return Math.min(area, size / (2 * Math.min(Math.max(channels, 1), 4)));
     }
 
-    public static void getPackedArgbFromShortsPlanar(
+    public static int getPackedArgbFromShortsPlanar(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -527,9 +554,11 @@ public class BufferConverter
                 }
             }
         }
+
+        return Math.min(size / 2, area);
     }
 
-    public static void getPackedArgbFromFloats(
+    public static int getPackedArgbFromFloats(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -593,9 +622,11 @@ public class BufferConverter
                 }
             }
         }
+
+        return Math.min(area, size / (4 * Math.min(Math.max(channels, 1), 4)));
     }
 
-    public static void getPackedArgbFromFloatsPlanar(
+    public static int getPackedArgbFromFloatsPlanar(
         int[] pixels,
         byte[] imageBuffer,
         int size,
@@ -648,5 +679,7 @@ public class BufferConverter
                 pixels[out] = (pixels[out] & mask) | (lum << (8*ch));
             }
         }
+
+        return Math.min(size / 4, area);
     }
 }

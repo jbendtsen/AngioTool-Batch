@@ -223,6 +223,7 @@ public class Analyzer
                         );
                     }
                     catch (Throwable ex) {
+                        inputImage = null;
                         ex.printStackTrace();
                     }
 

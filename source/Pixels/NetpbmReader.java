@@ -6,6 +6,7 @@ import Utils.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
 
 public class NetpbmReader
 {
@@ -244,7 +245,7 @@ public class NetpbmReader
                     maxval = -maxval;
                 }
 
-                convertToPackedArgb(
+                int pixelsFilled = convertToPackedArgb(
                     sampleType,
                     isLittleEndian,
                     false,
@@ -257,6 +258,9 @@ public class NetpbmReader
                     channels,
                     (float)maxval
                 );
+
+                if (pixelsFilled < area)
+                    Arrays.fill(pixels, pixelsFilled, area, 0);
 
                 ByteBufferPool.release(imageBuffer);
             }
