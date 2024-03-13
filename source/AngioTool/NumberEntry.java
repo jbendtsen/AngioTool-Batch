@@ -53,10 +53,12 @@ public class NumberEntry
 
     public GroupLayout.Group addToParaGroup(GroupLayout.Group paraGroup)
     {
+        final int MIN_TEXT_HEIGHT = 18;
+        final int TEXT_HEIGHT = 24;
         return paraGroup
-            .addComponent(cb)
+            .addComponent(cb, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
             .addComponent(units)
-            .addComponent(tf);
+            .addComponent(tf, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT);
     }
 
     public void toggleCheckbox()

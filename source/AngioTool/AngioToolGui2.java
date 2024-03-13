@@ -246,8 +246,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             )
         );
 
-        final int MIN_PATH_WIDTH = 18;
-        final int PATH_WIDTH = 30;
+        final int MIN_TEXT_HEIGHT = 18;
+        final int TEXT_HEIGHT = 24;
 
         layout.setVerticalGroup(layout.createSequentialGroup()
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
@@ -288,9 +288,9 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 .addComponent(labelIntensity)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(textSigmas)
-                .addComponent(textMinIntensity)
-                .addComponent(textMaxIntensity)
+                .addComponent(textSigmas, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
+                .addComponent(textMinIntensity, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
+                .addComponent(textMaxIntensity, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
             )
             .addGap(20)
             .addComponent(labelOverlay)

@@ -229,8 +229,8 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             )
         );
 
-        final int MIN_PATH_WIDTH = 18;
-        final int PATH_WIDTH = 30;
+        final int MIN_TEXT_HEIGHT = 18;
+        final int TEXT_HEIGHT = 30;
 
         layout.setVerticalGroup(layout.createSequentialGroup()
             .addComponent(labelData)
@@ -238,29 +238,29 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addComponent(labelInputFolders)
                 .addComponent(btnInputFolders)
-                .addComponent(textInputFolders, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                .addComponent(textInputFolders, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addComponent(labelExcel)
                 .addComponent(btnExcel)
-                .addComponent(textExcel, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                .addComponent(textExcel, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
             )
             .addComponent(rbNoOutput)
             .addComponent(rbSameOutput)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addComponent(rbSaveResultsTo)
                 .addComponent(btnSaveResultsFolder)
-                .addComponent(textSaveResultsFolder, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                .addComponent(textSaveResultsFolder, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
             )
             .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addGroup(layout.createSequentialGroup()
-                    .addComponent(labelResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
-                    .addComponent(cbWorkerCount, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                    .addComponent(labelResultsImageFormat, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
+                    .addComponent(cbWorkerCount, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
                 )
                 .addGroup(layout.createSequentialGroup()
-                    .addComponent(textResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
-                    .addComponent(textWorkerCount, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                    .addComponent(textResultsImageFormat, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
+                    .addComponent(textWorkerCount, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
                 )
                 .addComponent(labelWorkerCountHelp)
             )
