@@ -12,6 +12,7 @@ public class BatchParameters
     public boolean shouldSaveImagesToSpecificFolder;
     public String resultImagesPath;
     public String resultImageFormat;
+    public boolean shouldOverrideWorkerCount;
     public int workerCount;
 
     public BatchParameters() {}
@@ -24,6 +25,7 @@ public class BatchParameters
         boolean shouldSaveImagesToSpecificFolder,
         String resultImagesPath,
         String resultImageFormat,
+        boolean shouldOverrideWorkerCount,
         int workerCount
     ) {
         this.defaultPath = defaultPath;
@@ -33,6 +35,7 @@ public class BatchParameters
         this.shouldSaveImagesToSpecificFolder = shouldSaveImagesToSpecificFolder;
         this.resultImagesPath = resultImagesPath;
         this.resultImageFormat = resultImageFormat;
+        this.shouldOverrideWorkerCount = shouldOverrideWorkerCount;
         this.workerCount = workerCount;
     }
 

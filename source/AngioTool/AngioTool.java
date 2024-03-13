@@ -113,7 +113,7 @@ public class AngioTool
         if (errors.size > 0)
             BatchUtils.showDialogBox("Configuration parsing error", String.join("\n", errors));
 
-        AngioToolGui2 angioToolGui = new AngioToolGui2(analyzerParams, batchParams);
+        AngioToolGui2 angioToolGui = new AngioToolGui2(analyzerParams, batchParams.defaultPath);
         angioToolGui.setLocation(new Point(200, 250));
         angioToolGui.setVisible(true);
     }

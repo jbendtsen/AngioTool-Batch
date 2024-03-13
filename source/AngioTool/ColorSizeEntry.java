@@ -27,14 +27,15 @@ public class ColorSizeEntry extends NumberEntry
     }
 
     @Override
-    public GroupLayout.Group addToGroup(GroupLayout.Group group)
+    public GroupLayout.Group addToSeqGroup(GroupLayout.Group seqGroup)
     {
-        group.addComponent(cb).addComponent(units);
-        if (group instanceof GroupLayout.SequentialGroup)
-            ((GroupLayout.SequentialGroup)group).addGap(4);
-        return group
-            .addComponent(tf)
-            .addComponent(panel, 20, 25, 25);
+        return super.addToSeqGroup(seqGroup).addComponent(panel, 20, 25, 25);
+    }
+
+    @Override
+    public GroupLayout.Group addToParaGroup(GroupLayout.Group paraGroup)
+    {
+        return super.addToParaGroup(paraGroup).addComponent(panel, 20, 25, 25);
     }
 
     void selectColor()

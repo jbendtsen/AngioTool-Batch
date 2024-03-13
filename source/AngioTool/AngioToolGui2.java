@@ -48,14 +48,14 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     final JLabel labelMemory = new JLabel();
 
     AnalyzerParameters latestAnalyzerParams = null;
-    BatchParameters batchParams;
+    String defaultPath;
 
     public final LinkedList<ImagingWindow> imagingWindows = new LinkedList<>();
 
-    public AngioToolGui2(AnalyzerParameters analyzerParams, BatchParameters batchParams)
+    public AngioToolGui2(AnalyzerParameters analyzerParams, String defaultPath)
     {
         super(AngioTool.VERSION);
-        this.batchParams = batchParams;
+        this.defaultPath = defaultPath;
 
         this.setIconImage(AngioTool.ATIcon.getImage());
 
@@ -109,7 +109,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         elemSkeleton = new ColorSizeEntry("Skeleton:", analyzerParams.shouldDrawSkeleton, analyzerParams.skeletonSize, analyzerParams.skeletonColor);
         elemConvexHull = new ColorSizeEntry("Convex Hull:", analyzerParams.shouldDrawConvexHull, analyzerParams.convexHullSize, analyzerParams.convexHullColor);
 
-        elemFillBrightShapes = new NumberEntry("Maximum Hole Brightness:", analyzerParams.shouldFillBrightShapes, analyzerParams.brightShapeThresholdFactor, "x");
+        elemFillBrightShapes = new NumberEntry("Max Hole Level:", analyzerParams.shouldFillBrightShapes, analyzerParams.brightShapeThresholdFactor, "x");
 
         rbImageOriginal.setText("Keep Original Colors");
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
@@ -201,16 +201,17 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                     .addGap(0, 0, Short.MAX_VALUE)
                     .addComponent(cbComputeLacunarity)
                     .addComponent(cbComputeThickness)
-                    .addGroup(elemResizeInputs.addToGroup(layout.createSequentialGroup()))
-                    .addGroup(elemFillHoles.addToGroup(layout.createSequentialGroup()))
+                    .addGroup(elemFillHoles.addToSeqGroup(layout.createSequentialGroup()))
+                    .addGroup(elemRemoveParticles.addToSeqGroup(layout.createSequentialGroup()))
+                    .addGroup(elemFillBrightShapes.addToSeqGroup(layout.createSequentialGroup()))
                 )
                 .addGap(0, 0, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup()
                     .addComponent(labelSkeletonizer)
                     .addComponent(rbSkelFast)
                     .addComponent(rbSkelThorough)
-                    .addGroup(elemLinearScaleFactor.addToGroup(layout.createSequentialGroup()))
-                    .addGroup(elemRemoveParticles.addToGroup(layout.createSequentialGroup()))
+                    .addGroup(elemResizeInputs.addToSeqGroup(layout.createSequentialGroup()))
+                    .addGroup(elemLinearScaleFactor.addToSeqGroup(layout.createSequentialGroup()))
                 )
             )
             .addGroup(layout.createSequentialGroup()
@@ -235,10 +236,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 )
             )
             .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup()
-                    .addGroup(elemFillBrightShapes.addToGroup(layout.createSequentialGroup()))
-                    .addComponent(labelMemory)
-                )
+                .addComponent(labelMemory)
                 .addGap(0, 0, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup()
                     .addComponent(rbImageOriginal)
@@ -272,14 +270,17 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             )
             .addGap(12)
             .addGroup(
-                elemLinearScaleFactor.addToGroup(
-                    elemResizeInputs.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                elemResizeInputs.addToParaGroup(
+                    elemFillHoles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGroup(
-                elemFillHoles.addToGroup(
-                    elemRemoveParticles.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                elemLinearScaleFactor.addToParaGroup(
+                    elemRemoveParticles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
+            )
+            .addGroup(
+                elemFillBrightShapes.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
             )
             .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
@@ -295,23 +296,18 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             .addComponent(labelOverlay)
             .addGap(12)
             .addGroup(
-                elemBranches.addToGroup(
-                    elemOutline.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                elemBranches.addToParaGroup(
+                    elemOutline.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGroup(
-                elemConvexHull.addToGroup(
-                    elemSkeleton.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                elemConvexHull.addToParaGroup(
+                    elemSkeleton.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGap(8)
-            .addGroup(
-                elemFillBrightShapes.addToGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
-                .addGroup(layout.createSequentialGroup()
-                    .addComponent(rbImageOriginal)
-                    .addComponent(rbImageIsolated)
-                )
-            )
+            .addComponent(rbImageOriginal)
+            .addComponent(rbImageIsolated)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelMemory)
                 .addComponent(rbImageGray)
@@ -384,13 +380,21 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             return;
         }
 
-        imagingWindows.add(new ImagingWindow(this, image, imageFile, batchParams.defaultPath).showDialog());
+        imagingWindows.add(new ImagingWindow(this, image, imageFile, defaultPath).showDialog());
 
         updateMemoryMonitor();
     }
 
     void openBatchWindow()
     {
+        BatchParameters batchParams = new BatchParameters();
+        try {
+            ATPreferences.load(batchParams, AngioTool.class, AngioTool.BATCH_TXT);
+        }
+        catch (Exception ex) {
+            batchParams = BatchParameters.defaults();
+        }
+
         new BatchWindow(this, batchParams).showDialog();
         updateMemoryMonitor();
     }
@@ -406,7 +410,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         JFileChooser fc = BatchUtils.createFileChooser();
         fc.setDialogTitle("Open Image to View/Analyze");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
-        fc.setCurrentDirectory(new File(batchParams.defaultPath));
+        fc.setCurrentDirectory(new File(defaultPath));
         return fc.showOpenDialog(this) == 0 ? fc.getSelectedFile() : null;
     }
 

@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -51,6 +52,9 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     final JProgressBar overallProgress = new JProgressBar();
     final JButton analyzeBtn = new JButton();
     final JButton cancelBtn = new JButton();
+
+    final String workerCountHelpString;
+    int storedWorkerCount;
 
     String defaultPath;
     ArrayList<XlsxReader.SheetCells> originalSheets = new ArrayList<>();
@@ -107,14 +111,27 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         labelResultsImageFormat.setText("Result image format: ");
         textResultsImageFormat.setText(params.resultImageFormat);
 
-        cbWorkerCount.setText("Job count: ");
-        cbWorkerCount.setSelected(false);
+        cbWorkerCount.setText("Override job count: ");
+        cbWorkerCount.setSelected(params.shouldOverrideWorkerCount);
+        cbWorkerCount.addActionListener((ActionEvent e) -> BatchWindow.this.toggleWorkerCount());
 
         int nProcessors = Runtime.getRuntime().availableProcessors();
-        labelWorkerCountHelp.setText(
-            "Recommended job count: " + nProcessors + " for maximum throughput, " +
-            (int)(nProcessors * BALANCED_FACTOR) + " for balancing system resources"
-        );
+        int defaultWorkerCount = (int)(nProcessors * BALANCED_FACTOR);
+        this.workerCountHelpString =
+            "<html>Recommended job count:<br>" + nProcessors + " for maximum throughput,<br>" +
+             defaultWorkerCount + " (default) for balancing resources</html>";
+
+        BatchUtils.setNewFontStyleOn(labelWorkerCountHelp, Font.PLAIN);
+
+        if (params.shouldOverrideWorkerCount) {
+            textWorkerCount.setText("" + params.workerCount);
+            labelWorkerCountHelp.setText(workerCountHelpString);
+        }
+        else {
+            textWorkerCount.setText("");
+        }
+
+        storedWorkerCount = params.workerCount > 0 ? params.workerCount : defaultWorkerCount;
 
         //sepProgress
 
@@ -154,9 +171,11 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             }
         });
 
+        int extraWidth = cbWorkerCount.isSelected() ? 150 : 250;
+
         Dimension preferredSize = this.getPreferredSize();
         this.setMinimumSize(preferredSize);
-        this.setSize(new Dimension(preferredSize.width + 150, preferredSize.height + 10));
+        this.setSize(new Dimension(preferredSize.width + extraWidth, preferredSize.height + 10));
 
         this.setLocation(700, 300);
         this.setVisible(true);
@@ -188,14 +207,18 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
                 .addComponent(textSaveResultsFolder)
             )
             .addGroup(layout.createSequentialGroup()
-                .addComponent(labelResultsImageFormat)
-                .addComponent(textResultsImageFormat, 0, 0, 80)
+                .addGroup(layout.createParallelGroup()
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(labelResultsImageFormat)
+                        .addComponent(textResultsImageFormat, 0, 0, 80)
+                    )
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(cbWorkerCount)
+                        .addComponent(textWorkerCount, 0, 0, 80)
+                    )
+                )
+                .addComponent(labelWorkerCountHelp)
             )
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(cbWorkerCount)
-                .addComponent(textWorkerCount, 0, 0, 80)
-            )
-            .addComponent(labelWorkerCountHelp)
             .addComponent(sepProgress)
             .addComponent(labelProgress)
             .addComponent(overallLabel)
@@ -229,17 +252,18 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
                 .addComponent(btnSaveResultsFolder)
                 .addComponent(textSaveResultsFolder, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
             )
+            .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
                 .addGroup(layout.createSequentialGroup()
-                    .addComponent(labelResultsImageFormat)
-                    .addComponent(cbWorkerCount)
+                    .addComponent(labelResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
+                    .addComponent(cbWorkerCount, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
                 )
                 .addGroup(layout.createSequentialGroup()
                     .addComponent(textResultsImageFormat, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
                     .addComponent(textWorkerCount, MIN_PATH_WIDTH, PATH_WIDTH, PATH_WIDTH)
                 )
+                .addComponent(labelWorkerCountHelp)
             )
-            .addComponent(labelWorkerCountHelp)
             .addGap(12)
             .addComponent(sepProgress)
             .addComponent(labelProgress)
@@ -256,6 +280,24 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         boolean enabled = rbSaveResultsTo.isSelected();
         btnSaveResultsFolder.setEnabled(enabled);
         textSaveResultsFolder.setEnabled(enabled);
+    }
+
+    void toggleWorkerCount() {
+        boolean enabled = cbWorkerCount.isSelected();
+        labelWorkerCountHelp.setText(workerCountHelpString);
+        if (enabled) {
+            int workerCount = storedWorkerCount > 0 ? storedWorkerCount : getDefaultWorkerCount();
+            textWorkerCount.setText("" + workerCount);
+        }
+        else {
+            try {
+                storedWorkerCount = Integer.parseInt(textWorkerCount.getText());
+            }
+            catch (Exception ignored) {
+                storedWorkerCount = 0;
+            }
+            textWorkerCount.setText("");
+        }
     }
 
     void selectInputFolders() {
@@ -325,13 +367,10 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             shouldUseSpecificOutputFolder = false;
         }
 
-        int workerCount;
-        try {
-            workerCount = Integer.parseInt(textWorkerCount.getText());
-        }
-        catch (Exception ex) {
-            workerCount = (int)(Runtime.getRuntime().availableProcessors() * BALANCED_FACTOR);
-        }
+        boolean shouldOverrideWorkerCount = cbWorkerCount.isSelected();
+        int workerCount = shouldOverrideWorkerCount ?
+            Integer.parseInt(textWorkerCount.getText()) :
+            getDefaultWorkerCount();
 
         return new BatchParameters(
             defaultPath,
@@ -341,6 +380,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             shouldUseSpecificOutputFolder,
             textSaveResultsFolder.getText(),
             textResultsImageFormat.getText(),
+            shouldOverrideWorkerCount,
             workerCount
         );
     }
@@ -536,5 +576,10 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             if (!isClosed.getAndSet(true))
                 this.dispose();
         });
+    }
+
+    public static int getDefaultWorkerCount()
+    {
+        return (int)(Runtime.getRuntime().availableProcessors() * BALANCED_FACTOR);
     }
 }

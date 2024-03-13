@@ -41,12 +41,22 @@ public class NumberEntry
         }
     }
 
-    public GroupLayout.Group addToGroup(GroupLayout.Group group)
+    public GroupLayout.Group addToSeqGroup(GroupLayout.Group seqGroup)
     {
-        group.addComponent(cb).addComponent(units);
-        if (group instanceof GroupLayout.SequentialGroup)
-            ((GroupLayout.SequentialGroup)group).addGap(4);
-        return group.addComponent(tf);
+        return seqGroup
+            .addComponent(cb)
+            .addGap(0, 0, Short.MAX_VALUE)
+            .addComponent(units)
+            .addGap(4)
+            .addComponent(tf);
+    }
+
+    public GroupLayout.Group addToParaGroup(GroupLayout.Group paraGroup)
+    {
+        return paraGroup
+            .addComponent(cb)
+            .addComponent(units)
+            .addComponent(tf);
     }
 
     public void toggleCheckbox()
