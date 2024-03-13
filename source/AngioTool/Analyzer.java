@@ -60,6 +60,7 @@ public class Analyzer
         public double[] sigmas;
         public double removeSmallParticlesThreshold;
         public double fillHolesValue;
+        public double brightShapeThresholdFactor;
         public double linearScalingFactor;
         public double allantoisMMArea;
         public double vesselMMArea;
@@ -740,8 +741,9 @@ public class Analyzer
         stats.thresholdLow = params.thresholdLow;
         stats.thresholdHigh = params.thresholdHigh;
         stats.sigmas = params.sigmas;
-        stats.removeSmallParticlesThreshold = params.shouldRemoveSmallParticles ? params.removeSmallParticlesThreshold : 0;
-        stats.fillHolesValue = params.shouldFillHoles ? (int)params.fillHolesValue : 0;
+        stats.removeSmallParticlesThreshold = params.shouldRemoveSmallParticles ? params.removeSmallParticlesThreshold : 0.0;
+        stats.fillHolesValue = params.shouldFillHoles ? params.fillHolesValue : 0.0;
+        stats.brightShapeThresholdFactor = params.shouldFillBrightShapes ? params.brightShapeThresholdFactor : 0.0;
         stats.linearScalingFactor = linearScalingFactor;
         //stats.allantoisPixelsArea = data.convexHullArea;
         stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;
@@ -907,6 +909,7 @@ public class Analyzer
             "Vessel Thickness",
             "Small Particles",
             "Fill Holes",
+            "Max Hole Level",
             "Scaling factor",
             "Explant area",
             "Vessels area",
@@ -918,11 +921,11 @@ public class Analyzer
             "Total Number of End Points",
             "Average Vessel Diameter",
             "Medial E Lacunarity",
+            "Mean E Lacunarity",
             "E Lacunarity Curve",
             "Medial F Lacunarity",
-            "F Lacunarity Curve",
             "Mean F Lacunarity",
-            "Mean E Lacunarity"
+            "F Lacunarity Curve"
         );
 
         return writer;
@@ -946,6 +949,7 @@ public class Analyzer
             BatchUtils.formatDoubleArray(stats.sigmas, ""),
             stats.removeSmallParticlesThreshold,
             stats.fillHolesValue,
+            stats.brightShapeThresholdFactor,
             stats.linearScalingFactor,
             stats.allantoisMMArea,
             stats.vesselMMArea,
@@ -957,11 +961,11 @@ public class Analyzer
             stats.totalNEndPoints,
             stats.averageVesselDiameter,
             stats.ELacunarityMedial,
+            stats.meanEl,
             stats.ELacunarityCurve,
             stats.FLacunarityMedial,
-            stats.FLacunarityCurve,
             stats.meanFl,
-            stats.meanEl
+            stats.FLacunarityCurve
         );
     }
 

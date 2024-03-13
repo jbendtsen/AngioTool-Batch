@@ -117,9 +117,8 @@ public class Tubeness
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
                     int xf = Math.abs(x+f) % (2*width-2);
-                    if (xf >= width)
-                        xf = 2*width-2 - xf;
-                    avg += kernel[f + ksHalf] * image[xf + width * y];
+                    int xfm = Math.min(xf, 2*width-2 - xf);
+                    avg += kernel[f + ksHalf] * image[xfm + width * y];
                 }
                 scratch[x + width * y] = avg;
             }
@@ -134,9 +133,8 @@ public class Tubeness
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
                     int xf = Math.abs(x+f) % (2*width-2);
-                    if (xf >= width)
-                        xf = 2*width-2 - xf;
-                    avg += kernel[f + ksHalf] * image[xf + width * y];
+                    int xfm = Math.min(xf, 2*width-2 - xf);
+                    avg += kernel[f + ksHalf] * image[xfm + width * y];
                 }
                 scratch[x + width * y] = avg;
             }
@@ -147,9 +145,8 @@ public class Tubeness
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
                     int yf = Math.abs(y+f) % (2*height-2);
-                    if (yf >= height)
-                        yf = 2*height-2 - yf;
-                    avg += kernel[f + ksHalf] * scratch[x + width * yf];
+                    int yfm = Math.min(yf, 2*height-2 - yf);
+                    avg += kernel[f + ksHalf] * scratch[x + width * yfm];
                 }
                 output[x + width * y] = avg;
             }
@@ -168,9 +165,8 @@ public class Tubeness
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
                     int yf = Math.abs(y+f) % (2*height-2);
-                    if (yf >= height)
-                        yf = 2*height-2 - yf;
-                    avg += kernel[f + ksHalf] * scratch[x + width * yf];
+                    int yfm = Math.min(yf, 2*height-2 - yf);
+                    avg += kernel[f + ksHalf] * scratch[x + width * yfm];
                 }
                 output[x + width * y] = avg;
             }
@@ -304,6 +300,7 @@ public class Tubeness
         public void initSlices(int nSlices)
         {
             this.maximums.resize(nSlices);
+            Arrays.fill(this.maximums.buf, 0, nSlices, 0.0);
         }
 
         @Override
