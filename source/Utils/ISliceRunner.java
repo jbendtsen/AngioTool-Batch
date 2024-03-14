@@ -6,19 +6,23 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public interface ISliceRunner
 {
-    void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws Throwable;
-    //int countSlices(int maxWorkers, int length, int largestAtom);
+    void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws ExecutionException;
 
     public class Series implements ISliceRunner
     {
         @Override
-        public void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws Throwable
+        public void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws ExecutionException
         {
             work.initSlices(1);
 
             ISliceCompute.Result res = new ISliceCompute.Result();
             res.idx = 0;
-            res.result = work.computeSlice(0, 0, length);
+            try {
+                res.result = work.computeSlice(0, 0, length);
+            }
+            catch (Throwable t) {
+                throw new ExecutionException(t);
+            }
             work.finishSlice(res);
         }
     }
@@ -33,7 +37,7 @@ public interface ISliceRunner
         }
 
         @Override
-        public void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws Throwable
+        public void runSlices(ISliceCompute work, int maxWorkers, int length, int largestAtom) throws ExecutionException
         {
             work.initSlices(countSlices(maxWorkers, length, largestAtom));
 
@@ -73,9 +77,16 @@ public interface ISliceRunner
             }
 
             for (int i = 0; i < nSlices; i++) {
-                ISliceCompute.Result res = resultQueue.take();
+                ISliceCompute.Result res;
+                try {
+                    res = resultQueue.take();
+                }
+                catch (InterruptedException ex) {
+                    throw new ExecutionException(new Exception("Interrupted"));
+                }
+
                 if (res.ex != null)
-                    throw res.ex;
+                    throw new ExecutionException(res.ex);
                 work.finishSlice(res);
             }
         }

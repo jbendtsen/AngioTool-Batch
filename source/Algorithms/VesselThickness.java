@@ -2,6 +2,7 @@ package Algorithms;
 
 import Utils.*;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 public class VesselThickness
 {
@@ -15,15 +16,11 @@ public class VesselThickness
         byte[] input,
         int width,
         int height
-    ) {
+    ) throws ExecutionException
+    {
         final int thresh = 200;
 
-        try {
-            runner.runSlices(new Step1(scratch, input, width, height, thresh), maxWorkers, height, (height / 4) + 1);
-        }
-        catch (Throwable ex) {
-            ex.printStackTrace();
-        }
+        runner.runSlices(new Step1(scratch, input, width, height, thresh), maxWorkers, height, (height / 4) + 1);
 
         final int nPoints = arraySize / pointSize;
         double[] vesselThickness = DoubleBufferPool.acquireAsIs(nPoints);

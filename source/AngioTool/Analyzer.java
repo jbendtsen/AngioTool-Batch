@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -132,12 +133,20 @@ public class Analyzer
         File file;
         Stats stats;
         Throwable error;
+        boolean exiting;
 
         AnalysisResult(File file, Stats stats, Throwable error)
         {
             this.file = file;
             this.stats = stats;
             this.error = error;
+        }
+
+        static AnalysisResult makeExitToken()
+        {
+            AnalysisResult token = new AnalysisResult(null, null, null);
+            token.exiting = true;
+            return token;
         }
     }
 
@@ -146,10 +155,23 @@ public class Analyzer
         class Worker implements Runnable
         {
             @Override
-            public void run() {
+            public void run()
+            {
+                try {
+                    runImpl();
+                }
+                catch (Throwable t) {
+                    t.printStackTrace();
+                }
+                finally {
+                    outQueue.add(AnalysisResult.makeExitToken());
+                }
+            }
+
+            void runImpl()
+            {
                 ISliceRunner sliceRunner = new ISliceRunner.Series();
                 Data data = new Data();
-                ArgbBuffer inputImage = new ArgbBuffer();
 
                 double imageResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
 
@@ -158,17 +180,14 @@ public class Analyzer
                     if (cancellationToken.get())
                         break;
 
+                    ArgbBuffer inputImage = null;
                     try {
                         inputImage = ImageFile.acquireImageForAnalysis(
-                            inputImage,
                             input.file.getAbsolutePath(),
                             imageResizeFactor
                         );
                     }
                     catch (Throwable ex) {
-                        if (inputImage != null)
-                            ImageFile.release(inputImage);
-                        inputImage = null;
                         ex.printStackTrace();
                     }
 
@@ -315,8 +334,9 @@ public class Analyzer
         boolean justSaved = false;
         boolean wasInputQueueEmpty = false;
         int nResults = 0;
+        int nWorkersAlive = batchParams.workerCount;
 
-        while (nResults < nImages && !workers.cancellationToken.get()) {
+        while (nResults < nImages && nWorkersAlive > 0 && !workers.cancellationToken.get()) {
             if (uiToken.isClosed()) {
                 workers.cancellationToken.set(true);
                 break;
@@ -324,18 +344,15 @@ public class Analyzer
 
             AnalysisResult result = null;
             try {
-                result = workers.outQueue.poll(10, TimeUnit.SECONDS);
+                result = workers.outQueue.take();
             }
             catch (InterruptedException ex) {
                 workers.cancellationToken.set(true);
                 break;
             }
 
-            if (result == null) {
-                if (wasInputQueueEmpty)
-                    break;
-
-                wasInputQueueEmpty = workers.inQueue.peek() == null;
+            if (result.exiting) {
+                nWorkersAlive--;
                 continue;
             }
 
@@ -542,7 +559,8 @@ public class Analyzer
         ArgbBuffer inputImage,
         AnalyzerParameters params,
         ISliceRunner sliceRunner
-    ) {
+    ) throws ExecutionException
+    {
         data.analysisImage.resize(inputImage.width * inputImage.height);
         byte[] analysisImage = data.analysisImage.buf;
 

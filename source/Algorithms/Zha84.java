@@ -1,5 +1,7 @@
 package Algorithms;
 
+import java.util.Arrays;
+
 public class Zha84
 {
     static final byte[] lut = stringToLut(
@@ -21,38 +23,25 @@ public class Zha84
         return out;
     }
 
-    /*
-    public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, ImagePlus inputImage)
-    {
-        ImageProcessor ip = inputImage.getProcessor();
-        if (!(ip instanceof ByteProcessor) || ip.getNChannels() != 1)
-            throw new RuntimeException("SkeletonizeZha84: Image was not single-channel 8-bit");
-
-        byte[] pixels = (byte[])ip.getPixels();
-        int width = ip.getWidth();
-        int height = ip.getHeight();
-
-        skeletonize(outSkeletonImage, scratchSkeletonImage, pixels, width, height);
-    }
-    */
-
     public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, byte[] inputImage, int width, int height)
     {
-        for (int i = 0; i < width; i++)
-            outSkeletonImage[i] = 0;
+        Arrays.fill(outSkeletonImage, 0, width, (byte)0);
+        Arrays.fill(scratchSkeletonImage, 0, width, (byte)0);
 
         for (int i = 1; i < height - 1; i++) {
             outSkeletonImage[i*width] = 0;
+            scratchSkeletonImage[i*width] = 0;
             for (int j = 1; j < width - 1; j++) {
                 int idx = j + width*i;
-                outSkeletonImage[idx] = (byte)(inputImage[idx] >>> 31 | -inputImage[idx] >>> 31);
+                outSkeletonImage[idx] = (byte)(inputImage[idx] >>> 31);
             }
             outSkeletonImage[(i+1)*width-1] = 0;
+            scratchSkeletonImage[(i+1)*width-1] = 0;
         }
 
         int lastRow = (height-1) * width;
-        for (int i = 0; i < width; i++)
-            outSkeletonImage[i+lastRow] = 0;
+        Arrays.fill(outSkeletonImage, lastRow, lastRow + width, (byte)0);
+        Arrays.fill(scratchSkeletonImage, lastRow, lastRow + width, (byte)0);
 
         byte[] a = null, b = null;
 

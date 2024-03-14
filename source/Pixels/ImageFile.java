@@ -24,13 +24,12 @@ public class ImageFile
     }
 
     public static ArgbBuffer acquireImageForAnalysis(
-        ArgbBuffer image,
         String absPath,
         double resizeFactor
     ) throws IOException
     {
         File file = new File(absPath);
-        image = acquireImage(image, file);
+        ArgbBuffer image = acquireImage(null, file);
         if (image == null)
             return null;
 

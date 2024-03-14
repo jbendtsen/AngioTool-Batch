@@ -3,7 +3,7 @@ package Algorithms;
 import Pixels.Planes;
 import Utils.*;
 import java.io.InputStream;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ExecutionException;
 
 public class Lee94 {
     public static final int MAX_BREADTH = 8;
@@ -146,7 +146,8 @@ public class Lee94 {
         int width,
         int height,
         int bitDepth
-    ) {
+    ) throws ExecutionException
+    {
         final int breadth = layersObj.length;
 
         byte[][]  layersByte  = null;
@@ -191,20 +192,16 @@ public class Lee94 {
         ISliceRunner runner,
         int maxWorkers,
         int border
-    ) {
+    ) throws ExecutionException
+    {
         params.prepare(border);
 
-        try {
-            runner.runSlices(
-                params,
-                maxWorkers,
-                params.width,
-                IN_PLACE_THRESHOLD - 1
-            );
-        }
-        catch (Throwable ex) {
-            ex.printStackTrace();
-        }
+        runner.runSlices(
+            params,
+            maxWorkers,
+            params.width,
+            IN_PLACE_THRESHOLD - 1
+        );
 
         final IntVector results = params.finalSimplePoints;
         final int width = params.width;

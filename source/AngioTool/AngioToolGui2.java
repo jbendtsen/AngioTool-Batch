@@ -361,7 +361,6 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         Exception error = null;
         try {
             image = ImageFile.acquireImageForAnalysis(
-                null,
                 imageFile.getAbsolutePath(),
                 elemResizeInputs.cb.isSelected() ? elemResizeInputs.getValue() : 1.0
             );
@@ -433,8 +432,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
 
     public void closeImagingWindow(ImagingWindow window)
     {
-        imagingWindows.remove(window);
         window.release();
+        imagingWindows.remove(window);
     }
 
     public AnalyzerParameters buildAnalyzerParamsFromUi()

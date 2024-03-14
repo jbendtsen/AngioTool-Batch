@@ -2,6 +2,7 @@ package Algorithms;
 
 import Utils.*;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 public class Tubeness
 {
@@ -17,7 +18,8 @@ public class Tubeness
         int brightestChannel,
         double[] sigma,
         int nSigmas
-    ) {
+    ) throws ExecutionException
+    {
         final int area = width * height;
         float[] image = FloatBufferPool.acquireAsIs(area);
         float[] gaussianOutput = FloatBufferPool.acquireAsIs(area);
@@ -213,22 +215,16 @@ public class Tubeness
         int width,
         int height,
         double sigma
-    ) {
-        double highestValue = 0.0;
-        try {
-            params.setup(input, width, height, sigma, 3, output);
-            runner.runSlices(
-                params,
-                maxWorkers,
-                width,
-                IN_PLACE_THRESHOLD - 1
-            );
-            highestValue = params.finalMaximum;
-        }
-        catch (Throwable ex) {
-            ex.printStackTrace();
-        }
-        return highestValue;
+    ) throws ExecutionException
+    {
+        params.setup(input, width, height, sigma, 3, output);
+        runner.runSlices(
+            params,
+            maxWorkers,
+            width,
+            IN_PLACE_THRESHOLD - 1
+        );
+        return params.finalMaximum;
     }
 
     static float findSecondHessianEigenvalueAtPoint2D(float[] data, int width, int x, int y, double sigma)

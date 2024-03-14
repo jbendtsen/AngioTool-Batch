@@ -394,10 +394,19 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         {
             this.currentStats = stats;
             this.statsStrings.size = 0;
+
+            int[] outPixels = getDrawingBuffer();
+
+            if (stats == null) {
+                System.arraycopy(source.pixels, 0, outPixels, 0, imgWidth * imgHeight);
+                this.waiting = false;
+                this.repaint();
+                return null;
+            }
+
             this.didComputeLacunarity = params.shouldComputeLacunarity;
             this.didComputeThickness = params.shouldComputeThickness;
 
-            int[] outPixels = getDrawingBuffer();
             Analyzer.drawOverlay(
                 params,
                 data.convexHull,
@@ -632,10 +641,10 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                 .addComponent(labelSpreadsheetWasSaved)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
-                .addComponent(btnSaveImage)
-                .addComponent(textSaveImage)
-                .addComponent(btnSaveSpreadsheet)
-                .addComponent(textSaveSpreadsheet)
+                .addComponent(btnSaveImage, BS, BS, BS)
+                .addComponent(textSaveImage, BS, BS, BS)
+                .addComponent(btnSaveSpreadsheet, BS, BS, BS)
+                .addComponent(textSaveSpreadsheet, BS, BS, BS)
             )
         );
     }
@@ -643,24 +652,33 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     void dispatchAnalysisTask(AnalyzerParameters params)
     {
         ImagingWindow.threadPool.submit(() -> {
-            analyzerData.restart();
-            Analyzer.Stats stats = Analyzer.analyze(
-                analyzerData,
-                inputFile,
-                imageUi.source,
-                params,
-                sliceRunner
-            );
-            SwingUtilities.invokeLater(() -> {
-                AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerData, stats);
-                if (nextParams != null) {
-                    dispatchAnalysisTask(nextParams);
-                }
-                else {
-                    analyzerData.nullify();
-                    setUiInteractivity(true);
-                }
-            });
+            try {
+                analyzerData.restart();
+                Analyzer.Stats stats = Analyzer.analyze(
+                    analyzerData,
+                    inputFile,
+                    imageUi.source,
+                    params,
+                    sliceRunner
+                );
+                SwingUtilities.invokeLater(() -> {
+                    AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerData, stats);
+                    if (nextParams != null) {
+                        dispatchAnalysisTask(nextParams);
+                    }
+                    else {
+                        analyzerData.nullify();
+                        setUiInteractivity(true);
+                    }
+                });
+            }
+            catch (Throwable t) {
+                final Throwable error = t;
+                SwingUtilities.invokeLater(() -> {
+                    imageUi.onImageFinished(params, analyzerData, null);
+                    BatchUtils.showExceptionInDialogBox(error);
+                });
+            }
         });
     }
 

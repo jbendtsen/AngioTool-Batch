@@ -50,6 +50,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     final JLabel labelProgress = new JLabel();
     final JLabel overallLabel = new JLabel();
     final JProgressBar overallProgress = new JProgressBar();
+    final JLabel labelCurrentFile = new JLabel();
     final JButton analyzeBtn = new JButton();
     final JButton cancelBtn = new JButton();
 
@@ -142,6 +143,8 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         overallProgress.setValue(0);
         overallProgress.setStringPainted(true);
 
+        BatchUtils.setNewFontStyleOn(labelCurrentFile, Font.ITALIC);
+
         analyzeBtn.setText("Run");
         analyzeBtn.addActionListener((ActionEvent e) -> BatchWindow.this.startAnalysis());
 
@@ -223,6 +226,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             .addComponent(labelProgress)
             .addComponent(overallLabel)
             .addComponent(overallProgress)
+            .addComponent(labelCurrentFile)
             .addGroup(GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addComponent(analyzeBtn)
                 .addComponent(cancelBtn)
@@ -269,6 +273,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             .addComponent(labelProgress)
             .addComponent(overallLabel)
             .addComponent(overallProgress)
+            .addComponent(labelCurrentFile, 48, 48, Short.MAX_VALUE)
             .addGroup(layout.createParallelGroup()
                 .addComponent(analyzeBtn)
                 .addComponent(cancelBtn)
@@ -518,19 +523,14 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             if (error != null)
                 nErrors++;
 
-            int pathLen = path.length();
-            String partialFileName = pathLen > 60 ?
-                path.substring(0, 29) + "..." + path.substring(pathLen - 29) :
-                path;
-
             int current = overallProgress.getValue() + 1;
             String status = "" + current + "/" + overallProgress.getMaximum();
             if (nErrors > 0)
                 status += ", " + nErrors + (nErrors == 1 ? " error." : " errors.");
 
-            status += " Processed " + partialFileName + "...";
             overallLabel.setText(status);
             overallProgress.setValue(overallProgress.getValue() + 1);
+            labelCurrentFile.setText("<html><p>" + path + "</p></html>");
 
             updateWindowSize();
         });
