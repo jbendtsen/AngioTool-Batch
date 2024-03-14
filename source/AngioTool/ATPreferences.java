@@ -47,7 +47,7 @@ public class ATPreferences
         }
 
         try {
-            File path = new File(acquirePrefsDir(), fileName);
+            File path = new File(getPrefsDir(), fileName);
             FileOutputStream out = new FileOutputStream(path);
             out.write(sb.toString().getBytes());
             out.close();
@@ -59,7 +59,7 @@ public class ATPreferences
 
     public static RefVector<String> load(Object params, Class contextClass, String fileName) throws IOException
     {
-        File atFolder = acquirePrefsDir();
+        File atFolder = getPrefsDir();
 
         InputStream f = new FileInputStream(new File(atFolder, fileName));
 
@@ -216,7 +216,7 @@ public class ATPreferences
         return c == 't' || c == 'y';
     }
 
-    public static File acquirePrefsDir() throws IOException
+    public static File getPrefsDir() throws IOException
     {
         File atFolder = new File(System.getProperty("user.home"), "AngioTool-Batch");
         if (!atFolder.exists())

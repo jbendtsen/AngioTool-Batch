@@ -360,7 +360,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         ArgbBuffer image = null;
         Exception error = null;
         try {
-            image = ImageFile.openImageForAnalysis(
+            image = ImageFile.acquireImageForAnalysis(
                 null,
                 imageFile.getAbsolutePath(),
                 elemResizeInputs.cb.isSelected() ? elemResizeInputs.getValue() : 1.0
@@ -429,6 +429,12 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             iw.updateImage(params);
 
         updateMemoryMonitor();
+    }
+
+    public void closeImagingWindow(ImagingWindow window)
+    {
+        imagingWindows.remove(window);
+        window.release();
     }
 
     public AnalyzerParameters buildAnalyzerParamsFromUi()

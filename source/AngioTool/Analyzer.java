@@ -79,95 +79,37 @@ public class Analyzer
         public double meanEl;
     }
 
-    public static class Scratch
+    public static class Data
     {
-        static final int RESIZE_ROUNDING = 4 * 1024;
-
         public double convexHullArea;
         public long vesselPixelArea;
 
-        // Vectors with sizes equal to image area
-        FloatVector f1 = new FloatVector();
-        FloatVector f2 = new FloatVector();
-        FloatVector f3 = new FloatVector();
-        FloatVector f4 = new FloatVector();
-        IntVector i1 = new IntVector();
-        IntVector i2 = new IntVector();
-        IntVector iv1 = new IntVector();
-        IntVector iv2 = new IntVector();
-        IntVector iv3 = new IntVector();
-
-        ByteVectorOutputStream b2 = new ByteVectorOutputStream();
-        ByteVectorOutputStream b3 = new ByteVectorOutputStream();
-
-        ByteVectorOutputStream analysisImage = new ByteVectorOutputStream();
-
         // Recycling resources
-        public Tubeness.Scratch tubeness = new Tubeness.Scratch();
+        public ByteVectorOutputStream analysisImage = new ByteVectorOutputStream();
         public AnalyzeSkeleton2.Result skelResult = new AnalyzeSkeleton2.Result();
-        public Particles.Scratch particleScratch = new Particles.Scratch();
-        public Lee94.Scratch lee94Scratch = new Lee94.Scratch();
+        public Particles.Scratch particles = new Particles.Scratch();
         public Lacunarity2.Statistics lacunarity = new Lacunarity2.Statistics();
         public IntVector convexHull = new IntVector();
 
-        public void reallocate(AnalyzerParameters params, int width, int height, int breadth)
+        public void restart()
         {
-            int area = width * height;
-            breadth = Math.max(breadth, 1);
-
-            int oldCap = f1.buf != null ? f1.buf.length : 0;
-
-            f1.resize(area);
-            f2.resize(area);
-            f3.resize(area);
-            f4.resize(area);
-
-            i1.resize(area);
-            i2.resize(area);
-
-            iv1.resize(area * breadth);
-            iv2.resize(area * breadth);
-            iv3.resize(area * breadth);
-
-            analysisImage.resize(area);
-            b2.resize(area);
-
-            if (params.shouldUseFastSkeletonizer)
-                b3.resize(area);
-            else
-                b3.buf = null;
-
-            tubeness.useBuffers(f1.buf, f2.buf, f3.buf, f4.buf);
-            skelResult.useBuffers(i1.buf, i2.buf, iv1.buf, iv2.buf, iv3.buf);
-
-            int newCap = f1.buf.length;
-            if (newCap > oldCap)
-                System.gc();
+            if (analysisImage == null)
+                analysisImage = new ByteVectorOutputStream();
+            if (skelResult == null)
+                skelResult = new AnalyzeSkeleton2.Result();
+            if (particles == null)
+                particles = new Particles.Scratch();
+            if (lacunarity == null)
+                lacunarity = new Lacunarity2.Statistics();
+            if (convexHull == null)
+                convexHull = new IntVector();
         }
 
-        public void close()
+        public void nullify()
         {
-            if (skelResult != null) {
-                skelResult.reset(0);
-                skelResult = null;
-            }
-
-            if (f1 != null) { f1.buf = null; } f1 = null;
-            if (f2 != null) { f2.buf = null; } f2 = null;
-            if (f3 != null) { f3.buf = null; } f3 = null;
-            if (f4 != null) { f4.buf = null; } f4 = null;
-            if (i1 != null) { i1.buf = null; } i1 = null;
-            if (i2 != null) { i2.buf = null; } i2 = null;
-            if (iv1 != null) { iv1.buf = null; } iv1 = null;
-            if (iv2 != null) { iv2.buf = null; } iv2 = null;
-            if (iv3 != null) { iv3.buf = null; } iv3 = null;
-            if (analysisImage != null) { analysisImage.buf = null; } analysisImage = null;
-            if (b2 != null) { b2.buf = null; } b2 = null;
-            if (b3 != null) { b3.buf = null; } b3 = null;
-
-            tubeness = null;
-            particleScratch = null;
-            lee94Scratch = null;
+            analysisImage = null;
+            skelResult = null;
+            particles = null;
             lacunarity = null;
             convexHull = null;
         }
@@ -206,7 +148,7 @@ public class Analyzer
             @Override
             public void run() {
                 ISliceRunner sliceRunner = new ISliceRunner.Series();
-                Scratch data = new Scratch();
+                Data data = new Data();
                 ArgbBuffer inputImage = new ArgbBuffer();
 
                 double imageResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
@@ -217,13 +159,15 @@ public class Analyzer
                         break;
 
                     try {
-                        inputImage = ImageFile.openImageForAnalysis(
+                        inputImage = ImageFile.acquireImageForAnalysis(
                             inputImage,
                             input.file.getAbsolutePath(),
                             imageResizeFactor
                         );
                     }
                     catch (Throwable ex) {
+                        if (inputImage != null)
+                            ImageFile.release(inputImage);
                         inputImage = null;
                         ex.printStackTrace();
                     }
@@ -247,6 +191,9 @@ public class Analyzer
                         ex.printStackTrace();
                         error = ex;
                     }
+                    finally {
+                        ImageFile.releaseImage(inputImage);
+                    }
 
                     outQueue.add(new AnalysisResult(input.file, result, error));
 
@@ -254,7 +201,7 @@ public class Analyzer
                         break;
                 }
 
-                data.close();
+                data.nullify();
             }
         }
 
@@ -454,7 +401,7 @@ public class Analyzer
     static void saveResultImage(
         AnalyzerParameters params,
         BatchParameters batchParams,
-        Scratch data,
+        Data data,
         ArgbBuffer inputImage,
         String basePath,
         String format
@@ -590,18 +537,16 @@ public class Analyzer
     }
 
     public static Stats analyze(
-        Scratch data,
+        Data data,
         File inFile,
         ArgbBuffer inputImage,
         AnalyzerParameters params,
         ISliceRunner sliceRunner
     ) {
-        data.reallocate(params, inputImage.width, inputImage.height, 1);
-
+        data.analysisImage.resize(inputImage.width * inputImage.height);
         byte[] analysisImage = data.analysisImage.buf;
 
         Tubeness.computeTubenessImage(
-            data.tubeness,
             sliceRunner,
             MAX_WORKERS,
             analysisImage,
@@ -625,19 +570,21 @@ public class Analyzer
 
         //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " thresholded.pgm");
 
-        byte[] skeletonImage = data.b2.buf;
+        byte[] tempImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
-        Filters.filterMax(skeletonImage, analysisImage, inputImage.width, inputImage.height); // erode
-        Filters.filterMax(analysisImage, skeletonImage, inputImage.width, inputImage.height); // erode
-        Filters.filterMin(skeletonImage, analysisImage, inputImage.width, inputImage.height); // dilate
-        Filters.filterMin(analysisImage, skeletonImage, inputImage.width, inputImage.height); // dilate
+        Filters.filterMax(tempImage, analysisImage, inputImage.width, inputImage.height); // erode
+        Filters.filterMax(analysisImage, tempImage, inputImage.width, inputImage.height); // erode
+        Filters.filterMin(tempImage, analysisImage, inputImage.width, inputImage.height); // dilate
+        Filters.filterMin(analysisImage, tempImage, inputImage.width, inputImage.height); // dilate
+
+        ByteBufferPool.release(tempImage);
 
         //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, "filtered.pgm");
 
-        int[] particleBuf = data.i1.buf;
+        int[] particleBuf = IntBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
         Particles.computeShapes(
-            data.particleScratch,
+            data.particles,
             particleBuf,
             analysisImage,
             inputImage.pixels,
@@ -646,7 +593,7 @@ public class Analyzer
         );
 
         Particles.removeVesselVoids(
-            data.particleScratch,
+            data.particles,
             particleBuf,
             analysisImage,
             inputImage.width,
@@ -656,7 +603,7 @@ public class Analyzer
 
         if (params.shouldRemoveSmallParticles)
             Particles.fillShapes(
-                data.particleScratch,
+                data.particles,
                 particleBuf,
                 analysisImage,
                 inputImage.width,
@@ -667,7 +614,7 @@ public class Analyzer
 
         if (params.shouldFillHoles)
             Particles.fillShapes(
-                data.particleScratch,
+                data.particles,
                 particleBuf,
                 analysisImage,
                 inputImage.width,
@@ -676,6 +623,8 @@ public class Analyzer
                 false
             );
 
+        IntBufferPool.release(particleBuf);
+
         data.vesselPixelArea = BatchUtils.countForegroundPixels(analysisImage, inputImage.width, inputImage.height);
 
         if (params.shouldComputeLacunarity)
@@ -683,9 +632,12 @@ public class Analyzer
 
         data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
 
+        byte[] skeletonImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+
         if (params.shouldUseFastSkeletonizer) {
-            byte[] zha84ScratchImage = data.b3.buf;
+            byte[] zha84ScratchImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
             Zha84.skeletonize(skeletonImage, zha84ScratchImage, analysisImage, inputImage.width, inputImage.height);
+            ByteBufferPool.release(zha84ScratchImage);
         }
         else {
             int bitDepth = 8;
@@ -693,7 +645,6 @@ public class Analyzer
             layers[0] = analysisImage;
 
             Lee94.skeletonize(
-                data.lee94Scratch,
                 skeletonImage,
                 sliceRunner,
                 MAX_WORKERS,
@@ -712,12 +663,14 @@ public class Analyzer
             1
         );
 
+        ByteBufferPool.release(skeletonImage);
+
         double averageVesselDiameter = 0.0;
         double linearScalingFactor = params.shouldApplyLinearScale ? params.linearScalingFactor : 1.0;
 
         if (params.shouldComputeThickness)
         {
-            int[] thicknessScratch = data.i2.buf;
+            int[] thicknessScratch = IntBufferPool.acquireAsIs(inputImage.width * inputImage.height);
             averageVesselDiameter = linearScalingFactor * VesselThickness.computeMedianVesselThickness(
                 sliceRunner,
                 MAX_WORKERS,
@@ -729,6 +682,7 @@ public class Analyzer
                 inputImage.width,
                 inputImage.height
             );
+            IntBufferPool.release(thicknessScratch);
         }
 
         double areaScalingFactor = linearScalingFactor * linearScalingFactor;
@@ -766,7 +720,7 @@ public class Analyzer
         double totalLength = 0.0;
         int nTrees = data.skelResult.treeCount;
         for (int i = 0; i < nTrees; i++)
-            totalLength += (double)data.skelResult.totalBranchLengths[i];
+            totalLength += (double)data.skelResult.totalBranchLengths.buf[i];
 
         double averageLength = 0.0;
         if (nTrees > 0)

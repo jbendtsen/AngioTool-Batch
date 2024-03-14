@@ -7,25 +7,7 @@ public class Tubeness
 {
     public static final int IN_PLACE_THRESHOLD = 5;
 
-    public static class Scratch
-    {
-        public Params params = new Params();
-        public float[] image;
-        public float[] maxEigenOutput;
-        public float[] gaussianOutput;
-        public float[] scratchBuf;
-
-        public void useBuffers(float[] image, float[] maxEigenOutput, float[] gaussianOutput, float[] scratchBuf)
-        {
-            this.image = image;
-            this.maxEigenOutput = maxEigenOutput;
-            this.gaussianOutput = gaussianOutput;
-            this.scratchBuf = scratchBuf;
-        }
-    }
-
     public static void computeTubenessImage(
-        Scratch data,
         ISliceRunner sliceRunner,
         int maxWorkers,
         byte[] output,
@@ -37,27 +19,30 @@ public class Tubeness
         int nSigmas
     ) {
         final int area = width * height;
+        float[] image = FloatBufferPool.acquireAsIs(area);
+        float[] gaussianOutput = FloatBufferPool.acquireAsIs(area);
+        float[] maxEigenOutput = FloatBufferPool.acquireZeroed(area);
+
         for (int i = 0; i < area; i++)
-            data.image[i] = (float)((input[i] >> (8 * (2 - brightestChannel))) & 0xff);
+            image[i] = (float)((input[i] >> (8 * (2 - brightestChannel))) & 0xff);
 
-        Arrays.fill(data.maxEigenOutput, 0, area, 0.0f);
-
+        Params params = new Params();
         double maxResult = 0.0;
+
         for (int s = 0; s < nSigmas; s++) {
             computeGaussianFastMirror(
-                data.gaussianOutput,
-                data.image,
-                data.scratchBuf,
+                gaussianOutput,
+                image,
                 width,
                 height,
                 sigma[s]
             );
             double highestValue = computeEigenvalues(
-                data,
+                params,
                 sliceRunner,
                 maxWorkers,
-                data.maxEigenOutput,
-                data.gaussianOutput,
+                maxEigenOutput,
+                gaussianOutput,
                 width,
                 height,
                 sigma[s]
@@ -65,13 +50,21 @@ public class Tubeness
             maxResult = Math.max(maxResult, highestValue);
         }
 
+        // Help out the GC by nulling the second references to our recycled buffers
+        params.nullify();
+
+        FloatBufferPool.release(image);
+        FloatBufferPool.release(gaussianOutput);
+
         float factor = maxResult > 0.0 ? (float)(256.0 / maxResult) : 1.0f;
         //System.out.println("maxResult: " + maxResult + ", factor: " + factor);
 
         for (int y = 1; y < height-1; y++) {
             for (int x = 1; x < width-1; x++)
-                output[x+width*y] = (byte)(Math.min(data.maxEigenOutput[x+width*y] * factor, 255.0f));
+                output[x+width*y] = (byte)(Math.min(maxEigenOutput[x+width*y] * factor, 255.0f));
         }
+
+        FloatBufferPool.release(maxEigenOutput);
 
         if (width >= 2) {
             for (int y = 1; y < height-1; y++) {
@@ -95,11 +88,9 @@ public class Tubeness
         }
     }
 
-    // scratch MUST NOT ALIAS image
     private static void computeGaussianFastMirror(
         float[] output,
         float[] image,
-        float[] scratch,
         int width,
         int height,
         double sigma
@@ -120,14 +111,14 @@ public class Tubeness
                     int xfm = Math.min(xf, 2*width-2 - xf);
                     avg += kernel[f + ksHalf] * image[xfm + width * y];
                 }
-                scratch[x + width * y] = avg;
+                output[x + width * y] = avg;
             }
             for (int x = edgeSizeX; x < width - edgeSizeX; x++) {
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++)
                     avg += kernel[f + ksHalf] * image[x+f + width * y];
 
-                scratch[x + width * y] = avg;
+                output[x + width * y] = avg;
             }
             for (int x = width - edgeSizeX; x < width; x++) {
                 float avg = 0.0f;
@@ -136,42 +127,43 @@ public class Tubeness
                     int xfm = Math.min(xf, 2*width-2 - xf);
                     avg += kernel[f + ksHalf] * image[xfm + width * y];
                 }
-                scratch[x + width * y] = avg;
+                output[x + width * y] = avg;
             }
         }
 
-        for (int y = 0; y < edgeSizeY; y++) {
-            for (int x = 0; x < width; x++) {
+        float[] tempColumn = FloatBufferPool.acquireAsIs(height);
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < edgeSizeY; y++) {
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
                     int yf = Math.abs(y+f) % (2*height-2);
                     int yfm = Math.min(yf, 2*height-2 - yf);
-                    avg += kernel[f + ksHalf] * scratch[x + width * yfm];
+                    avg += kernel[f + ksHalf] * output[x + width * yfm];
                 }
-                output[x + width * y] = avg;
+                tempColumn[y] = avg;
             }
-        }
-        for (int y = edgeSizeY; y < height - edgeSizeY; y++) {
-            for (int x = 0; x < width; x++) {
+            for (int y = edgeSizeY; y < height - edgeSizeY; y++) {
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++)
-                    avg += kernel[f + ksHalf] * scratch[x + width * (y+f)];
+                    avg += kernel[f + ksHalf] * output[x + width * (y+f)];
 
-                output[x + width * y] = avg;
+                tempColumn[y] = avg;
             }
-        }
-        for (int y = height - edgeSizeY; y < height; y++) {
-            for (int x = 0; x < width; x++) {
+            for (int y = height - edgeSizeY; y < height; y++) {
                 float avg = 0.0f;
                 for (int f = -ksHalf; f <= ksHalf; f++) {
                     int yf = Math.abs(y+f) % (2*height-2);
                     int yfm = Math.min(yf, 2*height-2 - yf);
-                    avg += kernel[f + ksHalf] * scratch[x + width * yfm];
+                    avg += kernel[f + ksHalf] * output[x + width * yfm];
                 }
-                output[x + width * y] = avg;
+                tempColumn[y] = avg;
             }
+            for (int y = 0; y < height; y++)
+                output[x + width * y] = tempColumn[y];
         }
 
+        FloatBufferPool.release(tempColumn);
         FloatBufferPool.release(kernel);
     }
 
@@ -213,7 +205,7 @@ public class Tubeness
     }
 
     static double computeEigenvalues(
-        Scratch data,
+        Params params,
         ISliceRunner runner,
         int maxWorkers,
         float[] output,
@@ -224,14 +216,14 @@ public class Tubeness
     ) {
         double highestValue = 0.0;
         try {
-            data.params.setup(input, width, height, sigma, 3, output);
+            params.setup(input, width, height, sigma, 3, output);
             runner.runSlices(
-                data.params,
+                params,
                 maxWorkers,
                 width,
                 IN_PLACE_THRESHOLD - 1
             );
-            highestValue = data.params.finalMaximum;
+            highestValue = params.finalMaximum;
         }
         catch (Throwable ex) {
             ex.printStackTrace();
@@ -294,6 +286,13 @@ public class Tubeness
             this.threshold = threshold;
             this.output = output;
             this.finalMaximum = 0.0;
+        }
+
+        public void nullify()
+        {
+            this.data = null;
+            this.output = null;
+            this.maximums = null;
         }
 
         @Override

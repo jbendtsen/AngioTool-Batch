@@ -390,7 +390,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             this.repaint();
         }
 
-        public AnalyzerParameters onImageFinished(AnalyzerParameters params, Analyzer.Scratch data, Analyzer.Stats stats)
+        public AnalyzerParameters onImageFinished(AnalyzerParameters params, Analyzer.Data data, Analyzer.Stats stats)
         {
             this.currentStats = stats;
             this.statsStrings.size = 0;
@@ -461,7 +461,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     JButton btnSaveSpreadsheet = new JButton();
     JTextField textSaveSpreadsheet = new JTextField();
 
-    final Analyzer.Scratch analyzerScratch = new Analyzer.Scratch();
+    final Analyzer.Data analyzerData = new Analyzer.Data();
     final ISliceRunner sliceRunner = new ISliceRunner.Parallel(Analyzer.threadPool);
 
     public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, File sourceFile, String defaultPath)
@@ -522,7 +522,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent evt) {
-                parentFrame.imagingWindows.remove(ImagingWindow.this);
+                parentFrame.closeImagingWindow(ImagingWindow.this);
             }
         });
 
@@ -541,6 +541,16 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         this.setVisible(true);
 
         return this;
+    }
+
+    public void release()
+    {
+        ImageFile.releaseImage(imageUi.source);
+
+        if (imageUi.drawingImage != null) {
+            imageUi.drawingImage.flush();
+            imageUi.drawingImage = null;
+        }
     }
 
     public void updateImage(AnalyzerParameters params)
@@ -633,19 +643,23 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     void dispatchAnalysisTask(AnalyzerParameters params)
     {
         ImagingWindow.threadPool.submit(() -> {
+            analyzerData.restart();
             Analyzer.Stats stats = Analyzer.analyze(
-                analyzerScratch,
+                analyzerData,
                 inputFile,
                 imageUi.source,
                 params,
                 sliceRunner
             );
             SwingUtilities.invokeLater(() -> {
-                AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerScratch, stats);
-                if (nextParams != null)
+                AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerData, stats);
+                if (nextParams != null) {
                     dispatchAnalysisTask(nextParams);
-                else
+                }
+                else {
+                    analyzerData.nullify();
                     setUiInteractivity(true);
+                }
             });
         });
     }

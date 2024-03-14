@@ -35,11 +35,7 @@ public class TiffReader
     static final int DC_PACKBITS = 2;
     static final int DC_DEFLATE = 3;
 
-    public static RefVector<int[]> readArgbImages(
-        FileChannel fc,
-        int maxImages,
-        boolean shouldAllocateWithRecycler
-    ) throws IOException
+    public static RefVector<int[]> acquireArgbImages(FileChannel fc, int maxImages) throws IOException
     {
         byte[] buf = new byte[4096];
         ByteBuffer bb = ByteBuffer.wrap(buf);
@@ -60,7 +56,7 @@ public class TiffReader
         int ifdOffset = getInt(buf, 4, isLittleEndian);
 
         for (int i = 0; i < maxImages; i++) {
-            ifdOffset = readImage(images, ifdOffset, isLittleEndian, fc, bb, buf, shouldAllocateWithRecycler);
+            ifdOffset = readImage(images, ifdOffset, isLittleEndian, fc, bb, buf);
             if (ifdOffset == 0)
                 break;
         }
@@ -74,8 +70,7 @@ public class TiffReader
         boolean isLittleEndian,
         FileChannel fc,
         ByteBuffer bb,
-        byte[] buf,
-        boolean shouldAllocateWithRecycler
+        byte[] buf
     ) throws IOException
     {
         fc.position(ifdOffset);
@@ -287,9 +282,7 @@ public class TiffReader
             decompress(dcMode, fc, imageData, size, stripOffsets, stripCounts);
         }
 
-        int[] pixels = shouldAllocateWithRecycler ?
-            IntBufferPool.acquireAsIs(area + 2) :
-            new int[area + 2];
+        int[] pixels = IntBufferPool.acquireAsIs(area + 2);
 
         int pixelsFilled = convertToPackedArgb(
             sampleType,

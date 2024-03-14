@@ -18,16 +18,19 @@ import javax.imageio.ImageIO;
 
 public class ImageFile
 {
-    public static ArgbBuffer openImageForAnalysis(
+    public static void releaseImage(ArgbBuffer image)
+    {
+        image.pixels = IntBufferPool.release(image.pixels);
+    }
+
+    public static ArgbBuffer acquireImageForAnalysis(
         ArgbBuffer image,
         String absPath,
         double resizeFactor
     ) throws IOException
     {
-        boolean shouldResize = resizeFactor != 1.0;
-
         File file = new File(absPath);
-        image = loadImage(image, file, shouldResize);
+        image = acquireImage(image, file);
         if (image == null)
             return null;
 
@@ -44,18 +47,7 @@ public class ImageFile
         int originalWidth = image.width;
         int originalHeight = image.height;
 
-        if (!shouldResize) {
-            for (int i = 0; i < area; i++) {
-                int r = (inputPixels[i] >> 16) & 0xff;
-                int g = (inputPixels[i] >> 8) & 0xff;
-                int b = inputPixels[i] & 0xff;
-                redTally += r;
-                greenTally += g;
-                blueTally += b;
-                inputPixels[i] |= 0xff000000;
-            }
-        }
-        else if (resizeFactor < 1.0) {
+        if (resizeFactor < 1.0) {
             float[] samples = FloatBufferPool.acquireZeroed((width + 1) * (height + 1) * 4);
 
             double xAdv = width > 1 ? (double)(width - 1) / (double)(originalWidth - 1) : 0.0;
@@ -107,7 +99,7 @@ public class ImageFile
                 }
             }
 
-            resizedPixels = new int[area];
+            resizedPixels = IntBufferPool.acquireAsIs(area);
 
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
@@ -125,8 +117,8 @@ public class ImageFile
 
             FloatBufferPool.release(samples);
         }
-        else {
-            resizedPixels = new int[area];
+        else if (resizeFactor > 1.0) {
+            resizedPixels = IntBufferPool.acquireAsIs(area);
 
             double xAdv = width > 1 ? (double)(originalWidth - 1) / (double)(width - 1) : 0.0;
             double yAdv = height > 1 ? (double)(originalHeight - 1) / (double)(height - 1) : 0.0;
@@ -175,6 +167,17 @@ public class ImageFile
                 }
             }
         }
+        else {
+            for (int i = 0; i < area; i++) {
+                int r = (inputPixels[i] >> 16) & 0xff;
+                int g = (inputPixels[i] >> 8) & 0xff;
+                int b = inputPixels[i] & 0xff;
+                redTally += r;
+                greenTally += g;
+                blueTally += b;
+                inputPixels[i] |= 0xff000000;
+            }
+        }
 
         int brightestChannel;
         if (redTally >= greenTally && redTally >= blueTally)
@@ -184,7 +187,7 @@ public class ImageFile
         else
             brightestChannel = 2;
 
-        if (shouldResize) {
+        if (resizedPixels != null) {
             IntBufferPool.release(image.pixels);
             image.pixels = resizedPixels;
         }
@@ -196,7 +199,7 @@ public class ImageFile
         return image;
     }
 
-    public static ArgbBuffer loadImage(ArgbBuffer existingImage, File file, boolean shouldAllocateWithRecycler) throws IOException
+    static ArgbBuffer acquireImage(ArgbBuffer existingImage, File file) throws IOException
     {
         ArgbBuffer input = null;
         IOException firstException = null;
@@ -209,25 +212,25 @@ public class ImageFile
 
         if (fileName.endsWith(".tif") || fileName.endsWith(".tiff") || (fileName.charAt(fileNameLen - 3) == 'p' && fileName.charAt(fileNameLen - 1) == 'm')) {
             try {
-                input = loadTiffOrNetpbm(existingImage, file, shouldAllocateWithRecycler);
+                input = acquireTiffOrNetpbm(existingImage, file);
             }
             catch (IOException ex) {
                 firstException = ex;
             }
             if (input == null) {
                 System.err.println("Loading " + file.getAbsolutePath() + " with custom reader failed, abdicating to ImageIO");
-                input = loadFromImageIO(existingImage, file, shouldAllocateWithRecycler);
+                input = acquireFromImageIO(existingImage, file);
             }
         }
         else {
             try {
-                input = loadFromImageIO(existingImage, file, shouldAllocateWithRecycler);
+                input = acquireFromImageIO(existingImage, file);
             }
             catch (IOException ex) {
                 firstException = ex;
             }
             if (input == null)
-                input = loadTiffOrNetpbm(existingImage, file, shouldAllocateWithRecycler);
+                input = acquireTiffOrNetpbm(existingImage, file);
         }
 
         if (input != null)
@@ -239,7 +242,7 @@ public class ImageFile
         return null;
     }
 
-    static ArgbBuffer loadFromImageIO(ArgbBuffer existingImage, File file, boolean shouldAllocateWithRecycler) throws IOException
+    static ArgbBuffer acquireFromImageIO(ArgbBuffer existingImage, File file) throws IOException
     {
         BufferedImage javaImage = ImageIO.read(file);
         if (javaImage == null)
@@ -250,10 +253,7 @@ public class ImageFile
         if (width <= 0 || height <= 0)
             return null;
 
-        int[] pixels = shouldAllocateWithRecycler ?
-            IntBufferPool.acquireAsIs(width * height) :
-            new int[width * height];
-
+        int[] pixels = IntBufferPool.acquireAsIs(width * height);
         javaImage.getRGB(0, 0, width, height, pixels, 0, width);
 
         if (existingImage == null)
@@ -265,7 +265,7 @@ public class ImageFile
         return existingImage;
     }
 
-    static ArgbBuffer loadTiffOrNetpbm(ArgbBuffer existingImage, File file, boolean shouldAllocateWithRecycler) throws IOException
+    static ArgbBuffer acquireTiffOrNetpbm(ArgbBuffer existingImage, File file) throws IOException
     {
         int[] inputPixels = null;
         int width = 0;
@@ -286,9 +286,9 @@ public class ImageFile
             RefVector<int[]> images = null;
             try {
                 if (m0 == 'P' && ((m1 >= '0' && m1 <= '7') || m1 == 'F' || m1 == 'f'))
-                    images = NetpbmReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
+                    images = NetpbmReader.acquireArgbImages(fc, 1);
                 else if ((m0 == 'M' && m1 == 'M') || (m0 == 'I' && m1 == 'I'))
-                    images = TiffReader.readArgbImages(fc, 1, shouldAllocateWithRecycler);
+                    images = TiffReader.acquireArgbImages(fc, 1);
             }
             catch (Throwable t) {
                 System.err.println(file.getAbsolutePath());

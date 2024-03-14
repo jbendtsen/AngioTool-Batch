@@ -51,6 +51,9 @@ public class Lacunarity2
         double eLacTotal = 0.0;
         double fLacTotal = 0.0;
 
+        stats.boxTable.size = 0;
+        stats.el3.size = 0;
+        stats.fl3.size = 0;
         stats.eLambda3.size = 0;
         stats.fLambda3.size = 0;
         stats.logBoxSizes.size = 0;

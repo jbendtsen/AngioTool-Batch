@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class <bigtype>BufferPool
 {
+    public static final boolean PERSIST_ON_RELEASE = true;
     private static final ConcurrentLinkedQueue<<type>[]> q = new ConcurrentLinkedQueue<>();
 
     public static <type>[] acquireAsIs(int minSize)
@@ -41,7 +42,7 @@ public class <bigtype>BufferPool
 
     public static <type>[] release(<type>[] buffer)
     {
-        if (buffer != null)
+        if (PERSIST_ON_RELEASE && buffer != null)
             q.add(buffer);
         return null;
     }

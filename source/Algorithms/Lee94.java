@@ -42,10 +42,6 @@ public class Lee94 {
         -1, 1, 1, -1, 3, 1, 1, -1
     };
 
-    public static class Scratch {
-        public Params params = new Params();
-    }
-
     public static class Params implements ISliceCompute {
         public final IntVector finalSimplePoints;
         public final RefVector<IntVector> points3d;
@@ -143,7 +139,6 @@ public class Lee94 {
     }
 
     public static void skeletonize(
-        Scratch data,
         byte[] planes,
         ISliceRunner runner,
         int maxWorkers,
@@ -176,33 +171,34 @@ public class Lee94 {
                 throw new RuntimeException("Unexpected bit depth (" + bitDepth + ")");
         }
 
-        data.params.setup(planes, width, height, breadth);
+        Params params = new Params();
+        params.setup(planes, width, height, breadth);
 
         boolean anyChanged;
         do {
             anyChanged = false;
             for (int border = 1; border <= 6; border++) {
-                boolean wasThinned = thin(data, runner, maxWorkers, border);
+                boolean wasThinned = thin(params, runner, maxWorkers, border);
                 anyChanged = anyChanged || wasThinned;
             }
         } while (anyChanged);
 
-        data.params.planes = null;
+        params = null;
     }
 
     static boolean thin(
-        Scratch data,
+        Params params,
         ISliceRunner runner,
         int maxWorkers,
         int border
     ) {
-        data.params.prepare(border);
+        params.prepare(border);
 
         try {
             runner.runSlices(
-                data.params,
+                params,
                 maxWorkers,
-                data.params.width,
+                params.width,
                 IN_PLACE_THRESHOLD - 1
             );
         }
@@ -210,11 +206,11 @@ public class Lee94 {
             ex.printStackTrace();
         }
 
-        final IntVector results = data.params.finalSimplePoints;
-        final int width = data.params.width;
-        final int height = data.params.height;
-        final int breadth = data.params.breadth;
-        final byte[] planes = data.params.planes;
+        final IntVector results = params.finalSimplePoints;
+        final int width = params.width;
+        final int height = params.height;
+        final int breadth = params.breadth;
+        final byte[] planes = params.planes;
 
         boolean anyChange = false;
         for (int i = 0; i < results.size; i += 3) {
