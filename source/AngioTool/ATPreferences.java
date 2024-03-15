@@ -63,17 +63,7 @@ public class ATPreferences
         String text = "";
 
         try (InputStream in = new FileInputStream(new File(atFolder, fileName))) {
-            final int chunkSize = 4096;
-            ByteVectorOutputStream vec = new ByteVectorOutputStream(chunkSize);
-            int off = 0;
-            while (true) {
-                int res = in.read(vec.buf, off, chunkSize);
-                if (res <= 0)
-                    break;
-                off += res;
-                vec.resize(off + chunkSize);
-            }
-            vec.resize(off);
+            ByteVectorOutputStream vec = BatchUtils.readFullyAsVector(in);
             text = vec.toString();
         }
 

@@ -9,6 +9,7 @@ import java.awt.Font;
 import java.lang.reflect.Field;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -367,6 +368,22 @@ public class BatchUtils
                 return false;
 
         return true;
+    }
+
+    public static ByteVectorOutputStream readFullyAsVector(InputStream stream) throws IOException
+    {
+        final int chunkSize = 4096;
+        ByteVectorOutputStream vec = new ByteVectorOutputStream(chunkSize);
+        int off = 0;
+        while (true) {
+            int res = stream.read(vec.buf, off, chunkSize);
+            if (res <= 0)
+                break;
+            off += res;
+            vec.resize(off + chunkSize);
+        }
+        vec.resize(off);
+        return vec;
     }
 
     public static void setNewFontSizeOn(JComponent ui, int newSize)

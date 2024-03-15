@@ -93,7 +93,7 @@ for root, dirs, files in os.walk("source"):
         name = os.path.join(root, f)[7:]
         if f.endswith(".java") and not name.startswith("deprecated"):
             java_files.append(name)
-        if name.startswith("images/") or name.startswith("icons") or name.startswith("META-INF") or name.startswith("doc"):
+        if name == "manual.html" or name.startswith("images") or name.startswith("META-INF"):
             asset_files.append(name)
 
 with open("source/sources.txt", "w") as f:

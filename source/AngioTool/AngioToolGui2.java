@@ -1,12 +1,13 @@
 package AngioTool;
 
-import Utils.BatchUtils;
+import Utils.*;
 import Pixels.*;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.*;
 import java.io.File;
+import java.io.InputStream;
 import java.util.LinkedList;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -53,6 +54,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     String defaultPath;
 
     public final LinkedList<ImagingWindow> imagingWindows = new LinkedList<>();
+    byte[] helpHtmlData;
 
     public AngioToolGui2(AnalyzerParameters analyzerParams, String defaultPath)
     {
@@ -456,7 +458,18 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
 
     void openHelpWindow()
     {
-        BatchUtils.showDialogBox("Help", "Content goes here");
+        if (helpHtmlData == null) {
+            try (InputStream in = getClass().getResourceAsStream("/manual.html")) {
+                ByteVectorOutputStream vec = BatchUtils.readFullyAsVector(in);
+                this.helpHtmlData = vec.copy();
+            }
+            catch (Exception ex) {
+                BatchUtils.showExceptionInDialogBox(ex);
+                return;
+            }
+        }
+
+        new HelpWindow(this, this.helpHtmlData).showDialog();
         updateMemoryMonitor();
     }
 
