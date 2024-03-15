@@ -15,7 +15,7 @@ public class BatchParameters
     public boolean shouldOverrideWorkerCount;
     public int workerCount;
 
-    public BatchParameters() {}
+    private BatchParameters() {}
 
     public BatchParameters(
         String defaultPath,

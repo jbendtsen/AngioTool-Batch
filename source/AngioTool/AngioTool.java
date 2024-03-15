@@ -92,22 +92,20 @@ public class AngioTool
 
         RefVector<String> errors = new RefVector<>(String.class);
 
-        AnalyzerParameters analyzerParams = new AnalyzerParameters();
+        AnalyzerParameters analyzerParams = AnalyzerParameters.defaults();
         try {
-            errors.extend(ATPreferences.load(analyzerParams, at, PREFS_TXT));
+            errors.extend(ATPreferences.loadPreferences(analyzerParams, at, PREFS_TXT));
         }
         catch (Exception ex) {
             errors.add(BatchUtils.buildDialogMessageFromException(ex));
-            analyzerParams = AnalyzerParameters.defaults();
         }
 
-        BatchParameters batchParams = new BatchParameters();
+        BatchParameters batchParams = BatchParameters.defaults();
         try {
-            errors.extend(ATPreferences.load(batchParams, at, BATCH_TXT));
+            errors.extend(ATPreferences.loadPreferences(batchParams, at, BATCH_TXT));
         }
         catch (Exception ex) {
             errors.add(BatchUtils.buildDialogMessageFromException(ex));
-            batchParams = BatchParameters.defaults();
         }
 
         if (errors.size > 0)

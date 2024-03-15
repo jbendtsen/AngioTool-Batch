@@ -57,35 +57,26 @@ public class ATPreferences
         }
     }
 
-    public static RefVector<String> load(Object params, Class contextClass, String fileName) throws IOException
+    public static RefVector<String> loadPreferences(Object params, Class contextClass, String fileName) throws IOException
     {
         File atFolder = getPrefsDir();
+        String text = "";
 
-        InputStream f = new FileInputStream(new File(atFolder, fileName));
-
-        //if (f == null)
-            //return "AT_Prefs.txt not found in AngioTool.jar or in " + AngioTool.prefsDir;
-
-        StringBuilder sb = new StringBuilder();
-        byte[] buf = new byte[512];
-        while (true) {
-            int res = f.read(buf);
-            if (res <= 0)
-                break;
-            sb.append(new String(buf, 0, res));
+        try (InputStream in = new FileInputStream(new File(atFolder, fileName))) {
+            final int chunkSize = 4096;
+            ByteVectorOutputStream vec = new ByteVectorOutputStream(chunkSize);
+            int off = 0;
+            while (true) {
+                int res = in.read(vec.buf, off, chunkSize);
+                if (res <= 0)
+                    break;
+                off += res;
+                vec.resize(off + chunkSize);
+            }
+            vec.resize(off);
+            text = vec.toString();
         }
-        /*
-        catch (IOException ex) {
-            String msg = ex.getMessage();
-            return msg != null ? msg : "Failed to read from " + fileName;
-        }
-        */
 
-        return populatePreferences(params, sb.toString());
-    }
-
-    public static RefVector<String> populatePreferences(Object params, String text)
-    {
         HashMap<String, Field> map = new HashMap<>();
         Field[] fields = params.getClass().getDeclaredFields();
         for (Field f : fields)

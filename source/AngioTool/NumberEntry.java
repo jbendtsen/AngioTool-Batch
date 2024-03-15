@@ -48,7 +48,7 @@ public class NumberEntry
             .addGap(0, 0, Short.MAX_VALUE)
             .addComponent(units)
             .addGap(4)
-            .addComponent(tf);
+            .addComponent(tf, 64, 64, 64);
     }
 
     public GroupLayout.Group addToParaGroup(GroupLayout.Group paraGroup)

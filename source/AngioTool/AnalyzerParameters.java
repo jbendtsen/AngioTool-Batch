@@ -9,6 +9,10 @@ public class AnalyzerParameters {
     public double resizingFactor;
     public boolean shouldFillBrightShapes;
     public double brightShapeThresholdFactor;
+    public boolean shouldApplyMinBoxness;
+    public double minBoxness;
+    public boolean shouldApplyMinAreaLength;
+    public double minAreaLengthRatio;
     public boolean shouldRemoveSmallParticles;
     public double removeSmallParticlesThreshold;
     public boolean shouldFillHoles;
@@ -36,13 +40,17 @@ public class AnalyzerParameters {
     public boolean shouldComputeLacunarity;
     public boolean shouldComputeThickness;
 
-    public AnalyzerParameters() {}
+    private AnalyzerParameters() {}
 
     public AnalyzerParameters(
         boolean shouldResizeImage,
         double resizingFactor,
         boolean shouldFillBrightShapes,
         double brightShapeThresholdFactor,
+        boolean shouldApplyMinBoxness,
+        double minBoxness,
+        boolean shouldApplyMinAreaLength,
+        double minAreaLengthRatio,
         boolean shouldRemoveSmallParticles,
         double removeSmallParticlesThreshold,
         boolean shouldFillHoles,
@@ -74,6 +82,10 @@ public class AnalyzerParameters {
         this.resizingFactor = resizingFactor;
         this.shouldFillBrightShapes = shouldFillBrightShapes;
         this.brightShapeThresholdFactor = brightShapeThresholdFactor;
+        this.shouldApplyMinBoxness = shouldApplyMinBoxness;
+        this.minBoxness = minBoxness;
+        this.shouldApplyMinAreaLength = shouldApplyMinAreaLength;
+        this.minAreaLengthRatio = minAreaLengthRatio;
         this.shouldRemoveSmallParticles = shouldRemoveSmallParticles;
         this.removeSmallParticlesThreshold = removeSmallParticlesThreshold;
         this.shouldFillHoles = shouldFillHoles;
@@ -119,6 +131,10 @@ public class AnalyzerParameters {
         p.shouldDrawConvexHull = true;
         p.shouldFillBrightShapes = false;
         p.brightShapeThresholdFactor = 1.5;
+        p.shouldApplyMinBoxness = true;
+        p.minBoxness = 0.09375;
+        p.shouldApplyMinAreaLength = true;
+        p.minAreaLengthRatio = 16.0;
         p.shouldFillHoles = false;
         p.shouldRemoveSmallParticles = false;
         p.resizingFactor = 1.0;
@@ -145,6 +161,10 @@ public class AnalyzerParameters {
             other.resizingFactor == resizingFactor &&
             other.shouldFillBrightShapes == shouldFillBrightShapes &&
             other.brightShapeThresholdFactor == brightShapeThresholdFactor &&
+            other.shouldApplyMinBoxness == shouldApplyMinBoxness &&
+            other.minBoxness == minBoxness &&
+            other.shouldApplyMinAreaLength == shouldApplyMinAreaLength &&
+            other.minAreaLengthRatio == minAreaLengthRatio &&
             other.shouldRemoveSmallParticles == shouldRemoveSmallParticles &&
             other.removeSmallParticlesThreshold == removeSmallParticlesThreshold &&
             other.shouldFillHoles == shouldFillHoles &&

@@ -20,13 +20,13 @@ public class Particles
 
     public static final int N_SHAPE_MEMBERS = 8;
 
-    public static class Scratch
+    public static class Data
     {
         public IntVector shapes = new IntVector();
         public IntVector spanIndex = new IntVector();
     }
 
-    public static void computeShapes(Scratch data, int[] regions, byte[] image, int[] originalRgb, int width, int height)
+    public static void computeShapes(Data data, int[] regions, byte[] image, int[] originalRgb, int width, int height)
     {
         data.shapes.size = 0;
         data.spanIndex.size = 0;
@@ -139,12 +139,20 @@ public class Particles
         }
     }
 
-    public static void removeVesselVoids(Scratch data, int[] regions, byte[] image, int width, int height, double similarityFactor)
-    {
+    public static void removeVesselVoids(
+        Data data,
+        int[] regions,
+        byte[] image,
+        int width,
+        int height,
+        double maxHoleLevel,
+        double minBoxness,
+        double minAreaLengthRatio
+    ) {
         double averageBrightness = 0.0;
         double averageWhiteShapeBrightness = 0.0;
 
-        if (similarityFactor > 0.0) {
+        if (maxHoleLevel > 0.0) {
             int nFoundShapes = 0;
             int nWhiteShapes = 0;
 
@@ -180,15 +188,15 @@ public class Particles
             // decide if shape should be filled with white
             boolean shouldFill = false;
 
-            if (similarityFactor > 0.0) {
+            if (maxHoleLevel > 0.0) {
                 long totalLum = (long)data.shapes.buf[i + 6] << 32L | (data.shapes.buf[i + 7] & 0xFFFFffffL);
                 double avg = (double)totalLum / (double)shapeArea;
 
-                if (avg >= similarityFactor * averageWhiteShapeBrightness)
+                if (avg >= maxHoleLevel * averageWhiteShapeBrightness)
                     shouldFill = true;
             }
 
-            if (!shouldFill) {
+            if (!shouldFill && minBoxness > 0.0) {
                 int xMin = data.shapes.buf[i+2] % width;
                 int yMin = data.shapes.buf[i+3] / width;
                 int xMax = data.shapes.buf[i+4] % width;
@@ -202,6 +210,10 @@ public class Particles
                     (double)shapeW / (double)shapeH;
                 double boxness = occupied * sdr;
 
+                shouldFill = boxness < minBoxness; // <= 0.09375;
+            }
+
+            if (!shouldFill && minAreaLengthRatio > 0.0) {
                 double highestDistance = 0.0;
                 for (int a = 2; a <= 4; a++) {
                     int xa = data.shapes.buf[i+a] % width;
@@ -215,7 +227,7 @@ public class Particles
                     }
                 }
 
-                shouldFill = boxness <= 0.09375 || shapeArea / highestDistance <= 16.0;
+                shouldFill = (shapeArea / highestDistance) < minAreaLengthRatio; // <= 16.0;
             }
             
             if (shouldFill) {
@@ -242,7 +254,7 @@ public class Particles
         }
     }
 
-    public static void fillShapes(Scratch data, int[] regions, byte[] image, int width, int height, double maxSize, boolean lookingForWhite)
+    public static void fillShapes(Data data, int[] regions, byte[] image, int width, int height, double maxSize, boolean lookingForWhite)
     {
         int maxPixelCount = (int)(3.14159 * maxSize * maxSize);
         int colorToMatch = lookingForWhite ? -1 : 0;

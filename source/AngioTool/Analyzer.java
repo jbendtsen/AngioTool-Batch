@@ -62,6 +62,8 @@ public class Analyzer
         public double removeSmallParticlesThreshold;
         public double fillHolesValue;
         public double brightShapeThresholdFactor;
+        public double minBoxness;
+        public double minAreaLengthRatio;
         public double linearScalingFactor;
         public double allantoisMMArea;
         public double vesselMMArea;
@@ -88,7 +90,7 @@ public class Analyzer
         // Recycling resources
         public ByteVectorOutputStream analysisImage = new ByteVectorOutputStream();
         public AnalyzeSkeleton2.Result skelResult = new AnalyzeSkeleton2.Result();
-        public Particles.Scratch particles = new Particles.Scratch();
+        public Particles.Data particles = new Particles.Data();
         public Lacunarity2.Statistics lacunarity = new Lacunarity2.Statistics();
         public IntVector convexHull = new IntVector();
 
@@ -99,7 +101,7 @@ public class Analyzer
             if (skelResult == null)
                 skelResult = new AnalyzeSkeleton2.Result();
             if (particles == null)
-                particles = new Particles.Scratch();
+                particles = new Particles.Data();
             if (lacunarity == null)
                 lacunarity = new Lacunarity2.Statistics();
             if (convexHull == null)
@@ -610,13 +612,19 @@ public class Analyzer
             inputImage.height
         );
 
+        double maxHoleLevel = params.shouldFillBrightShapes ? params.brightShapeThresholdFactor : 0.0;
+        double minBoxness = params.shouldApplyMinBoxness ? params.minBoxness : 0.0;
+        double minAreaLengthRatio = params.shouldApplyMinAreaLength ? params.minAreaLengthRatio : 0.0;
+
         Particles.removeVesselVoids(
             data.particles,
             particleBuf,
             analysisImage,
             inputImage.width,
             inputImage.height,
-            params.shouldFillBrightShapes ? params.brightShapeThresholdFactor : 0.0
+            maxHoleLevel,
+            minBoxness,
+            minAreaLengthRatio
         );
 
         if (params.shouldRemoveSmallParticles)
@@ -715,7 +723,9 @@ public class Analyzer
         stats.sigmas = params.sigmas;
         stats.removeSmallParticlesThreshold = params.shouldRemoveSmallParticles ? params.removeSmallParticlesThreshold : 0.0;
         stats.fillHolesValue = params.shouldFillHoles ? params.fillHolesValue : 0.0;
-        stats.brightShapeThresholdFactor = params.shouldFillBrightShapes ? params.brightShapeThresholdFactor : 0.0;
+        stats.brightShapeThresholdFactor = maxHoleLevel;
+        stats.minBoxness = minBoxness;
+        stats.minAreaLengthRatio = minAreaLengthRatio;
         stats.linearScalingFactor = linearScalingFactor;
         //stats.allantoisPixelsArea = data.convexHullArea;
         stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;
@@ -882,6 +892,8 @@ public class Analyzer
             "Small Particles",
             "Fill Holes",
             "Max Hole Level",
+            "Min Boxness",
+            "Min Area Length Ratio",
             "Scaling factor",
             "Explant area",
             "Vessels area",
@@ -922,6 +934,8 @@ public class Analyzer
             stats.removeSmallParticlesThreshold,
             stats.fillHolesValue,
             stats.brightShapeThresholdFactor,
+            stats.minBoxness,
+            stats.minAreaLengthRatio,
             stats.linearScalingFactor,
             stats.allantoisMMArea,
             stats.vesselMMArea,
