@@ -31,7 +31,15 @@ public class NumberEntry
         cb.setSelected(enabled);
     }
 
-    public double getValue() {
+    public void update(boolean enabled, double value)
+    {
+        tf.setText(BatchUtils.formatDouble(value));
+        tf.setEnabled(enabled);
+        cb.setSelected(enabled);
+    }
+
+    public double getValue()
+    {
         String str = tf.getText();
         try {
             return Double.parseDouble(str);

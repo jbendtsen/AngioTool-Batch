@@ -143,9 +143,9 @@ public class AnalyzerParameters {
         p.shouldComputeLacunarity = true;
         p.shouldComputeThickness = true;
         p.linearScalingFactor = 0.0;
-        p.sigmas = new double[] {5.0};
-        p.thresholdLow = 10;
-        p.thresholdHigh = 50;
+        p.sigmas = new double[] {12.0};
+        p.thresholdLow = 15;
+        p.thresholdHigh = 255;
         return p;
     }
 

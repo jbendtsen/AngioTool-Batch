@@ -26,6 +26,12 @@ public class ColorSizeEntry extends NumberEntry
         });
     }
 
+    public void update(boolean enabled, double value, Rgb color)
+    {
+        super.update(enabled, value);
+        panel.setBackground(this.color.toColor());
+    }
+
     @Override
     public GroupLayout.Group addToSeqGroup(GroupLayout.Group seqGroup)
     {
