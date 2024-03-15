@@ -18,11 +18,14 @@ public class VesselThickness
         int height
     ) throws ExecutionException
     {
+        final int nPoints = arraySize / pointSize;
+        if (nPoints <= 0)
+            return 0.0;
+
         final int thresh = 200;
 
         runner.runSlices(new Step1(scratch, input, width, height, thresh), maxWorkers, height, (height / 4) + 1);
 
-        final int nPoints = arraySize / pointSize;
         double[] vesselThickness = DoubleBufferPool.acquireAsIs(nPoints);
 
         final int maxDimension = Math.max(width, height);

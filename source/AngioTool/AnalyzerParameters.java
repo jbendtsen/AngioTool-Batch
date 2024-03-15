@@ -122,8 +122,8 @@ public class AnalyzerParameters {
         p.branchingPointsColor = new Rgb("0099FF");
         p.convexHullColor = new Rgb("CCFFFF");
         p.outlineSize = 1;
-        p.skeletonSize = 5;
-        p.branchingPointsSize = 8;
+        p.skeletonSize = 2;
+        p.branchingPointsSize = 4;
         p.convexHullSize = 1;
         p.shouldDrawOutline = true;
         p.shouldDrawSkeleton = true;

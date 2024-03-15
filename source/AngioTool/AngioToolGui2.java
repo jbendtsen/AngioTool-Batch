@@ -214,6 +214,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
         rbImageIsolated.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && !analyzerParams.shouldExpandOutputToGrayScale);
         rbImageGray.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && analyzerParams.shouldExpandOutputToGrayScale);
+
+        maybeUpdateImagingWindows();
     }
 
     private void initButton(JButton button, ImageIcon icon, String text)
