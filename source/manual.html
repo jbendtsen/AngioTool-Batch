@@ -1,11 +1,29 @@
 <html>
+<head>
+<style>
+h2 {
+    margin-top: 20px;
+    text-decoration: underline;
+}
+h3 {
+    margin-top: 20px;
+    margin-bottom: 4px;
+    font-weight: normal;
+    font-style: italic;
+    font-size: 120%;
+    text-decoration: underline;
+}
+</style>
+</head>
+<body>
 <h1>AngioTool 2.0</h1>
 
 <h2>Table of Contents</h2>
 <ul>
-  <li><a href="#about">About</a></li>
-  <li><a href="#features">Features</a></li>
-  <li><a href="#settings">Settings</a></li>
+  <li>About</li>
+  <li>Features</li>
+  <li>Settings</li>
+  <li>Credits</li>
 </ul>
 
 <section id="about">
@@ -57,7 +75,7 @@
   <p>Cap the number of times an image can be iterated upon by the skeletonizer.</p>
   <p>Each skeletonization iteration thins the edges of a shape by one or two pixels at a time.</p>
   <p>Skeletonization is the stage in the analysis pipeline that takes the longest to complete,
-especially when there are large shapes that don't conform to either vessels, pathways or gaps between.</p>
+especially when there are large shapes that don't conform to anything resembling a vessel.</p>
 
   <h3>Resize Inputs</h3>
   <p>Scale up or down the image.</p>
@@ -66,10 +84,24 @@ especially when there are large shapes that don't conform to either vessels, pat
   <p>Scale up or down pixel measurements.</p>
   
   <h3>Vessel Diameters</h3>
-  <p>Enter a list of target vessel thicknesses.</p>
+  <p>Enter a list of target vessel thicknesses. If more than one value is provided, the values should be separated by spaces or commas.</p>
   
   <h3>Vessel Intensity</h3>
   <p>Pixel brightness range.</p>
 </section>
+
+<section id="credits">
+  <h2>Credits</h2>
+  <h3>AngioTool 2.0</h3>
+  <ul><li>Jack Bendtsen</li></ul>
+  <h3>AngioTool 0.6</h3>
+  <ul>
+    <li>Enrique Zudaire</li>
+    <li>Laure Gambardella</li>
+    <li>Chris Kurcz</li>
+    <li>Sonja Vermeren</li>
+  </ul>
+</section>
+</body>
 </html>
 
