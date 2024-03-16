@@ -12,7 +12,7 @@ import java.util.LinkedList;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-public class AngioToolGui2 extends JFrame implements ActionListener, FocusListener, KeyListener
+public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, ActionListener, FocusListener, KeyListener
 {
     final JButton btnLoadImage = new JButton();
     final JButton btnStartBatch = new JButton();
@@ -25,6 +25,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
     final ButtonGroup groupSkeletonizer = new ButtonGroup();
     final JRadioButton rbSkelFast = new JRadioButton();
     final JRadioButton rbSkelThorough = new JRadioButton();
+    final NumberEntry elemMaxSkelIterations;
     final NumberEntry elemResizeInputs;
     final NumberEntry elemLinearScaleFactor;
     final NumberEntry elemRemoveParticles;
@@ -87,7 +88,9 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         cbComputeThickness.setText("Thickness");
         cbComputeThickness.setSelected(analyzerParams.shouldComputeThickness);
 
-        elemResizeInputs = new NumberEntry("Resize inputs by:", analyzerParams.shouldResizeImage, analyzerParams.resizingFactor, "x");
+        elemMaxSkelIterations = new NumberEntry("Max Skeleton Steps:", analyzerParams.shouldCapSkelIterations, analyzerParams.maxSkelIterations, "");
+
+        elemResizeInputs = new NumberEntry("Resize Inputs by:", analyzerParams.shouldResizeImage, analyzerParams.resizingFactor, "x");
 
         elemLinearScaleFactor = new NumberEntry("Measurement Scale:", analyzerParams.shouldApplyLinearScale, analyzerParams.linearScalingFactor, "x");
 
@@ -98,7 +101,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         labelSigmas.setText("Vessel Diameters list");
 
         textSigmas.setText(BatchUtils.formatDoubleArray(analyzerParams.sigmas, "12"));
-        textSigmas.setToolTipText("List of sigmas (numbers)");
+        textSigmas.setToolTipText("List of Sigmas (numbers)");
 
         labelIntensity.setText("Vessel Intensity range");
 
@@ -112,6 +115,11 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         elemBranches = new ColorSizeEntry("Branches:", analyzerParams.shouldDrawBranchPoints, analyzerParams.branchingPointsSize, analyzerParams.branchingPointsColor);
         elemSkeleton = new ColorSizeEntry("Skeleton:", analyzerParams.shouldDrawSkeleton, analyzerParams.skeletonSize, analyzerParams.skeletonColor);
         elemConvexHull = new ColorSizeEntry("Convex Hull:", analyzerParams.shouldDrawConvexHull, analyzerParams.convexHullSize, analyzerParams.convexHullColor);
+
+        elemOutline.setColorChangeListener(this);
+        elemBranches.setColorChangeListener(this);
+        elemSkeleton.setColorChangeListener(this);
+        elemConvexHull.setColorChangeListener(this);
 
         elemMaxHoleLevelPercent = new NumberEntry("Max Hole Level:", analyzerParams.shouldFillBrightShapes, 100.0 * analyzerParams.brightShapeThresholdFactor, "%");
         elemMinBoxnessPercent = new NumberEntry("Min Boxness:", analyzerParams.shouldApplyMinBoxness, 100.0 * analyzerParams.minBoxness, "%");
@@ -193,6 +201,7 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
         cbComputeLacunarity.setSelected(analyzerParams.shouldComputeLacunarity);
         cbComputeThickness.setSelected(analyzerParams.shouldComputeThickness);
 
+        elemMaxSkelIterations.update(analyzerParams.shouldCapSkelIterations, analyzerParams.maxSkelIterations);
         elemResizeInputs.update(analyzerParams.shouldResizeImage, analyzerParams.resizingFactor);
         elemLinearScaleFactor.update(analyzerParams.shouldApplyLinearScale, analyzerParams.linearScalingFactor);
         elemRemoveParticles.update(analyzerParams.shouldRemoveSmallParticles, analyzerParams.removeSmallParticlesThreshold);
@@ -235,9 +244,9 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 .addGap(0, 0, Short.MAX_VALUE)
                 .addComponent(btnHelp)
             )
-            .addComponent(labelAnalysis)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
+                    .addComponent(labelAnalysis)
                     .addGroup(elemFillHoles.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemRemoveParticles.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemMaxHoleLevelPercent.addToSeqGroup(layout.createSequentialGroup()))
@@ -252,12 +261,14 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                         .addComponent(cbComputeThickness)
                     )
                     .addGroup(layout.createSequentialGroup()
+                        .addGap(4)
                         .addComponent(labelSkeletonizer)
                         .addGroup(layout.createParallelGroup()
                             .addComponent(rbSkelFast)
                             .addComponent(rbSkelThorough)
                         )
                     )
+                    .addGroup(elemMaxSkelIterations.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemResizeInputs.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemLinearScaleFactor.addToSeqGroup(layout.createSequentialGroup()))
                 )
@@ -307,17 +318,16 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 .addComponent(btnHelp)
             )
             .addGap(20)
-            .addComponent(labelAnalysis)
-            .addGap(8)
-            .addGroup(
-                elemFillHoles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(labelAnalysis)
                 .addComponent(cbComputeLacunarity)
                 .addComponent(cbComputeThickness)
             )
+            .addGap(8)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addGroup(layout.createSequentialGroup()
+                    .addGroup(elemFillHoles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
                     .addGroup(elemRemoveParticles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
-                    .addGroup(elemMaxHoleLevelPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
                 )
                 .addGroup(layout.createSequentialGroup()
                     .addGap(0, 0, 16)
@@ -327,6 +337,11 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 .addGroup(layout.createSequentialGroup()
                     .addComponent(rbSkelFast)
                     .addComponent(rbSkelThorough)
+                )
+            )
+            .addGroup(
+                elemMaxSkelIterations.addToParaGroup(
+                    elemMaxHoleLevelPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGroup(
@@ -373,6 +388,12 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
                 .addComponent(rbImageGray)
             )
         );
+    }
+
+    @Override
+    public void onColorChanged(ColorSizeEntry colorElem)
+    {
+        maybeUpdateImagingWindows();
     }
 
     @Override
@@ -545,6 +566,8 @@ public class AngioToolGui2 extends JFrame implements ActionListener, FocusListen
             Integer.parseInt(textMaxIntensity.getText()),
             Integer.parseInt(textMinIntensity.getText()),
             shouldUseFastSkel,
+            elemMaxSkelIterations.cb.isSelected(),
+            (int)elemMaxSkelIterations.getValue(),
             elemLinearScaleFactor.cb.isSelected(),
             elemLinearScaleFactor.getValue(),
             elemOutline.cb.isSelected(),

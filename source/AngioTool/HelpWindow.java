@@ -14,6 +14,7 @@ public class HelpWindow extends JDialog
     public HelpWindow(JFrame uiFrame, byte[] htmlData)
     {
         super(uiFrame, true);
+        this.setTitle("About");
         this.parentFrame = uiFrame;
 
         this.helpContent = new JEditorPane();
@@ -31,6 +32,7 @@ public class HelpWindow extends JDialog
     {
         this.getContentPane().add(scrollView);
         this.pack();
+        this.setSize(700, 700);
         this.setLocationRelativeTo(parentFrame);
         this.setVisible(true);
     }

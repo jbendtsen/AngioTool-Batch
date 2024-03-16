@@ -64,6 +64,8 @@ public class Analyzer
         public double brightShapeThresholdFactor;
         public double minBoxness;
         public double minAreaLengthRatio;
+        public boolean usedFastSkeletonizer;
+        public int maxSkelIterations;
         public double linearScalingFactor;
         public double allantoisMMArea;
         public double vesselMMArea;
@@ -659,10 +661,11 @@ public class Analyzer
         data.convexHullArea = ConvexHull.findConvexHull(data.convexHull, analysisImage, inputImage.width, inputImage.height);
 
         byte[] skeletonImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+        int maxSkelIterations = params.shouldCapSkelIterations ? params.maxSkelIterations : 0;
 
         if (params.shouldUseFastSkeletonizer) {
             byte[] zha84ScratchImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
-            Zha84.skeletonize(skeletonImage, zha84ScratchImage, analysisImage, inputImage.width, inputImage.height);
+            Zha84.skeletonize(skeletonImage, zha84ScratchImage, analysisImage, inputImage.width, inputImage.height, maxSkelIterations);
             ByteBufferPool.release(zha84ScratchImage);
         }
         else {
@@ -677,8 +680,16 @@ public class Analyzer
                 layers,
                 inputImage.width,
                 inputImage.height,
-                bitDepth
+                bitDepth,
+                maxSkelIterations
             );
+        }
+
+        if (maxSkelIterations > 0) {
+            byte[] filteredSkeletonImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+            Filters.removeInsulatedBrightPixels(filteredSkeletonImage, skeletonImage, inputImage.width, inputImage.height, 1);
+            ByteBufferPool.release(skeletonImage);
+            skeletonImage = filteredSkeletonImage;
         }
 
         AnalyzeSkeleton2.analyze(
@@ -726,6 +737,8 @@ public class Analyzer
         stats.brightShapeThresholdFactor = maxHoleLevel;
         stats.minBoxness = minBoxness;
         stats.minAreaLengthRatio = minAreaLengthRatio;
+        stats.usedFastSkeletonizer = params.shouldUseFastSkeletonizer;
+        stats.maxSkelIterations = maxSkelIterations;
         stats.linearScalingFactor = linearScalingFactor;
         //stats.allantoisPixelsArea = data.convexHullArea;
         stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;
@@ -894,6 +907,8 @@ public class Analyzer
             "Max Hole Level",
             "Min Boxness",
             "Min Area Length Ratio",
+            "Skeletonizer",
+            "Max Skeleton Steps",
             "Scaling factor",
             "Explant area",
             "Vessels area",
@@ -936,6 +951,8 @@ public class Analyzer
             stats.brightShapeThresholdFactor,
             stats.minBoxness,
             stats.minAreaLengthRatio,
+            stats.usedFastSkeletonizer ? "Fast" : "Thorough",
+            stats.maxSkelIterations,
             stats.linearScalingFactor,
             stats.allantoisMMArea,
             stats.vesselMMArea,

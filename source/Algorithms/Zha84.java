@@ -23,8 +23,14 @@ public class Zha84
         return out;
     }
 
-    public static void skeletonize(byte[] outSkeletonImage, byte[] scratchSkeletonImage, byte[] inputImage, int width, int height)
-    {
+    public static void skeletonize(
+        byte[] outSkeletonImage,
+        byte[] scratchSkeletonImage,
+        byte[] inputImage,
+        int width,
+        int height,
+        int maxSkelIterations
+    ) {
         Arrays.fill(outSkeletonImage, 0, width, (byte)0);
         Arrays.fill(scratchSkeletonImage, 0, width, (byte)0);
 
@@ -46,6 +52,7 @@ public class Zha84
         byte[] a = null, b = null;
 
         int nRemovals;
+        int step = 0;
         do {
             nRemovals = 0;
             a = outSkeletonImage;
@@ -85,6 +92,6 @@ public class Zha84
                 b = temp;
             }
             //System.out.println("nRemovals: " + nRemovals);
-        } while (nRemovals != 0);
+        } while (nRemovals != 0 && (maxSkelIterations <= 0 || ++step < maxSkelIterations));
     }
 }

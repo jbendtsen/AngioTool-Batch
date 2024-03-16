@@ -7,6 +7,12 @@ import javax.swing.*;
 
 public class ColorSizeEntry extends NumberEntry
 {
+    public interface Listener
+    {
+        void onColorChanged(ColorSizeEntry colorElem);
+    }
+
+    public Listener listener;
     public RoundedPanel panel;
     public Rgb color;
 
@@ -26,9 +32,15 @@ public class ColorSizeEntry extends NumberEntry
         });
     }
 
-    public void update(boolean enabled, double value, Rgb color)
+    public void setColorChangeListener(Listener ls)
+    {
+        this.listener = ls;
+    }
+
+    public void update(boolean enabled, double value, Rgb newColor)
     {
         super.update(enabled, value);
+        this.color = newColor;
         panel.setBackground(this.color.toColor());
     }
 
@@ -51,6 +63,8 @@ public class ColorSizeEntry extends NumberEntry
             if (background != null) {
                 color = new Rgb(background);
                 panel.setBackground(background);
+                if (listener != null)
+                    listener.onColorChanged(this);
             }
         }
     }

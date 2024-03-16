@@ -145,7 +145,8 @@ public class Lee94 {
         Object[] layersObj,
         int width,
         int height,
-        int bitDepth
+        int bitDepth,
+        int maxSkelIterations
     ) throws ExecutionException
     {
         final int breadth = layersObj.length;
@@ -176,13 +177,14 @@ public class Lee94 {
         params.setup(planes, width, height, breadth);
 
         boolean anyChanged;
+        int step = 0;
         do {
             anyChanged = false;
             for (int border = 1; border <= 6; border++) {
                 boolean wasThinned = thin(params, runner, maxWorkers, border);
                 anyChanged = anyChanged || wasThinned;
             }
-        } while (anyChanged);
+        } while (anyChanged && (maxSkelIterations <= 0 || ++step < maxSkelIterations));
 
         params = null;
     }

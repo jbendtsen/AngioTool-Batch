@@ -21,6 +21,8 @@ public class AnalyzerParameters {
     public int thresholdHigh;
     public int thresholdLow;
     public boolean shouldUseFastSkeletonizer;
+    public boolean shouldCapSkelIterations;
+    public int maxSkelIterations;
     public boolean shouldApplyLinearScale;
     public double linearScalingFactor;
     public boolean shouldDrawOutline;
@@ -59,6 +61,8 @@ public class AnalyzerParameters {
         int thresholdHigh,
         int thresholdLow,
         boolean shouldUseFastSkeletonizer,
+        boolean shouldCapSkelIterations,
+        int maxSkelIterations,
         boolean shouldApplyLinearScale,
         double linearScalingFactor,
         boolean shouldDrawOutline,
@@ -94,6 +98,8 @@ public class AnalyzerParameters {
         this.thresholdHigh = thresholdHigh;
         this.thresholdLow = thresholdLow;
         this.shouldUseFastSkeletonizer = shouldUseFastSkeletonizer;
+        this.shouldCapSkelIterations = shouldCapSkelIterations;
+        this.maxSkelIterations = maxSkelIterations;
         this.shouldApplyLinearScale = shouldApplyLinearScale;
         this.linearScalingFactor = linearScalingFactor;
         this.shouldDrawOutline = shouldDrawOutline;
@@ -129,6 +135,8 @@ public class AnalyzerParameters {
         p.shouldDrawSkeleton = true;
         p.shouldDrawBranchPoints = true;
         p.shouldDrawConvexHull = true;
+        p.shouldCapSkelIterations = true;
+        p.maxSkelIterations = 25;
         p.shouldFillBrightShapes = false;
         p.brightShapeThresholdFactor = 1.5;
         p.shouldApplyMinBoxness = true;
@@ -173,6 +181,8 @@ public class AnalyzerParameters {
             other.thresholdHigh == thresholdHigh &&
             other.thresholdLow == thresholdLow &&
             other.shouldUseFastSkeletonizer == shouldUseFastSkeletonizer &&
+            other.shouldCapSkelIterations == shouldCapSkelIterations &&
+            other.maxSkelIterations == maxSkelIterations &&
             other.shouldApplyLinearScale == shouldApplyLinearScale &&
             other.linearScalingFactor == linearScalingFactor &&
             other.shouldDrawOutline == shouldDrawOutline &&
