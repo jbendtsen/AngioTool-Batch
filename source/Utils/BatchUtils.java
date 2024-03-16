@@ -398,10 +398,21 @@ public class BatchUtils
         ui.setFont(new Font(font.getName(), newStyle, font.getSize()));
     }
 
-    public static JFileChooser createFileChooser() {
+    public static JFileChooser createFileChooser()
+    {
         JFileChooser fc = new JFileChooser();
         fc.setPreferredSize(new Dimension(800, 500));
         return fc;
+    }
+
+    public static void addImageFileFilters(JFileChooser fc)
+    {
+        fc.addChoosableFileFilter(new SimpleFileFilter("JPEG file", "jpg", "jpeg"));
+        fc.addChoosableFileFilter(new SimpleFileFilter("GIF file", "gif"));
+        fc.addChoosableFileFilter(new SimpleFileFilter("PNG file", "png"));
+        fc.addChoosableFileFilter(new SimpleFileFilter("BMP file", "bmp"));
+        fc.addChoosableFileFilter(new SimpleFileFilter("TIFF file", "tiff", "tif"));
+        fc.addChoosableFileFilter(new SimpleFileFilter("PPM file", "ppm"));
     }
 
     public static void showDialogBox(String title, String message)

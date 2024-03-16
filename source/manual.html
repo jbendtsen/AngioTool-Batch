@@ -28,7 +28,7 @@ h3 {
 
 <section id="about">
   <h2>About</h2>
-  <p>AngioTool was originally written by the Center for Cancer Research in 2011. It could only process one image at a time, which made it unsuitable for scientific research, despite the image processing features it possessed.</p>
+  <p>AngioTool was originally written by the Center for Cancer Research in 2011. It could only process one image at a time, which made it unsuitable for certain tasks, despite the image processing features it possessed.</p>
   <p>This version of AngioTool started by simply adding batch processing as a separate feature, where the user could select multiple folders instead of just one image at a time. However, after processing the 15th or so image, it would run out of memory and cease to function.</p>
   <p>As such, the goal of the project was expanded, and gradually the entire program was rewritten piece by piece, including a new user interface, to allow for the batch processing feature to work as intended.</p>
 </section>
@@ -36,9 +36,32 @@ h3 {
 <section id="features">
   <h2>Features</h2>
   <h3>Batch Processing</h3>
-  <p>Select folders of images to process, the output image folder, and a spreadsheet to write to.</p>
-  <h3>Live Preview</h3>
-  <p>Analyze a single image. Supports panning and zooming, and changing the settings to update the preview in real time.</p>
+  <p>
+This feature allows the user to analyse multiple folders containing any amount of images.
+These folders are recursed fully, meaning that any image that belongs to any folder within or below any selected folder will be included in the batch.
+The same settings will be applied to every image, and the statistics of every scan will be saved to the provided Excel spreadsheet.
+  </p><p>
+To use this feature:
+<ol>
+    <li>Click the Batch button at the top of the main window.</li>
+    <li>In the new window, click the "Select input folders" button. At least one folder containing images should be selected.</li>
+    <li>Click the "Excel spreadsheet" button. You may select an existing spreadsheet file, into which a new sheet will be added, or a new file.</li>
+    <li>Select the output image mode, out of:</li>
+    <ul>
+        <li>No output: no result images will be created</li>
+        <li>Same folders as inputs: each result image will be saved next to its corresponding input image</li>
+        <li>Save result images to: select an existing or new folder under which all result images will be saved</li>
+    </ul>
+    <li>If "Save result images to" is selected, then click the adjacent folder button to select or create the folder.</li>
+    <li>If desired, you may change the result image format from TIFF by typing into the "Result image format" text box. You may enter any format from the following: TIFF, TIF, PNG, JPG, JPEG, GIF, BMP, PPM</li>
+    <li>If desired, you may override the default job count. This refers to the number of concurrent jobs that may run at the same time. To achieve the highest throughput, the job count should match the number of cores on your computer's CPU. The program will display what this number is. The default job count is set to 3/4 of this number, which allows for other programs your device to run as normal.</li>
+    <ul>
+        <li>To override the job count, check the box next to "Override job count" and enter a new number into the text box.</li>
+    </ul>
+    <li>Click "Run" to start the batch. While it runs, it's possible to analyse another image in the Analysis window or start another batch.</li>
+</ol>
+  <h3>Image Analysis</h3>
+  <p>Analyze a single image in a new window. Supports panning and zooming, and changing the settings to update the preview in real time.</p>
 </section>
 
 <section id="settings">

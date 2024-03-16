@@ -502,6 +502,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         fc.setDialogTitle("Open Image to View/Analyze");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setCurrentDirectory(new File(defaultPath));
+        BatchUtils.addImageFileFilters(fc);
         return fc.showOpenDialog(this) == 0 ? fc.getSelectedFile() : null;
     }
 

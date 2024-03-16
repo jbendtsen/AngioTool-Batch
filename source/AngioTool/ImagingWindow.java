@@ -710,12 +710,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                 fc.setDialogTitle("Save Result Image");
                 fc.setDialogType(JFileChooser.SAVE_DIALOG);
                 fc.setCurrentDirectory(new File(defaultPath));
-                fc.addChoosableFileFilter(new SimpleFileFilter("JPEG file", "jpg", "jpeg"));
-                fc.addChoosableFileFilter(new SimpleFileFilter("GIF file", "gif"));
-                fc.addChoosableFileFilter(new SimpleFileFilter("PNG file", "png"));
-                fc.addChoosableFileFilter(new SimpleFileFilter("BMP file", "bmp"));
-                fc.addChoosableFileFilter(new SimpleFileFilter("TIFF file", "tiff", "tif"));
-                fc.addChoosableFileFilter(new SimpleFileFilter("PPM file", "ppm", "ppm"));
+                BatchUtils.addImageFileFilters(fc);
 
                 if (fc.showSaveDialog(this) != 0)
                     return;
