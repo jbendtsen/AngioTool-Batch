@@ -35,15 +35,28 @@ h3 {
 
 <section id="features">
   <h2>Features</h2>
-  <h3>Batch Processing</h3>
+  <h3>View</h3>
+  <p>Analyze a single image in a new window. Changing the settings updates the preview in real time.</p>
+  <p>To use this feature:</p>
+  <ol>
+    <li>Click the "View" button at the top of the main window.</li>
+    <li>Select an image to open. Once a selection is made, the analysis window will appear showing the resulting image.</li>
+    <li>If desired, you may change the settings in the main window to update the preview.</li>
+    <li>If desired, the image may be moved around the canvas using the "Zoom" and "Move" controls. You can also zoom by scrolling the mouse wheel over the canvas, and pan around by dragging the cursor over the canvas.</li>
+    <li>To save the processed image, click the folder button underneath "Save result image". The output image will not be affected by any movement or zoom in the canvas.</li>
+    <li>To save the statistics to a spreadsheet, click the Excel button under "Save stats to spreadsheet".</li>
+  </ol>
+  <p>By default, the "Display Stats" checkbox is checked, which determines whether key statistics are visible in the top-left of the canvas. Regardless of whether "Display Stats" is checked, the stats will not be visible in the output image file.</p>
+
+  <h3>Batch</h3>
   <p>
 This feature allows the user to analyse multiple folders containing any amount of images.
 These folders are recursed fully, meaning that any image that belongs to any folder within or below any selected folder will be included in the batch.
 The same settings will be applied to every image, and the statistics of every scan will be saved to the provided Excel spreadsheet.
   </p><p>
 To use this feature:
-<ol>
-    <li>Click the Batch button at the top of the main window.</li>
+  <ol>
+    <li>Click the "Batch" button at the top of the main window.</li>
     <li>In the new window, click the "Select input folders" button. At least one folder containing images should be selected.</li>
     <li>Click the "Excel spreadsheet" button. You may select an existing spreadsheet file, into which a new sheet will be added, or a new file.</li>
     <li>Select the output image mode, out of:</li>
@@ -59,40 +72,51 @@ To use this feature:
         <li>To override the job count, check the box next to "Override job count" and enter a new number into the text box.</li>
     </ul>
     <li>Click "Run" to start the batch. While it runs, it's possible to analyse another image in the Analysis window or start another batch.</li>
-</ol>
-  <h3>Image Analysis</h3>
-  <p>Analyze a single image in a new window. Supports panning and zooming, and changing the settings to update the preview in real time.</p>
+  </ol>
 </section>
 
 <section id="settings">
   <h2>Settings</h2>
-  <p>AngioTool 2.0 provides various customizable settings to tailor image analysis:</p>
+
+  <p>These are the image analysis controls and toggles that AngioTool 2.0 supports.</p>
+  <p>They are found in the main window and apply to both the "View" feature and the "Batch" feature.</p>
+  <p>Every setting that has a checkbox next to it can be enabled or disabled by toggling its checkbox.</p>
 
   <h3>Lacunarity</h3>
-  <p>Measure how much space is empty.</p>
-  
+  <p>Measure how much space is empty. Leave the checkbox checked to enable the feature.</p>
+  <p>The mean and medial lacunarity, as well as the gradient of the linear regression, are reported for both the non-zero lacunarity set (F) and the complete lacunarity set (E).</p>
+
   <h3>Thickness</h3>
-  <p>Measure the average vessel thickness.</p>
+  <p>Measure the average vessel thickness across the whole image. Leave the checkbox checked to enable the feature.</p>
 
   <h3>Fill Holes</h3>
-  <p>Fill in gaps between vessels below a certain size.</p>
-  
+  <p>
+Fill in gaps between vessels below a certain size.
+This setting is not often necessary, since the "Max Hole Level", "Min Boxness" and "Min Length &#xF7 Area" settings
+often perform better at filling in unwanted gaps or holes.
+</p>
+
   <h3>Remove Particles</h3>
-  <p>Remove particles below a certain size.</p>
-  
+  <p>
+Remove small shapes below a certain size. This is useful when targeting smaller vessel diameters,
+since thinner/smaller shapes of all kinds are more likely to be detected, many of which can be filtered out with this setting.
+  </p>
+
   <h3>Max Hole Level</h3>
-  <p>The brightest a hole can be before it shall be filled in.</p>
-  
+  <p>
+The brightest a hole can be before it shall be filled in. Sometimes, gaps are detected in the middle of vessels, even though the color of the gap matches its surrounding, ie. the gap is actually part of the vessel. This setting can be used to fill in such gaps.
+  </p>
+
   <h3>Min Boxness</h3>
   <p>The lowest "boxness" value that a hole can have before it shall be filled in.</p>
   <p>Boxness is defined as: min(holeWidth / holeHeight, holeHeight / holeWidth) * pixelCount / (holeWidth * holeHeight)</p>
   <p>The more a hole resembles square, the closer the boxness value will be to 100% and the further it will be from 0%.</p>
-  
+
   <h3>Min Length &#xF7 Area</h3>
   <p>The lowest area divided by length that a hole can have before it shall be filled in.</p>
-  
+
   <h3>Skeletonizer</h3>
-  <p>Finds the center line of each vessel.</p>
+  <p>Finds the center line of each vessel. The "Fast" skeletonizer is roughly 3x faster than the "Thorough" skeletonizer, but the skeleton it produces will be of lower quality.</p>
 
   <h3>Max Skeleton Steps</h3>
   <p>Cap the number of times an image can be iterated upon by the skeletonizer.</p>
@@ -101,22 +125,26 @@ To use this feature:
 especially when there are large shapes that don't conform to anything resembling a vessel.</p>
 
   <h3>Resize Inputs</h3>
-  <p>Scale up or down the image.</p>
-  
+  <p>Scale up or down the image. For single image analysis, this is only applied when the "View" window first opens, so to observe a change for this setting, the image must be closed and re-opened.</p>
+
   <h3>Measurement Scale</h3>
-  <p>Scale up or down pixel measurements.</p>
-  
+  <p>Scale up or down pixel measurements. This affects following spreadsheet values: "Explant Area", "Vessels Area", "Total Vessels Length", and "Average Vessels Length".</p>
+
   <h3>Vessel Diameters</h3>
   <p>Enter a list of target vessel thicknesses. If more than one value is provided, the values should be separated by spaces or commas.</p>
-  
+
   <h3>Vessel Intensity</h3>
-  <p>Pixel brightness range.</p>
+  <p>Pixel brightness range. Any pixels of a brightness within this range are converted to white, which will in turn become part of a vessel or other shape, and any pixels outside this range will be converted to black, forming holes or gaps between vessels.</p>
+  <p>The first textbox under "Vessel Intensity range" controls the minimum brightness, and the second textbox controls the maximum brightness. The two values must be between 0-255, inclusive.</p>
 </section>
 
 <section id="credits">
   <h2>Credits</h2>
   <h3>AngioTool 2.0</h3>
-  <ul><li>Jack Bendtsen</li></ul>
+  <ul>
+    <li>Jack Bendtsen</li>
+    <li>Layal El Wazan</li>
+  </ul>
   <h3>AngioTool 0.6</h3>
   <ul>
     <li>Enrique Zudaire</li>

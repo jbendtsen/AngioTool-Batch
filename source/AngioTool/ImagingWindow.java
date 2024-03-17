@@ -491,7 +491,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         this.btnPanDown.setIcon(AngioTool.ATDown);
         this.btnPanRight.setIcon(AngioTool.ATRight);
 
-        this.cbShowStats.setText("Display stats");
+        this.cbShowStats.setText("Display Stats");
         this.cbShowStats.setSelected(true);
 
         this.labelSaveImage.setText("Save result image");
