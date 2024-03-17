@@ -331,7 +331,7 @@ public class AnalyzeSkeleton2
                 continue;
             
             scratch.imageInfo[x + width * y] |= 1 << (JUNC_VISIT + z);
-            int treeIdx = scratch.markedImages[x * width + y + area * z] - 1;
+            int treeIdx = scratch.markedImages[x + width * y + area * z] - 1;
 
             vertexCount++;
             scratch.junctionVertexMap[x + width * y + area * z] = vertexCount;

@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.lang.reflect.Array;
 
 public class RefVector<T> implements Iterable<T> {
-    public class Iter<T> implements Iterator<T> {
+    public class Iter implements Iterator<T> {
         int idx = 0;
         public boolean hasNext() {
             return idx < size;
@@ -29,7 +29,7 @@ public class RefVector<T> implements Iterable<T> {
 
     @Override
     public Iterator<T> iterator() {
-        return new Iter<>();
+        return new Iter();
     }
 
     public void resize(int newSize) {

@@ -7,6 +7,7 @@
 
 #define bail(message) { MessageBoxA(NULL, message, "Error", MB_OK); return 1; }
 #define IS_FOLDER(bits) (bits) != INVALID_FILE_ATTRIBUTES && ((bits) & FILE_ATTRIBUTE_DIRECTORY)
+#define IS_FILE(bits) (bits) != INVALID_FILE_ATTRIBUTES && ((bits) & FILE_ATTRIBUTE_NORMAL)
 
 #define PATH_SIZE 1024
 #define MAIN_CLASS_NAME "AngioTool/AngioTool"
@@ -15,6 +16,7 @@
 BOOL addString(char *str, int *strPos, int strSize, const char *toAdd);
 BOOL stripFromLast(char *str, int *strPos, char ch);
 BOOL checkIsFolder(char *path);
+BOOL checkIsFile(char *path);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
     BOOL (WINAPI *func_SetProcessDPIAware)() = GetProcAddress(GetModuleHandle("user32.dll"), "SetProcessDPIAware");
@@ -88,8 +90,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         bail("Failed to build path to jvm.dll");
 
     HMODULE javaServer = LoadLibraryA(path);
+    int dllsNotLoadable = 0;
 
     if (javaServer == NULL) {
+        dllsNotLoadable |= checkIsFile(path);
+
         stripFromLast(path, &pos, '\\');
         stripFromLast(path, &pos, '\\');
         addString(path, &pos, PATH_SIZE, "\\client\\jvm.dll");
@@ -97,6 +102,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 
     if (javaServer == NULL) {
+        dllsNotLoadable |= checkIsFile(path) << 1;
+
         stripFromLast(path, &pos, '\\');
         stripFromLast(path, &pos, '\\');
         addString(path, &pos, PATH_SIZE, "\\jvm.dll");
@@ -104,11 +111,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 
     if (javaServer == NULL) {
+        dllsNotLoadable |= checkIsFile(path) << 2;
+
         stripFromLast(path, &pos, '\\');
         char errorMsg[PATH_SIZE + 128];
         int errorPos = 0;
-        addString(errorMsg, &errorPos, 128, "Failed to open server\\jvm.dll, client\\jvm.dll or jvm.dll in ");
-        addString(errorMsg, &errorPos, PATH_SIZE + 128, path);
+
+        if (dllsNotLoadable & 1) {
+            addString(errorMsg, &errorPos, 64, "Found but could not load ");
+            addString(errorMsg, &errorPos, PATH_SIZE + 64, path);
+            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\server\\jvm.dll");
+        }
+        else if (dllsNotLoadable & 2) {
+            addString(errorMsg, &errorPos, 64, "Found but could not load ");
+            addString(errorMsg, &errorPos, PATH_SIZE + 64, path);
+            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\client\\jvm.dll");
+        }
+        else if (dllsNotLoadable & 4) {
+            addString(errorMsg, &errorPos, 64, "Found but could not load ");
+            addString(errorMsg, &errorPos, PATH_SIZE + 64, path);
+            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\jvm.dll");
+        }
+        else {
+            addString(errorMsg, &errorPos, 128, "Failed to open server\\jvm.dll, client\\jvm.dll or jvm.dll in ");
+            addString(errorMsg, &errorPos, PATH_SIZE + 128, path);
+        }
+
         bail(errorMsg);
     }
 
@@ -222,4 +250,9 @@ BOOL stripFromLast(char *str, int *strPos, char ch) {
 BOOL checkIsFolder(char *path) {
     DWORD bits = GetFileAttributesA(path);
     return IS_FOLDER(bits);
+}
+
+BOOL checkIsFile(char *path) {
+    DWORD bits = GetFileAttributesA(path);
+    return IS_FILE(bits);
 }

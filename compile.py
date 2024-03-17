@@ -99,7 +99,7 @@ for root, dirs, files in os.walk("source"):
 with open("source/sources.txt", "w") as f:
     f.write("\n".join(java_files))
 
-status = subprocess.run([JAVAC, "-Xmaxerrs", "1000", "-source", "8", "-target", "8", "-d", "../build", "-cp", libs_arg, "@sources.txt"], cwd="source")
+status = subprocess.run([JAVAC, "--release=8", "-Xmaxerrs", "1000", "-d", "../build", "-cp", libs_arg, "@sources.txt"], cwd="source")
 if status.returncode != 0:
     sys.exit(status.returncode)
 

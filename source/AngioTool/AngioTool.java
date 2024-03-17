@@ -93,20 +93,12 @@ public class AngioTool
         RefVector<String> errors = new RefVector<>(String.class);
 
         AnalyzerParameters analyzerParams = AnalyzerParameters.defaults();
-        try {
-            errors.extend(ATPreferences.loadPreferences(analyzerParams, at, PREFS_TXT));
-        }
-        catch (Exception ex) {
-            errors.add(BatchUtils.buildDialogMessageFromException(ex));
-        }
+        try { errors.extend(ATPreferences.loadPreferences(analyzerParams, at, PREFS_TXT)); }
+        catch (Exception ignored) {}
 
         BatchParameters batchParams = BatchParameters.defaults();
-        try {
-            errors.extend(ATPreferences.loadPreferences(batchParams, at, BATCH_TXT));
-        }
-        catch (Exception ex) {
-            errors.add(BatchUtils.buildDialogMessageFromException(ex));
-        }
+        try { errors.extend(ATPreferences.loadPreferences(batchParams, at, BATCH_TXT)); }
+        catch (Exception ignored) {}
 
         if (errors.size > 0)
             BatchUtils.showDialogBox("Configuration parsing error", String.join("\n", errors));
