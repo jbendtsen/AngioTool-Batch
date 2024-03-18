@@ -553,6 +553,9 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         return new AnalyzerParameters(
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.getValue(),
+            true,
+            new Rgb("CCCC00"),
+            new Rgb("CC0000"),
             elemMaxHoleLevelPercent.cb.isSelected(),
             elemMaxHoleLevelPercent.getValue() / 100.0,
             elemMinBoxnessPercent.cb.isSelected(),

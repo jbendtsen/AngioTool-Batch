@@ -12,7 +12,7 @@ public class Tubeness
         ISliceRunner sliceRunner,
         int maxWorkers,
         byte[] output,
-        int[] input,
+        float[] image,
         int width,
         int height,
         int brightestChannel,
@@ -21,12 +21,8 @@ public class Tubeness
     ) throws ExecutionException
     {
         final int area = width * height;
-        float[] image = FloatBufferPool.acquireAsIs(area);
         float[] gaussianOutput = FloatBufferPool.acquireAsIs(area);
         float[] maxEigenOutput = FloatBufferPool.acquireZeroed(area);
-
-        for (int i = 0; i < area; i++)
-            image[i] = (float)((input[i] >> (8 * (2 - brightestChannel))) & 0xff);
 
         Params params = new Params();
         double maxResult = 0.0;
@@ -55,7 +51,6 @@ public class Tubeness
         // Help out the GC by nulling the second references to our recycled buffers
         params.nullify();
 
-        FloatBufferPool.release(image);
         FloatBufferPool.release(gaussianOutput);
 
         float factor = maxResult > 0.0 ? (float)(256.0 / maxResult) : 1.0f;

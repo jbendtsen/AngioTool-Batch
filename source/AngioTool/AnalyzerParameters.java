@@ -7,6 +7,9 @@ import Utils.RefVector;
 public class AnalyzerParameters {
     public boolean shouldResizeImage;
     public double resizingFactor;
+    public boolean shouldRemapColors;
+    public Rgb voidRemapColor;
+    public Rgb targetRemapColor;
     public boolean shouldFillBrightShapes;
     public double brightShapeThresholdFactor;
     public boolean shouldApplyMinBoxness;
@@ -47,6 +50,9 @@ public class AnalyzerParameters {
     public AnalyzerParameters(
         boolean shouldResizeImage,
         double resizingFactor,
+        boolean shouldRemapColors,
+        Rgb voidRemapColor,
+        Rgb targetRemapColor,
         boolean shouldFillBrightShapes,
         double brightShapeThresholdFactor,
         boolean shouldApplyMinBoxness,
@@ -84,6 +90,9 @@ public class AnalyzerParameters {
     ) {
         this.shouldResizeImage = shouldResizeImage;
         this.resizingFactor = resizingFactor;
+        this.shouldRemapColors = shouldRemapColors;
+        this.voidRemapColor = voidRemapColor;
+        this.targetRemapColor = targetRemapColor;
         this.shouldFillBrightShapes = shouldFillBrightShapes;
         this.brightShapeThresholdFactor = brightShapeThresholdFactor;
         this.shouldApplyMinBoxness = shouldApplyMinBoxness;
@@ -145,6 +154,9 @@ public class AnalyzerParameters {
         p.minAreaLengthRatio = 16.0;
         p.shouldFillHoles = false;
         p.shouldRemoveSmallParticles = false;
+        p.shouldRemapColors = false;
+        p.voidRemapColor = new Rgb("CCCC33");
+        p.targetRemapColor = new Rgb("CC0000");
         p.resizingFactor = 1.0;
         p.shouldIsolateBrightestChannelInOutput = true;
         p.shouldExpandOutputToGrayScale = false;
@@ -167,6 +179,9 @@ public class AnalyzerParameters {
         return
             other.shouldResizeImage == shouldResizeImage &&
             other.resizingFactor == resizingFactor &&
+            other.shouldRemapColors == shouldRemapColors &&
+            other.voidRemapColor.value == voidRemapColor.value &&
+            other.targetRemapColor.value == targetRemapColor.value &&
             other.shouldFillBrightShapes == shouldFillBrightShapes &&
             other.brightShapeThresholdFactor == brightShapeThresholdFactor &&
             other.shouldApplyMinBoxness == shouldApplyMinBoxness &&
@@ -210,6 +225,8 @@ public class AnalyzerParameters {
 
         if (shouldResizeImage && resizingFactor <= 0.0)
             errors.add("Image resize factor must be >0 (not " + resizingFactor + ")");
+        if (shouldRemapColors && voidRemapColor.getRGB() == voidRemapColor.getRGB())
+            errors.add("Void and target colors must be different when color remapping");
         if (shouldFillBrightShapes && brightShapeThresholdFactor <= 0.0)
             errors.add("Shape fill threshold must be >0% (not " + (brightShapeThresholdFactor * 100.0) + "%)");
         if (shouldRemoveSmallParticles && removeSmallParticlesThreshold <= 0.0)

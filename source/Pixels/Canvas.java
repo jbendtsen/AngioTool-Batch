@@ -263,4 +263,38 @@ public class Canvas
             }
         }
     }
+
+    public static void remapColorsToMonoFloatArray(float[] output, int[] pixels, int width, int height, int voidColor, int targetColor)
+    {
+        int area = width * height;
+
+        // prevent divide by zero
+        if (((voidColor ^ targetColor) & 0xFFFfff) == 0) {
+            for (int i = 0; i < area; i++)
+                output[i] = 127f;
+            return;
+        }
+
+        float voidR = (voidColor >> 16) & 0xff;
+        float voidG = (voidColor >> 8) & 0xff;
+        float voidB = voidColor & 0xff;
+
+        float targetR = (targetColor >> 16) & 0xff;
+        float targetG = (targetColor >> 8) & 0xff;
+        float targetB = targetColor & 0xff;
+
+        for (int i = 0; i < area; i++) {
+            int argb = pixels[i];
+            float r = (argb >> 16) & 0xff;
+            float g = (argb >> 8) & 0xff;
+            float b = argb & 0xff;
+
+            double dv = Math.sqrt((r-voidR)*(r-voidR) + (g-voidG)*(g-voidG) + (b-voidB)*(b-voidB));
+            double dt = Math.sqrt((r-targetR)*(r-targetR) + (g-targetG)*(g-targetG) + (b-targetB)*(b-targetB));
+
+            double proximity = (dv * dt) / (dv + dt);
+            double factor = Math.max(proximity / 50.0, 1.0);
+            output[i] = (float)(255.0 * dv / (factor * (dv + dt)));
+        }
+    }
 }

@@ -568,17 +568,39 @@ public class Analyzer
         data.analysisImage.resize(inputImage.width * inputImage.height);
         byte[] analysisImage = data.analysisImage.buf;
 
+        float[] tubenessInput = FloatBufferPool.acquireAsIs(inputImage.width * inputImage.height);
+
+        if (params.shouldRemapColors)
+            Canvas.remapColorsToMonoFloatArray(
+                tubenessInput,
+                inputImage.pixels,
+                inputImage.width,
+                inputImage.height,
+                params.voidRemapColor.getRGB(),
+                params.targetRemapColor.getRGB()
+            );
+        else
+            Planes.convertToMonoFloatArray(
+                tubenessInput,
+                inputImage.pixels,
+                inputImage.width,
+                inputImage.height,
+                inputImage.brightestChannel
+            );
+
         Tubeness.computeTubenessImage(
             sliceRunner,
             MAX_WORKERS,
             analysisImage,
-            inputImage.pixels,
+            tubenessInput,
             inputImage.width,
             inputImage.height,
             inputImage.brightestChannel,
             params.sigmas,
             params.sigmas.length
         );
+
+        FloatBufferPool.release(tubenessInput);
 
         //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " tubeness.pgm");
 

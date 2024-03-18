@@ -34,6 +34,10 @@ public class Rgb
         return 0xff000000 | value;
     }
 
+    public int getRGB() {
+        return value & 0xFFFfff;
+    }
+
     public String toString() {
         byte[] buf = new byte[7];
         buf[0] = '#';
