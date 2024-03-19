@@ -68,6 +68,14 @@ public class BatchUtils
         return a;
     }
 
+    public static boolean isGrayscale(int argb)
+    {
+        int r = (argb >> 16) & 0xff;
+        int g = (argb >> 8) & 0xff;
+        int b = argb & 0xff;
+        return r == g && g == b;
+    }
+
     public static int getAnInt(String str)
     {
         int n = 0;

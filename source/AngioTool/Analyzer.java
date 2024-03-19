@@ -576,8 +576,8 @@ public class Analyzer
                 inputImage.pixels,
                 inputImage.width,
                 inputImage.height,
-                params.voidRemapColor.getRGB(),
-                params.targetRemapColor.getRGB()
+                params.targetRemapColor.getRGB(),
+                (float)params.narrowingColorFactor
             );
         else
             Planes.convertToMonoFloatArray(

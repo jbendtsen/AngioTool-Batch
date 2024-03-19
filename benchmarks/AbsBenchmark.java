@@ -1,7 +1,7 @@
 // "bitwise" and "math" are equivalent in speed
 // "if" is 35% slower
 
-public class FiltersBenchmark
+public class AbsBenchmark
 {
     public static final int METHOD_IF = 0;
     public static final int METHOD_MATH = 1;

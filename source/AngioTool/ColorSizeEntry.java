@@ -47,7 +47,7 @@ public class ColorSizeEntry extends NumberEntry
     @Override
     public GroupLayout.Group addToSeqGroup(GroupLayout.Group seqGroup)
     {
-        return super.addToSeqGroup(seqGroup).addComponent(panel, 20, 25, 25);
+        return super.addToSeqGroup(seqGroup).addComponent(panel, 20, 30, 30);
     }
 
     @Override

@@ -264,37 +264,65 @@ public class Canvas
         }
     }
 
-    public static void remapColorsToMonoFloatArray(float[] output, int[] pixels, int width, int height, int voidColor, int targetColor)
+    public static void remapColorsToMonoFloatArray(float[] output, int[] pixels, int width, int height, int targetColor, float narrowingFactor)
     {
         int area = width * height;
+        float nf = (narrowingFactor > 0f ? narrowingFactor : 1f) / 3f;
 
-        // prevent divide by zero
-        if (((voidColor ^ targetColor) & 0xFFFfff) == 0) {
-            for (int i = 0; i < area; i++)
-                output[i] = 127f;
-            return;
+        // calculate target hue
+        float targetHue = 0f;
+        {
+            int r = (targetColor >> 16) & 0xff;
+            int g = (targetColor >> 8) & 0xff;
+            int b = targetColor & 0xff;
+
+            float max = Math.max(Math.max(r, g), b);
+            float dMaxMin = max - Math.min(Math.min(r, g), b);
+
+            // prevent divide by zero
+            if (dMaxMin == 0f) {
+                for (int i = 0; i < area; i++)
+                    output[i] = 0f;
+                return;
+            }
+
+            if (max == (float)r) {
+                targetHue = (g - b) / dMaxMin;
+            }
+            else if (max == (float)g) {
+                targetHue = 2f + (b - r) / dMaxMin;
+            }
+            else {
+                targetHue = 4f + (r - g) / dMaxMin;
+            }
         }
 
-        float voidR = (voidColor >> 16) & 0xff;
-        float voidG = (voidColor >> 8) & 0xff;
-        float voidB = voidColor & 0xff;
-
-        float targetR = (targetColor >> 16) & 0xff;
-        float targetG = (targetColor >> 8) & 0xff;
-        float targetB = targetColor & 0xff;
-
         for (int i = 0; i < area; i++) {
-            int argb = pixels[i];
-            float r = (argb >> 16) & 0xff;
-            float g = (argb >> 8) & 0xff;
-            float b = argb & 0xff;
+            int rgb = pixels[i];
+            int r = (rgb >> 16) & 0xff;
+            int g = (rgb >> 8) & 0xff;
+            int b = rgb & 0xff;
 
-            double dv = Math.sqrt((r-voidR)*(r-voidR) + (g-voidG)*(g-voidG) + (b-voidB)*(b-voidB));
-            double dt = Math.sqrt((r-targetR)*(r-targetR) + (g-targetG)*(g-targetG) + (b-targetB)*(b-targetB));
+            float hue = targetHue;
+            float max = Math.max(Math.max(r, g), b);
+            float dMaxMin = max - Math.min(Math.min(r, g), b);
+            if (dMaxMin != 0f) {
+                if (max == (float)r) {
+                    hue = (g - b) / dMaxMin;
+                }
+                else if (max == (float)g) {
+                    hue = 2f + (b - r) / dMaxMin;
+                }
+                else {
+                    hue = 4f + (r - g) / dMaxMin;
+                }
+            }
 
-            double proximity = (dv * dt) / (dv + dt);
-            double factor = Math.max(proximity / 50.0, 1.0);
-            output[i] = (float)(255.0 * dv / (factor * (dv + dt)));
+            float dHue = Math.abs(hue - targetHue);
+            float diff = nf * Math.min(6f - dHue, dHue);
+            float value = Math.min(Math.max(1f - diff, 0f), 1f);
+
+            output[i] = value * Math.min(3f * (r + g + b), 255f);
         }
     }
 }

@@ -33,6 +33,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
     final NumberEntry elemMaxHoleLevelPercent;
     final NumberEntry elemMinBoxnessPercent;
     final NumberEntry elemMinAreaLengthRatio;
+    final ColorSizeEntry elemRemapColors;
     final JLabel labelSigmas = new JLabel();
     final JTextField textSigmas = new JTextField();
     final JLabel labelIntensity = new JLabel();
@@ -124,6 +125,9 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         elemMaxHoleLevelPercent = new NumberEntry("Max Hole Level:", analyzerParams.shouldFillBrightShapes, 100.0 * analyzerParams.brightShapeThresholdFactor, "%");
         elemMinBoxnessPercent = new NumberEntry("Min Boxness:", analyzerParams.shouldApplyMinBoxness, 100.0 * analyzerParams.minBoxness, "%");
         elemMinAreaLengthRatio = new NumberEntry("Min Length : Area:", analyzerParams.shouldApplyMinAreaLength, analyzerParams.minAreaLengthRatio, "1 :");
+
+        elemRemapColors = new ColorSizeEntry("Target Color:", analyzerParams.shouldRemapColors, analyzerParams.narrowingColorFactor, analyzerParams.targetRemapColor);
+        elemRemapColors.units.setText("x");
 
         rbImageOriginal.setText("Keep Original Colors");
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
@@ -220,6 +224,8 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         elemMinBoxnessPercent.update(analyzerParams.shouldApplyMinBoxness, 100.0 * analyzerParams.minBoxness);
         elemMinAreaLengthRatio.update(analyzerParams.shouldApplyMinAreaLength, analyzerParams.minAreaLengthRatio);
 
+        elemRemapColors.update(analyzerParams.shouldRemapColors, analyzerParams.narrowingColorFactor, analyzerParams.targetRemapColor);
+
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
         rbImageIsolated.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && !analyzerParams.shouldExpandOutputToGrayScale);
         rbImageGray.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && analyzerParams.shouldExpandOutputToGrayScale);
@@ -244,14 +250,15 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
                 .addGap(0, 0, Short.MAX_VALUE)
                 .addComponent(btnHelp)
             )
+            .addComponent(labelAnalysis)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
-                    .addComponent(labelAnalysis)
                     .addGroup(elemFillHoles.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemRemoveParticles.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemMaxHoleLevelPercent.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemMinBoxnessPercent.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemMinAreaLengthRatio.addToSeqGroup(layout.createSequentialGroup()))
+                    .addGroup(elemRemapColors.addToSeqGroup(layout.createSequentialGroup()))
                 )
                 .addGap(16, 16, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup()
@@ -318,16 +325,17 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
                 .addComponent(btnHelp)
             )
             .addGap(20)
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(labelAnalysis)
+            .addComponent(labelAnalysis)
+            .addGap(8)
+            .addGroup(
+                elemFillHoles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 .addComponent(cbComputeLacunarity)
                 .addComponent(cbComputeThickness)
             )
-            .addGap(8)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addGroup(layout.createSequentialGroup()
-                    .addGroup(elemFillHoles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
                     .addGroup(elemRemoveParticles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
+                    .addGroup(elemMaxHoleLevelPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
                 )
                 .addGroup(layout.createSequentialGroup()
                     .addGap(0, 0, 16)
@@ -341,17 +349,17 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
             )
             .addGroup(
                 elemMaxSkelIterations.addToParaGroup(
-                    elemMaxHoleLevelPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
-                )
-            )
-            .addGroup(
-                elemResizeInputs.addToParaGroup(
                     elemMinBoxnessPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGroup(
-                elemLinearScaleFactor.addToParaGroup(
+                elemResizeInputs.addToParaGroup(
                     elemMinAreaLengthRatio.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                )
+            )
+            .addGroup(
+                elemLinearScaleFactor.addToParaGroup(
+                    elemRemapColors.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGap(12)
@@ -553,9 +561,9 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         return new AnalyzerParameters(
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.getValue(),
-            true,
-            new Rgb("CCCC00"),
-            new Rgb("CC0000"),
+            elemRemapColors.cb.isSelected(),
+            elemRemapColors.color,
+            elemRemapColors.getValue(),
             elemMaxHoleLevelPercent.cb.isSelected(),
             elemMaxHoleLevelPercent.getValue() / 100.0,
             elemMinBoxnessPercent.cb.isSelected(),
