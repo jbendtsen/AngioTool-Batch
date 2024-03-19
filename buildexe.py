@@ -6,7 +6,8 @@ import shutil
 import pathlib
 import subprocess
 
-WINDRES = "/usr/bin/x86_64-w64-mingw32-windres"
+WINDRES_64 = "/usr/bin/x86_64-w64-mingw32-windres"
+WINDRES_32 = "/usr/bin/i686-w64-mingw32-windres"
 JAVA_JNI_PATH = "/usr/lib/jvm/java-21-openjdk/include"
 JAVA_JNI_MD_PATH = "/usr/lib/jvm/java-21-openjdk/include/windows"
 
@@ -20,8 +21,10 @@ except:
 if not jar_file:
     errors.append("Could not open AngioTool-Batch.jar. Try running ./compile.py first.")
 
-if shutil.which(WINDRES) is None:
-    errors.append("Could not find " + WINDRES)
+if shutil.which(WINDRES_32) is None:
+    errors.append("Could not find " + WINDRES_32)
+if shutil.which(WINDRES_64) is None:
+    errors.append("Could not find " + WINDRES_64)
 if not os.path.isdir(JAVA_JNI_PATH):
     errors.append("Could not find JNI include path " + JAVA_JNI_PATH)
 if not os.path.isdir(JAVA_JNI_MD_PATH):
@@ -67,12 +70,12 @@ with open("angiotool_jar.h", "wb") as f:
 
 print("Building EXE resource...")
 
-os.system("echo \"this ICON images/ATIcon20.ico\" | " + WINDRES + " -J rc -o launcher.coff")
+os.system("echo \"this ICON images/ATIcon20.ico\" | " + WINDRES_32 + " -J rc -o launcher32.coff")
+os.system("echo \"this ICON images/ATIcon20.ico\" | " + WINDRES_64 + " -J rc -o launcher64.coff")
 
 print("Compiling...")
 
-subprocess.run([
-    tcc_path + "x86_64-win32-tcc.exe",
+compile_args = [
     "-I" + tcc_path + "include",
     "-I" + tcc_path + "win32/include",
     "-I" + tcc_path + "win32/include/winapi",
@@ -82,8 +85,8 @@ subprocess.run([
     "-L" + tcc_path + "win32/lib",
     "-Wl,-subsystem=windows",
     "launcher-win32.c",
-    "-luser32",
-    "launcher.coff",
-    "-o",
-    "AngioTool-Batch.exe"
-])
+    "-luser32"
+]
+
+subprocess.run([tcc_path + "i386-win32-tcc.exe",   "-m32"] + compile_args + ["launcher32.coff", "-o", "AngioTool-Batch-32.exe"])
+subprocess.run([tcc_path + "x86_64-win32-tcc.exe", "-m64"] + compile_args + ["launcher64.coff", "-o", "AngioTool-Batch-64.exe"])

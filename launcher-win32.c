@@ -5,15 +5,22 @@
 
 #include "angiotool_jar.h"
 
+#ifdef _WIN64
+#define ALT_BITS "32"
+#else
+#define ALT_BITS "64"
+#endif
+
 #define bail(message) { MessageBoxA(NULL, message, "Error", MB_OK); return 1; }
 #define IS_FOLDER(bits) (bits) != INVALID_FILE_ATTRIBUTES && ((bits) & FILE_ATTRIBUTE_DIRECTORY)
-#define IS_FILE(bits) (bits) != INVALID_FILE_ATTRIBUTES && ((bits) & FILE_ATTRIBUTE_NORMAL)
+#define IS_FILE(bits) (bits) != INVALID_FILE_ATTRIBUTES && (((bits) & FILE_ATTRIBUTE_DIRECTORY) == 0)
 
 #define PATH_SIZE 1024
 #define MAIN_CLASS_NAME "AngioTool/AngioTool"
 #define MAIN_METHOD_NAME "main"
 
 BOOL addString(char *str, int *strPos, int strSize, const char *toAdd);
+BOOL addHexNum(char *str, int *strPos, int strSize, unsigned int value);
 BOOL stripFromLast(char *str, int *strPos, char ch);
 BOOL checkIsFolder(char *path);
 BOOL checkIsFile(char *path);
@@ -118,19 +125,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         int errorPos = 0;
 
         if (dllsNotLoadable & 1) {
-            addString(errorMsg, &errorPos, 64, "Found but could not load ");
-            addString(errorMsg, &errorPos, PATH_SIZE + 64, path);
-            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\server\\jvm.dll");
+            addString(errorMsg, &errorPos, 96, "Found but could not load JVM dll, try using the " ALT_BITS "-bit EXE (");
+            addString(errorMsg, &errorPos, PATH_SIZE + 96, path);
+            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\server\\jvm.dll)");
         }
         else if (dllsNotLoadable & 2) {
-            addString(errorMsg, &errorPos, 64, "Found but could not load ");
-            addString(errorMsg, &errorPos, PATH_SIZE + 64, path);
-            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\client\\jvm.dll");
+            addString(errorMsg, &errorPos, 96, "Found but could not load JVM dll, try using the " ALT_BITS "-bit EXE (");
+            addString(errorMsg, &errorPos, PATH_SIZE + 96, path);
+            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\client\\jvm.dll)");
         }
         else if (dllsNotLoadable & 4) {
-            addString(errorMsg, &errorPos, 64, "Found but could not load ");
-            addString(errorMsg, &errorPos, PATH_SIZE + 64, path);
-            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\jvm.dll");
+            addString(errorMsg, &errorPos, 96, "Found but could not load JVM dll, try using the " ALT_BITS "-bit EXE (");
+            addString(errorMsg, &errorPos, PATH_SIZE + 96, path);
+            addString(errorMsg, &errorPos, PATH_SIZE + 128, "\\jvm.dll)");
         }
         else {
             addString(errorMsg, &errorPos, 128, "Failed to open server\\jvm.dll, client\\jvm.dll or jvm.dll in ");
@@ -227,6 +234,35 @@ BOOL addString(char *str, int *strPos, int strSize, const char *toAdd) {
         str[pos+i] = toAdd[i];
 
     pos += lenToAdd;
+    str[pos] = 0;
+    *strPos = pos;
+    return TRUE;
+}
+
+BOOL addHexNum(char *str, int *strPos, int strSize, unsigned int value) {
+    if (value == 0)
+        return addString(str, strPos, strSize, "0");
+
+    char temp[16];
+    int len = 0;
+    while (value > 0) {
+        temp[len++] = (char)(value & 0xf);
+        value >>= 4;
+    }
+
+    int pos = *strPos;
+    if (pos + 2 + len >= strSize)
+        return FALSE;
+
+    str[pos++] = '0';
+    str[pos++] = 'x';
+
+    for (int i = len - 1; i >= 0; i--) {
+        char d = temp[i];
+        d += d < 10 ? 0x30 : 0x57;
+        str[pos++] = d;
+    }
+
     str[pos] = 0;
     *strPos = pos;
     return TRUE;
