@@ -12,7 +12,7 @@ public class PreprocessColor
 
         long[] longPoints = new long[nPoints];
         for (int i = 0; i < nPoints; i++)
-            longPoints[i] = (lineSegments[2*i] << 32L) | (lineSegments[2*i+1] & 0xFFFFffffL);
+            longPoints[i] = ((long)lineSegments[2*i] << 32L) | ((long)lineSegments[2*i+1] & 0xFFFFffffL);
 
         Arrays.sort(longPoints);
 
@@ -56,7 +56,7 @@ public class PreprocessColor
             int start = (int)(x1 * xScale);
             int end   = (int)(x2 * xScale);
             int len = end - start;
-            float yScale = 1f / (highestX * len);
+            float yScale = 255f / (highestX * len);
 
             for (int j = start, pos = 0; j < end; j++, pos++)
                 table[j] = (float)((len-pos) * y1 + pos * y2) * yScale;
@@ -100,9 +100,6 @@ public class PreprocessColor
         float colorFactor = weightColor / (weightColor + Math.max(weightBrightness, 0f));
         float brightnessFactor = 1f - colorFactor;
 
-        final float tableSizeWithScaling = (float)brightnessTable.length / 255f;
-        final int highestIdx = brightnessTable.length - 1;
-
         int area = width * height;
 
         float targetHue = Misc.getHue(targetColor);
@@ -116,8 +113,8 @@ public class PreprocessColor
         float targetVoidDistance = Math.abs(targetHue - voidHue);
         float narrowingFactor = 1f / Math.min(6f - targetVoidDistance, targetVoidDistance);
 
-        System.out.println("narrowingFactor = " + narrowingFactor + ", targetHue = " + targetHue + ", voidHue = " + voidHue +
-            ", brightnessFactor = " + brightnessFactor + ", colorFactor = " + colorFactor);
+        final float hueOppositeToTarget = (targetHue + 3f) % 6f;
+        final int highestIdx = brightnessTable.length - 1;
 
         for (int i = 0; i < area; i++) {
             int rgb = pixels[i];
@@ -125,7 +122,8 @@ public class PreprocessColor
             int g = (rgb >> 8) & 0xff;
             int b = rgb & 0xff;
 
-            float hue = targetHue;
+            float hue = hueOppositeToTarget;
+
             float max = Math.max(Math.max(r, g), b);
             float dMaxMin = max - Math.min(Math.min(r, g), b);
             if (dMaxMin != 0f) {
@@ -144,7 +142,7 @@ public class PreprocessColor
             float diff = narrowingFactor * Math.min(6f - dHue, dHue);
             float colorValue = 255f * Math.min(Math.max(1f - diff, 0f), 1f);
 
-            int idx = (int)(tableSizeWithScaling * (r*redWeight + g*greenWeight + b*blueWeight));
+            int idx = (int)(r*redWeight + g*greenWeight + b*blueWeight);
             float brightnessValue = brightnessTable[Math.min(idx, highestIdx)];
 
             output[i] = colorFactor * colorValue + brightnessFactor * brightnessValue;

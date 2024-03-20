@@ -137,11 +137,11 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         elemMinBoxnessPercent = new NumberEntry("Min Boxness:", analyzerParams.shouldApplyMinBoxness, 100.0 * analyzerParams.minBoxness, "%");
         elemMinAreaLengthRatio = new NumberEntry("Min Length : Area:", analyzerParams.shouldApplyMinAreaLength, analyzerParams.minAreaLengthRatio, "1 :");
 
-        cbTransformColors.setText("Transform Hue and Luminance: ");
+        cbTransformColors.setText("Transform Colors");
         cbTransformColors.setSelected(analyzerParams.shouldRemapColors);
 
-        labelVoidColor.setText("Off Color");
-        labelTargetColor.setText("Target Color");
+        labelVoidColor.setText("Off");
+        labelTargetColor.setText("Target");
         labelHueLum.setText("Hue : Luminance");
         labelBrightnessGraph.setText("Brightness Graph");
 
@@ -309,6 +309,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             )
             .addGroup(layout.createSequentialGroup()
                 .addComponent(cbTransformColors)
+                .addGap(8)
                 .addGroup(
                     elemVoidColor.addWithWidth(layout.createParallelGroup().addComponent(labelVoidColor))
                 )
@@ -408,7 +409,6 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
                 )
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(cbTransformColors)
                 .addComponent(labelVoidColor)
                 .addComponent(labelTargetColor)
                 .addComponent(labelHueLum)
@@ -416,7 +416,9 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             )
             .addGroup(
                 elemTargetColor.addWithHeight(
-                    elemVoidColor.addWithHeight(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                    elemVoidColor.addWithHeight(
+                        layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(cbTransformColors)
+                    )
                 )
                 .addComponent(textHueWeight)
                 .addComponent(textBrightnessWeight)
