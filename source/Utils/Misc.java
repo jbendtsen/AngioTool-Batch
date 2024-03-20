@@ -1,7 +1,7 @@
 package Utils;
 
 import AngioTool.NumberEntry;
-import AngioTool.ColorSizeEntry;
+import AngioTool.SizeColorEntry;
 import AngioTool.SimpleFileFilter;
 import Xlsx.*;
 import java.awt.Dimension;
@@ -270,6 +270,30 @@ public class Misc
         return str;
     }
 
+    public static float getHue(int rgb)
+    {
+        int r = (rgb >> 16) & 0xff;
+        int g = (rgb >> 8) & 0xff;
+        int b = rgb & 0xff;
+
+        float max = Math.max(Math.max(r, g), b);
+        float dMaxMin = max - Math.min(Math.min(r, g), b);
+
+        // prevent divide by zero
+        if (dMaxMin == 0f)
+            return Float.NaN;
+
+        float hue = 0f;
+        if (max == (float)r)
+            hue = (g - b) / dMaxMin;
+        else if (max == (float)g)
+            hue = 2f + (b - r) / dMaxMin;
+        else
+            hue = 4f + (r - g) / dMaxMin;
+
+        return hue;
+    }
+
     public static HashSet<String> makeHashSetFromStringArray(String[] array)
     {
         HashSet<String> c = new HashSet<>();
@@ -526,10 +550,10 @@ public class Misc
                 .addComponent(b.tf)
             );
 
-        if (a instanceof ColorSizeEntry && b instanceof ColorSizeEntry)
+        if (a instanceof SizeColorEntry && b instanceof SizeColorEntry)
             sequentialGroup.addGroup(layout.createParallelGroup()
-                .addComponent(((ColorSizeEntry)a).panel, 20, 30, 30)
-                .addComponent(((ColorSizeEntry)b).panel, 20, 30, 30)
+                .addComponent(((SizeColorEntry)a).colorElem.panel, 20, 30, 30)
+                .addComponent(((SizeColorEntry)b).colorElem.panel, 20, 30, 30)
             );
 
         return sequentialGroup;

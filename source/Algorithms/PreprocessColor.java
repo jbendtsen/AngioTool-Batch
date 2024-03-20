@@ -1,5 +1,6 @@
 package Algorithms;
 
+import Utils.Misc;
 import java.util.Arrays;
 
 public class PreprocessColor
@@ -105,32 +106,11 @@ public class PreprocessColor
         int area = width * height;
         float nf = (narrowingFactor > 0f ? narrowingFactor : 1f) / 3f;
 
-        // calculate target hue
-        float targetHue = 0f;
-        {
-            int r = (targetColor >> 16) & 0xff;
-            int g = (targetColor >> 8) & 0xff;
-            int b = targetColor & 0xff;
-
-            float max = Math.max(Math.max(r, g), b);
-            float dMaxMin = max - Math.min(Math.min(r, g), b);
-
-            // prevent divide by zero
-            if (dMaxMin == 0f) {
-                for (int i = 0; i < area; i++)
-                    output[i] = 0f;
-                return;
-            }
-
-            if (max == (float)r) {
-                targetHue = (g - b) / dMaxMin;
-            }
-            else if (max == (float)g) {
-                targetHue = 2f + (b - r) / dMaxMin;
-            }
-            else {
-                targetHue = 4f + (r - g) / dMaxMin;
-            }
+        float targetHue = Misc.getHue(targetColor);
+        if (Float.isNaN(targetHue)) {
+            for (int i = 0; i < area; i++)
+                output[i] = 0f;
+            return;
         }
 
         for (int i = 0; i < area; i++) {

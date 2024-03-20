@@ -183,8 +183,11 @@ public class ATPreferences
         if (type.equals("double[]")) {
             array = Misc.getSomeDoubles(value);
         }
+        else if (type.equals("int[]")) {
+            array = Misc.getSomeInts(value);
+        }
         else {
-            throw new Exception("ATPreferences.parseArray() only works with \"double[]\", not \"" + type + "\"");
+            throw new Exception("ATPreferences.parseArray() only works with \"double[]\" and \"int[]\", not \"" + type + "\"");
         }
 
         return array;
