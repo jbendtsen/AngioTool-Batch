@@ -132,7 +132,7 @@ public class Analyzer
                 (float)params.hueTransformWeight,
                 (float)params.brightnessTransformWeight,
                 params.targetRemapColor.getRGB(),
-                (float)params.narrowingColorFactor,
+                params.voidRemapColor.getRGB(),
                 true,
                 data.brightnessRemapTable
             );

@@ -166,7 +166,7 @@ public class AnalyzerParameters {
         p.shouldRemoveSmallParticles = false;
         p.shouldRemapColors = false;
         p.targetRemapColor = new Rgb("FF0000");
-        p.voidRemapColor = new Rgb("FF8000");
+        p.voidRemapColor = new Rgb("FF9900");
         p.hueTransformWeight = 1.0;
         p.brightnessTransformWeight = 1.0;
         p.brightnessLineSegments = new int[] {0, 0, 100, 100};
@@ -247,6 +247,8 @@ public class AnalyzerParameters {
             errors.add("Target color must not be on the gray scale, ie. it must have a hue (not " + targetRemapColor.toString() + ")");
         if (shouldRemapColors && Misc.isGrayscale(voidRemapColor.getRGB()))
             errors.add("Off color must not be on the gray scale, ie. it must have a hue (not " + targetRemapColor.toString() + ")");
+        if (shouldRemapColors && Misc.getHue(targetRemapColor.getRGB()) == Misc.getHue(voidRemapColor.getRGB()))
+            errors.add("Target and off colors must have a different hue");
         if (shouldRemapColors && !PreprocessColor.computeBrightnessTable(null, brightnessLineSegments, brightnessLineSegments.length / 2))
             errors.add("Invalid brightness segment list. Try changing every X coordinate to be unique");
         if (shouldFillBrightShapes && brightShapeThresholdFactor <= 0.0)

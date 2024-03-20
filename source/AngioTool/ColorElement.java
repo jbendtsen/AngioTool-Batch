@@ -13,11 +13,13 @@ public class ColorElement
     }
 
     public Listener listener;
+    public String name;
     public RoundedPanel panel;
     public Rgb color;
 
-    public ColorElement(Rgb color)
+    public ColorElement(String name, Rgb color)
     {
+        this.name = name;
         this.color = color == null ? new Rgb() : color;
 
         panel = new RoundedPanel();
@@ -40,6 +42,16 @@ public class ColorElement
     {
         this.color = newColor;
         panel.setBackground(this.color.toColor());
+    }
+
+    public GroupLayout.Group addWithWidth(GroupLayout.Group group)
+    {
+        return group.addComponent(panel, 20, 30, 30);
+    }
+
+    public GroupLayout.Group addWithHeight(GroupLayout.Group group)
+    {
+        return group.addComponent(panel, 20, 25, 25);
     }
 
     void selectColor()

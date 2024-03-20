@@ -145,8 +145,8 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         labelHueLum.setText("Hue : Luminance");
         labelBrightnessGraph.setText("Brightness Graph");
 
-        elemVoidColor = new ColorElement(analyzerParams.voidRemapColor);
-        elemTargetColor = new ColorElement(analyzerParams.targetRemapColor);
+        elemVoidColor = new ColorElement("Off Color", analyzerParams.voidRemapColor);
+        elemTargetColor = new ColorElement("Target Color", analyzerParams.targetRemapColor);
 
         textHueWeight.setText(Misc.formatDouble(analyzerParams.hueTransformWeight));
         textBrightnessWeight.setText(Misc.formatDouble(analyzerParams.brightnessTransformWeight));
@@ -459,7 +459,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
     }
 
     @Override
-    public void onColorChanged(ColorSizeEntry colorElem)
+    public void onColorChanged(ColorElement colorElem)
     {
         maybeUpdateImagingWindows();
     }
@@ -646,16 +646,16 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             elemLinearScaleFactor.cb.isSelected(),
             elemLinearScaleFactor.getValue(),
             elemOutline.cb.isSelected(),
-            elemOutline.color,
+            elemOutline.getColor(),
             elemOutline.getValue(),
             elemSkeleton.cb.isSelected(),
-            elemSkeleton.color,
+            elemSkeleton.getColor(),
             elemSkeleton.getValue(),
             elemBranches.cb.isSelected(),
-            elemBranches.color,
+            elemBranches.getColor(),
             elemBranches.getValue(),
             elemConvexHull.cb.isSelected(),
-            elemConvexHull.color,
+            elemConvexHull.getColor(),
             elemConvexHull.getValue(),
             shouldIsolateChannel,
             shouldExpandToGrayScale,

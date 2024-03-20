@@ -11,7 +11,7 @@ public class SizeColorEntry extends NumberEntry
     public SizeColorEntry(String name, boolean enabled, double value, Rgb color)
     {
         super(name, enabled, value, "px");
-        this.colorElem = new ColorElement(color);
+        this.colorElem = new ColorElement(name, color);
     }
 
     public Rgb getColor()
@@ -33,12 +33,12 @@ public class SizeColorEntry extends NumberEntry
     @Override
     public GroupLayout.Group addToSeqGroup(GroupLayout.Group seqGroup)
     {
-        return super.addToSeqGroup(seqGroup).addComponent(colorElem.panel, 20, 30, 30);
+        return colorElem.addWithWidth(super.addToSeqGroup(seqGroup));
     }
 
     @Override
     public GroupLayout.Group addToParaGroup(GroupLayout.Group paraGroup)
     {
-        return super.addToParaGroup(paraGroup).addComponent(colorElem.panel, 20, 25, 25);
+        return colorElem.addWithHeight(super.addToParaGroup(paraGroup));
     }
 }

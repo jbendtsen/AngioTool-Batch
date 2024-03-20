@@ -76,7 +76,7 @@ public class PreprocessColor
         float weightColor,
         float weightBrightness,
         int targetColor,
-        float narrowingFactor,
+        int voidColor,
         boolean useTrueLuminance,
         float[] brightnessTable
     ) {
@@ -104,14 +104,20 @@ public class PreprocessColor
         final int highestIdx = brightnessTable.length - 1;
 
         int area = width * height;
-        float nf = (narrowingFactor > 0f ? narrowingFactor : 1f) / 3f;
 
         float targetHue = Misc.getHue(targetColor);
-        if (Float.isNaN(targetHue)) {
+        float voidHue = Misc.getHue(voidColor);
+        if (Float.isNaN(targetHue) || Float.isNaN(voidHue)) {
             for (int i = 0; i < area; i++)
                 output[i] = 0f;
             return;
         }
+
+        float targetVoidDistance = Math.abs(targetHue - voidHue);
+        float narrowingFactor = 1f / Math.min(6f - targetVoidDistance, targetVoidDistance);
+
+        System.out.println("narrowingFactor = " + narrowingFactor + ", targetHue = " + targetHue + ", voidHue = " + voidHue +
+            ", brightnessFactor = " + brightnessFactor + ", colorFactor = " + colorFactor);
 
         for (int i = 0; i < area; i++) {
             int rgb = pixels[i];
@@ -135,8 +141,8 @@ public class PreprocessColor
             }
 
             float dHue = Math.abs(hue - targetHue);
-            float diff = nf * Math.min(6f - dHue, dHue);
-            float colorValue = Math.min(Math.max(1f - diff, 0f), 1f);
+            float diff = narrowingFactor * Math.min(6f - dHue, dHue);
+            float colorValue = 255f * Math.min(Math.max(1f - diff, 0f), 1f);
 
             int idx = (int)(tableSizeWithScaling * (r*redWeight + g*greenWeight + b*blueWeight));
             float brightnessValue = brightnessTable[Math.min(idx, highestIdx)];
