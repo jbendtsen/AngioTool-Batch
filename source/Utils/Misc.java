@@ -25,7 +25,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 
-public class BatchUtils
+public class Misc
 {
     public static final double EPSILON = Math.pow(2.0, -23);
 
@@ -195,6 +195,26 @@ public class BatchUtils
         }
 
         return values;
+    }
+
+    public static String formatIntVecTwoPointArray(int[] array)
+    {
+        if (array == null || array.length == 0)
+            return "";
+
+        ByteVectorOutputStream sb = new ByteVectorOutputStream();
+        for (int i = 0; i < array.length / 2; i++) {
+            if (i > 0)
+                sb.add(", ");
+
+            sb.add('(');
+            sb.add("" + array[2*i]);
+            sb.add(',');
+            sb.add("" + array[2*i+1]);
+            sb.add(')');
+        }
+
+        return sb.toString();
     }
 
     public static String formatIntArray(int[] array, String defaultValue)
@@ -378,6 +398,25 @@ public class BatchUtils
         return true;
     }
 
+    public static boolean isIntArrayIdentical(int[] a, int[] b)
+    {
+        boolean aIsEmpty = a == null || a.length == 0;
+        boolean bIsEmpty = b == null || b.length == 0;
+        if (aIsEmpty)
+            return bIsEmpty;
+        if (bIsEmpty)
+            return aIsEmpty;
+        if (a.length != b.length)
+            return false;
+
+        int len = a.length;
+        for (int i = 0; i < len; i++)
+            if (a[i] != b[i])
+                return false;
+
+        return true;
+    }
+
     public static ByteVectorOutputStream readFullyAsVector(InputStream stream) throws IOException
     {
         final int chunkSize = 4096;
@@ -504,7 +543,7 @@ public class BatchUtils
     ) {
         File xlsxFile;
         if (existingXlsxFile == null || existingXlsxFile.length() == 0) {
-            JFileChooser fc = BatchUtils.createFileChooser();
+            JFileChooser fc = createFileChooser();
             fc.setDialogTitle("Append to Excel spreadsheet");
             fc.setDialogType(JFileChooser.SAVE_DIALOG);
             fc.setCurrentDirectory(new File(defaultPath));
@@ -542,7 +581,7 @@ public class BatchUtils
                 try {
                     Files.copy(
                         xlsxFile.toPath(),
-                        new File(BatchUtils.decideBackupFileName(xlsxPath, "xlsx")).toPath(),
+                        new File(decideBackupFileName(xlsxPath, "xlsx")).toPath(),
                         StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.COPY_ATTRIBUTES
                     );

@@ -218,8 +218,8 @@ public class TiffReader
             ", isPlanar = " + isPlanar +
             ", shouldDiffOrInvert = " + shouldDiffOrInvert
         );
-        System.out.println("stripOffsets: " + BatchUtils.formatIntArray(stripOffsets, "" + firstStripOffset));
-        System.out.println("stripCounts: " + BatchUtils.formatIntArray(stripCounts, "" + firstStripCount));
+        System.out.println("stripOffsets: " + Misc.formatIntArray(stripOffsets, "" + firstStripOffset));
+        System.out.println("stripCounts: " + Misc.formatIntArray(stripCounts, "" + firstStripCount));
         */
 
         fc.position(ifdOffset + trueTagCount * 12 + 2);

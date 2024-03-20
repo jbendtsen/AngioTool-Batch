@@ -3,7 +3,7 @@ package AngioTool;
 import Pixels.ArgbBuffer;
 import Pixels.Canvas;
 import Pixels.ImageFile;
-import Utils.BatchUtils;
+import Utils.Misc;
 import Utils.ISliceRunner;
 import Utils.RefVector;
 import Xlsx.*;
@@ -224,26 +224,26 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                     );
                     statsStrings.add(
                         "Explant Area, %: " +
-                        BatchUtils.formatDouble(currentStats.allantoisMMArea, 2) + ", " +
-                        BatchUtils.formatDouble(allantoisPercentage, 3) + "%"
+                        Misc.formatDouble(currentStats.allantoisMMArea, 2) + ", " +
+                        Misc.formatDouble(allantoisPercentage, 3) + "%"
                     );
                     statsStrings.add(
                         "Vessels Area, %: " +
-                        BatchUtils.formatDouble(currentStats.vesselMMArea, 2) + ", " +
-                        BatchUtils.formatDouble(currentStats.vesselPercentageArea, 3) + "%"
+                        Misc.formatDouble(currentStats.vesselMMArea, 2) + ", " +
+                        Misc.formatDouble(currentStats.vesselPercentageArea, 3) + "%"
                     );
                     statsStrings.add(
                         "Total Junctions: " +
-                        BatchUtils.formatDouble(currentStats.totalNJunctions)
+                        Misc.formatDouble(currentStats.totalNJunctions)
                     );
                     statsStrings.add(
                         "Junctions Density %: " +
-                        BatchUtils.formatDouble(junctionsAreaPercentage, 5) + "%"
+                        Misc.formatDouble(junctionsAreaPercentage, 5) + "%"
                     );
                     statsStrings.add(
                         "Vessels Length: Total, Average: " +
-                        BatchUtils.formatDouble(currentStats.totalLength, 3) + ", " +
-                        BatchUtils.formatDouble(currentStats.averageBranchLength, 3)
+                        Misc.formatDouble(currentStats.totalLength, 3) + ", " +
+                        Misc.formatDouble(currentStats.averageBranchLength, 3)
                     );
                     statsStrings.add(
                         "End Points: " +
@@ -253,21 +253,21 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                     if (this.didComputeThickness) {
                         statsStrings.add(
                             "Average Vessel Diameter: " +
-                            BatchUtils.formatDouble(currentStats.averageVesselDiameter, 3)
+                            Misc.formatDouble(currentStats.averageVesselDiameter, 3)
                         );
                     }
                     if (this.didComputeLacunarity) {
                         statsStrings.add(
                             "E Lacunarity: Medial, Mean, Curve: " +
-                            BatchUtils.formatDouble(currentStats.ELacunarityMedial, 4) + ", " +
-                            BatchUtils.formatDouble(currentStats.meanEl, 4) + ", " +
-                            BatchUtils.formatDouble(currentStats.ELacunarityCurve, 4)
+                            Misc.formatDouble(currentStats.ELacunarityMedial, 4) + ", " +
+                            Misc.formatDouble(currentStats.meanEl, 4) + ", " +
+                            Misc.formatDouble(currentStats.ELacunarityCurve, 4)
                         );
                         statsStrings.add(
                             "F Lacunarity: Medial, Mean, Curve: " +
-                            BatchUtils.formatDouble(currentStats.FLacunarityMedial, 4) + ", " +
-                            BatchUtils.formatDouble(currentStats.meanFl, 4) + ", " +
-                            BatchUtils.formatDouble(currentStats.FLacunarityCurve, 4)
+                            Misc.formatDouble(currentStats.FLacunarityMedial, 4) + ", " +
+                            Misc.formatDouble(currentStats.meanFl, 4) + ", " +
+                            Misc.formatDouble(currentStats.FLacunarityCurve, 4)
                         );
                     }
 
@@ -470,7 +470,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     JButton btnSaveSpreadsheet = new JButton();
     JTextField textSaveSpreadsheet = new JTextField();
 
-    final Analyzer.Data analyzerData = new Analyzer.Data();
+    final Analyzer.Data analyzerData = new Analyzer.Data(null, 0);
     final ISliceRunner sliceRunner = new ISliceRunner.Parallel(Analyzer.threadPool);
 
     public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, File sourceFile, String defaultPath)
@@ -495,13 +495,13 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         this.cbShowStats.setSelected(true);
 
         this.labelSaveImage.setText("Save result image");
-        BatchUtils.setNewFontStyleOn(this.labelImageWasSaved, Font.ITALIC);
+        Misc.setNewFontStyleOn(this.labelImageWasSaved, Font.ITALIC);
         this.labelImageWasSaved.setHorizontalAlignment(SwingConstants.TRAILING);
         this.btnSaveImage.setIcon(AngioTool.ATFolderSmall);
         this.textSaveImage.addKeyListener(this);
 
         this.labelSaveSpreadsheet.setText("Save stats to spreadsheet");
-        BatchUtils.setNewFontStyleOn(this.labelSpreadsheetWasSaved, Font.ITALIC);
+        Misc.setNewFontStyleOn(this.labelSpreadsheetWasSaved, Font.ITALIC);
         this.labelSpreadsheetWasSaved.setHorizontalAlignment(SwingConstants.TRAILING);
         this.btnSaveSpreadsheet.setIcon(AngioTool.ATExcelSmall);
         this.textSaveSpreadsheet.addKeyListener(this);
@@ -654,6 +654,9 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         ImagingWindow.threadPool.submit(() -> {
             try {
                 analyzerData.restart();
+                if (params.shouldRemapColors)
+                    analyzerData.updateBrightnessTable(params.brightnessLineSegments, params.brightnessLineSegments.length / 2);
+
                 Analyzer.Stats stats = Analyzer.analyze(
                     analyzerData,
                     inputFile,
@@ -661,6 +664,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                     params,
                     sliceRunner
                 );
+
                 SwingUtilities.invokeLater(() -> {
                     AnalyzerParameters nextParams = imageUi.onImageFinished(params, analyzerData, stats);
                     if (nextParams != null) {
@@ -676,7 +680,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                 final Throwable error = t;
                 SwingUtilities.invokeLater(() -> {
                     imageUi.onImageFinished(params, analyzerData, null);
-                    BatchUtils.showExceptionInDialogBox(error);
+                    Misc.showExceptionInDialogBox(error);
                 });
             }
         });
@@ -706,11 +710,11 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         int extIdx = -1;
         while (true) {
             if (filePath == null || filePath.length() == 0) {
-                JFileChooser fc = BatchUtils.createFileChooser();
+                JFileChooser fc = Misc.createFileChooser();
                 fc.setDialogTitle("Save Result Image");
                 fc.setDialogType(JFileChooser.SAVE_DIALOG);
                 fc.setCurrentDirectory(new File(defaultPath));
-                BatchUtils.addImageFileFilters(fc);
+                Misc.addImageFileFilters(fc);
 
                 if (fc.showSaveDialog(this) != 0)
                     return;
@@ -724,7 +728,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
             extIdx = filePath.lastIndexOf('.');
             if (extIdx <= 0 || extIdx < Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')))
-                BatchUtils.showDialogBox("Save Result Image", "No image format was specified.\nPlease select an image format, eg. jpg");
+                Misc.showDialogBox("Save Result Image", "No image format was specified.\nPlease select an image format, eg. jpg");
             else
                 break;
 
@@ -740,7 +744,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             labelImageWasSaved.setText("saved");
         }
         catch (Throwable ex) {
-            BatchUtils.showExceptionInDialogBox(ex);
+            Misc.showExceptionInDialogBox(ex);
         }
     }
 
@@ -752,7 +756,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         String existingXlsxFile = textSaveSpreadsheet.getText();
         String[] outStrings = new String[2];
 
-        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(
+        ArrayList<XlsxReader.SheetCells> sheets = Misc.openSpreadsheetForAppending(
             outStrings,
             existingXlsxFile,
             defaultPath,
@@ -763,7 +767,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
         defaultPath = outStrings[1];
 
-        int fileNameOffset = BatchUtils.getFileNameOffset(outStrings[0]);
+        int fileNameOffset = Misc.getFileNameOffset(outStrings[0]);
         File folder = new File(outStrings[0].substring(0, fileNameOffset));
         String sheetName = outStrings[0].substring(fileNameOffset);
 
@@ -774,7 +778,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             labelSpreadsheetWasSaved.setText("saved");
         }
         catch (IOException ex) {
-            BatchUtils.showExceptionInDialogBox(ex);
+            Misc.showExceptionInDialogBox(ex);
         }
     }
 

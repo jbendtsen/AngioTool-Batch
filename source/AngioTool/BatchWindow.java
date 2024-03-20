@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class BatchWindow extends JFrame implements Analyzer.IProgressToken
+public class BatchWindow extends JFrame implements BatchProcessing.IProgressToken
 {
     static final int UNITS_GAP = 4;
     static final double BALANCED_FACTOR = 0.75;
@@ -73,7 +73,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         this.setIconImage(AngioTool.ATIcon.getImage());
 
         labelData.setText("Data");
-        BatchUtils.setNewFontSizeOn(labelData, 20);
+        Misc.setNewFontSizeOn(labelData, 20);
 
         labelInputFolders.setText("Select input folders:");
 
@@ -122,7 +122,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             "<html>Recommended job count:<br>" + nProcessors + " for maximum throughput,<br>" +
              defaultWorkerCount + " (default) for balancing resources</html>";
 
-        BatchUtils.setNewFontStyleOn(labelWorkerCountHelp, Font.PLAIN);
+        Misc.setNewFontStyleOn(labelWorkerCountHelp, Font.PLAIN);
 
         if (params.shouldOverrideWorkerCount) {
             textWorkerCount.setText("" + params.workerCount);
@@ -137,13 +137,13 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         //sepProgress
 
         labelProgress.setText("Progress");
-        BatchUtils.setNewFontSizeOn(labelProgress, 20);
+        Misc.setNewFontSizeOn(labelProgress, 20);
 
         //overallLabel
         overallProgress.setValue(0);
         overallProgress.setStringPainted(true);
 
-        BatchUtils.setNewFontStyleOn(labelCurrentFile, Font.ITALIC);
+        Misc.setNewFontStyleOn(labelCurrentFile, Font.ITALIC);
 
         analyzeBtn.setText("Run");
         analyzeBtn.addActionListener((ActionEvent e) -> BatchWindow.this.startAnalysis());
@@ -306,7 +306,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     }
 
     void selectInputFolders() {
-        JFileChooser fc = BatchUtils.createFileChooser();
+        JFileChooser fc = Misc.createFileChooser();
         fc.setDialogTitle("Select Folders");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -332,7 +332,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
 
     void selectExcelFile() {
         String[] outStrings = new String[2];
-        ArrayList<XlsxReader.SheetCells> sheets = BatchUtils.openSpreadsheetForAppending(outStrings, null, defaultPath, this);
+        ArrayList<XlsxReader.SheetCells> sheets = Misc.openSpreadsheetForAppending(outStrings, null, defaultPath, this);
         if (sheets != null) {
             originalSheets = sheets;
             defaultPath = outStrings[1];
@@ -341,7 +341,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     }
 
     void selectResultFolder() {
-        JFileChooser fc = BatchUtils.createFileChooser();
+        JFileChooser fc = Misc.createFileChooser();
         fc.setDialogTitle("Select Folders");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -379,7 +379,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
 
         return new BatchParameters(
             defaultPath,
-            BatchUtils.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
+            Misc.splitPaths(textInputFolders.getText(), ';', File.separatorChar),
             textExcel.getText(),
             shouldSaveImages,
             shouldUseSpecificOutputFolder,
@@ -393,7 +393,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
     public void startAnalysis()
     {
         if (analysisTaskFuture != null && !analysisTaskFuture.isDone()) {
-            BatchUtils.showDialogBox(
+            Misc.showDialogBox(
                 "Analysis Still in Progress",
                 "A batch analysis is still running. Either cancel it or wait for it to complete."
             );
@@ -407,7 +407,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             params = mainWindow.buildAnalyzerParamsFromUi();
         }
         catch (Throwable t) {
-            BatchUtils.showDialogBox("Parsing Error", "Invalid data in the analysis form (" + t.getClass().getSimpleName() + ")");
+            Misc.showDialogBox("Parsing Error", "Invalid data in the analysis form (" + t.getClass().getSimpleName() + ")");
             return;
         }
 
@@ -418,7 +418,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
             batchParams = buildBatchParamsFromUi();
         }
         catch (Throwable t) {
-            BatchUtils.showDialogBox("Parsing Error", "Invalid data in the batch form (" + t.getClass().getSimpleName() + ")");
+            Misc.showDialogBox("Parsing Error", "Invalid data in the batch form (" + t.getClass().getSimpleName() + ")");
             return;
         }
 
@@ -428,7 +428,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         if (errors.size > 0) {
             int nErrors = errors.size;
             String header = nErrors > 1 ? ("There were " + nErrors + " errors:\n") : "";
-            BatchUtils.showDialogBox(
+            Misc.showDialogBox(
                 "Validation Error" + (nErrors > 1 ? "s" : ""),
                 header + errors.makeJoinedString("\n")
             );
@@ -441,7 +441,7 @@ public class BatchWindow extends JFrame implements Analyzer.IProgressToken
         ATPreferences.savePreferences(batchParams, AngioTool.BATCH_TXT);
 
         analysisTaskFuture = (Future<Void>)Analyzer.threadPool.submit(
-            () -> Analyzer.doBatchAnalysis(params, batchParams, BatchWindow.this, originalSheets)
+            () -> BatchProcessing.doBatchAnalysis(params, batchParams, BatchWindow.this, originalSheets)
         );
     }
 

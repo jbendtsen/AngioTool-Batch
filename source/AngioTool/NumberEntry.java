@@ -1,6 +1,6 @@
 package AngioTool;
 
-import Utils.BatchUtils;
+import Utils.Misc;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -25,7 +25,7 @@ public class NumberEntry
         units = new JLabel(unitsStr, SwingConstants.RIGHT);
 
         tf = new JTextField();
-        tf.setText(BatchUtils.formatDouble(value));
+        tf.setText(Misc.formatDouble(value));
         tf.setEnabled(enabled);
 
         cb.setSelected(enabled);
@@ -33,7 +33,7 @@ public class NumberEntry
 
     public void update(boolean enabled, double value)
     {
-        tf.setText(BatchUtils.formatDouble(value));
+        tf.setText(Misc.formatDouble(value));
         tf.setEnabled(enabled);
         cb.setSelected(enabled);
     }
@@ -73,7 +73,7 @@ public class NumberEntry
     {
         boolean enabled = cb.isSelected();
         double value = getValue();
-        tf.setText(BatchUtils.formatDouble(value));
+        tf.setText(Misc.formatDouble(value));
         tf.setEnabled(enabled);
     }
 }

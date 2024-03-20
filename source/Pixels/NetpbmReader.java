@@ -77,16 +77,16 @@ public class NetpbmReader
                                 if (attrType != ATTR_NONE) {
                                     switch (attrType) {
                                         case ATTR_WIDTH:
-                                            width = BatchUtils.parseInt(token, 0);
+                                            width = Misc.parseInt(token, 0);
                                             break;
                                         case ATTR_HEIGHT:
-                                            height = BatchUtils.parseInt(token, 0);
+                                            height = Misc.parseInt(token, 0);
                                             break;
                                         case ATTR_DEPTH:
-                                            channels = BatchUtils.parseInt(token, 0);
+                                            channels = Misc.parseInt(token, 0);
                                             break;
                                         case ATTR_MAXVAL:
-                                            maxval = BatchUtils.parseDouble(token, 255.0);
+                                            maxval = Misc.parseDouble(token, 255.0);
                                             break;
                                         case ATTR_TUPLTYPE:
                                             tupleType = token;
@@ -111,11 +111,11 @@ public class NetpbmReader
                             }
                             else {
                                 if (field == 2)
-                                    width = BatchUtils.parseInt(token, 0);
+                                    width = Misc.parseInt(token, 0);
                                 else if (field == 3)
-                                    height = BatchUtils.parseInt(token, 0);
+                                    height = Misc.parseInt(token, 0);
                                 else if (field == 4)
-                                    maxval = BatchUtils.parseDouble(token, 255.0);
+                                    maxval = Misc.parseDouble(token, 255.0);
 
                                 if (field >= 4 || (field == 3 && (pbmType == '1' || pbmType == '4')))
                                     dataOffset = i + 1;

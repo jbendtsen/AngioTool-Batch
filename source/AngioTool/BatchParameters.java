@@ -1,6 +1,6 @@
 package AngioTool;
 
-import Utils.BatchUtils;
+import Utils.Misc;
 import Utils.RefVector;
 
 public class BatchParameters
@@ -53,7 +53,7 @@ public class BatchParameters
         RefVector<String> errors = new RefVector<>(String.class);
 
         try {
-            Analyzer.resolveImageFormat(resultImageFormat);
+            BatchProcessing.resolveImageFormat(resultImageFormat);
         }
         catch (Exception ex) {
             errors.add("Result image format: " + ex.getMessage());
@@ -61,9 +61,9 @@ public class BatchParameters
 
         if (inputImagePaths == null || inputImagePaths.length == 0)
             errors.add("At least one input folder is required");
-        if (!BatchUtils.isValidPath(excelFilePath))
+        if (!Misc.isValidPath(excelFilePath))
             errors.add("Path to spreadsheet is missing");
-        if (shouldSaveImagesToSpecificFolder && !BatchUtils.isValidPath(resultImagesPath))
+        if (shouldSaveImagesToSpecificFolder && !Misc.isValidPath(resultImagesPath))
             errors.add("Specific output folder was selected but not provided");
         if (workerCount <= 0)
             errors.add(

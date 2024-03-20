@@ -160,7 +160,7 @@ public class Planes
         }
     }
 
-    public static void convertToMonoFloatArray(float[] output, int[] input, int width, int height, int selectedChannel)
+    public static void copySingleChannelToMonoFloatArray(float[] output, int[] input, int width, int height, int selectedChannel)
     {
         int area = width * height;
         for (int i = 0; i < area; i++)

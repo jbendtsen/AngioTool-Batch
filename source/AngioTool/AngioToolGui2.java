@@ -34,6 +34,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
     final NumberEntry elemMinBoxnessPercent;
     final NumberEntry elemMinAreaLengthRatio;
     final ColorSizeEntry elemRemapColors;
+    final JTextField textBrightnessSegments = new JTextField();
     final JLabel labelSigmas = new JLabel();
     final JTextField textSigmas = new JTextField();
     final JLabel labelIntensity = new JLabel();
@@ -70,7 +71,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         initButton(btnHelp, AngioTool.ATHelp, "Help");
 
         labelAnalysis.setText("Analysis");
-        BatchUtils.setNewFontSizeOn(labelAnalysis, 20);
+        Misc.setNewFontSizeOn(labelAnalysis, 20);
 
         labelSkeletonizer.setText("Skeletonizer:");
 
@@ -101,7 +102,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
 
         labelSigmas.setText("Vessel Diameters list");
 
-        textSigmas.setText(BatchUtils.formatDoubleArray(analyzerParams.sigmas, "12"));
+        textSigmas.setText(Misc.formatDoubleArray(analyzerParams.sigmas, "12"));
         textSigmas.setToolTipText("List of Sigmas (numbers)");
 
         labelIntensity.setText("Vessel Intensity range");
@@ -110,7 +111,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         textMaxIntensity.setText("" + analyzerParams.thresholdHigh);
 
         labelOverlay.setText("Overlay");
-        BatchUtils.setNewFontSizeOn(labelOverlay, 20);
+        Misc.setNewFontSizeOn(labelOverlay, 20);
 
         elemOutline = new ColorSizeEntry("Outline:", analyzerParams.shouldDrawOutline, analyzerParams.outlineSize, analyzerParams.outlineColor);
         elemBranches = new ColorSizeEntry("Branches:", analyzerParams.shouldDrawBranchPoints, analyzerParams.branchingPointsSize, analyzerParams.branchingPointsColor);
@@ -128,6 +129,8 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
 
         elemRemapColors = new ColorSizeEntry("Target Color:", analyzerParams.shouldRemapColors, analyzerParams.narrowingColorFactor, analyzerParams.targetRemapColor);
         elemRemapColors.units.setText("x");
+
+        textBrightnessSegments.setText(Misc.formatIntVecTwoPointArray(analyzerParams.brightnessLineSegments));
 
         rbImageOriginal.setText("Keep Original Colors");
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
@@ -211,7 +214,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         elemRemoveParticles.update(analyzerParams.shouldRemoveSmallParticles, analyzerParams.removeSmallParticlesThreshold);
         elemFillHoles.update(analyzerParams.shouldFillHoles, analyzerParams.fillHolesValue);
 
-        textSigmas.setText(BatchUtils.formatDoubleArray(analyzerParams.sigmas, "12"));
+        textSigmas.setText(Misc.formatDoubleArray(analyzerParams.sigmas, "12"));
         textMinIntensity.setText("" + analyzerParams.thresholdLow);
         textMaxIntensity.setText("" + analyzerParams.thresholdHigh);
 
@@ -225,6 +228,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         elemMinAreaLengthRatio.update(analyzerParams.shouldApplyMinAreaLength, analyzerParams.minAreaLengthRatio);
 
         elemRemapColors.update(analyzerParams.shouldRemapColors, analyzerParams.narrowingColorFactor, analyzerParams.targetRemapColor);
+        textBrightnessSegments.setText(Misc.formatIntVecTwoPointArray(analyzerParams.brightnessLineSegments));
 
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
         rbImageIsolated.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && !analyzerParams.shouldExpandOutputToGrayScale);
@@ -250,9 +254,9 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
                 .addGap(0, 0, Short.MAX_VALUE)
                 .addComponent(btnHelp)
             )
-            .addComponent(labelAnalysis)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
+                    .addComponent(labelAnalysis)
                     .addGroup(elemFillHoles.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemRemoveParticles.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemMaxHoleLevelPercent.addToSeqGroup(layout.createSequentialGroup()))
@@ -278,6 +282,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
                     .addGroup(elemMaxSkelIterations.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemResizeInputs.addToSeqGroup(layout.createSequentialGroup()))
                     .addGroup(elemLinearScaleFactor.addToSeqGroup(layout.createSequentialGroup()))
+                    .addComponent(textBrightnessSegments)
                 )
             )
             .addGroup(layout.createSequentialGroup()
@@ -295,8 +300,8 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
             )
             .addComponent(labelOverlay)
             .addGroup(
-                BatchUtils.arrangeParallelEntries(
-                    elemBranches, elemConvexHull, layout, BatchUtils.arrangeParallelEntries(
+                Misc.arrangeParallelEntries(
+                    elemBranches, elemConvexHull, layout, Misc.arrangeParallelEntries(
                         elemOutline, elemSkeleton, layout, layout.createSequentialGroup()
                     ).addGap(20)
                 )
@@ -325,17 +330,15 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
                 .addComponent(btnHelp)
             )
             .addGap(20)
-            .addComponent(labelAnalysis)
-            .addGap(8)
-            .addGroup(
-                elemFillHoles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(labelAnalysis)
                 .addComponent(cbComputeLacunarity)
                 .addComponent(cbComputeThickness)
             )
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addGroup(layout.createSequentialGroup()
+                    .addGroup(elemFillHoles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
                     .addGroup(elemRemoveParticles.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
-                    .addGroup(elemMaxHoleLevelPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)))
                 )
                 .addGroup(layout.createSequentialGroup()
                     .addGap(0, 0, 16)
@@ -349,18 +352,22 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
             )
             .addGroup(
                 elemMaxSkelIterations.addToParaGroup(
-                    elemMinBoxnessPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                    elemMaxHoleLevelPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGroup(
                 elemResizeInputs.addToParaGroup(
-                    elemMinAreaLengthRatio.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                    elemMinBoxnessPercent.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
             )
             .addGroup(
                 elemLinearScaleFactor.addToParaGroup(
-                    elemRemapColors.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                    elemMinAreaLengthRatio.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
                 )
+            )
+            .addGroup(
+                elemRemapColors.addToParaGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE))
+                .addComponent(textBrightnessSegments)
             )
             .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
@@ -461,10 +468,10 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
         }
 
         if (image == null) {
-            BatchUtils.showDialogBox(
+            Misc.showDialogBox(
                 "Failed to analyze image",
                 error != null ?
-                    BatchUtils.buildDialogMessageFromException(error) :
+                    Misc.buildDialogMessageFromException(error) :
                     "Image file could not be read"
             );
             return;
@@ -491,11 +498,11 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
     {
         if (helpHtmlData == null) {
             try (InputStream in = getClass().getResourceAsStream("/manual.html")) {
-                ByteVectorOutputStream vec = BatchUtils.readFullyAsVector(in);
+                ByteVectorOutputStream vec = Misc.readFullyAsVector(in);
                 this.helpHtmlData = vec.copy();
             }
             catch (Exception ex) {
-                BatchUtils.showExceptionInDialogBox(ex);
+                Misc.showExceptionInDialogBox(ex);
                 return;
             }
         }
@@ -506,11 +513,11 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
 
     File openImageFile()
     {
-        JFileChooser fc = BatchUtils.createFileChooser();
+        JFileChooser fc = Misc.createFileChooser();
         fc.setDialogTitle("Open Image to View/Analyze");
         fc.setDialogType(JFileChooser.OPEN_DIALOG);
         fc.setCurrentDirectory(new File(defaultPath));
-        BatchUtils.addImageFileFilters(fc);
+        Misc.addImageFileFilters(fc);
         return fc.showOpenDialog(this) == 0 ? fc.getSelectedFile() : null;
     }
 
@@ -562,8 +569,11 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.getValue(),
             elemRemapColors.cb.isSelected(),
+            1.0, // hueTransformWeight
+            1.0, // brightnessTransformWeight
             elemRemapColors.color,
             elemRemapColors.getValue(),
+            Misc.getSomeInts(textBrightnessSegments.getText()),
             elemMaxHoleLevelPercent.cb.isSelected(),
             elemMaxHoleLevelPercent.getValue() / 100.0,
             elemMinBoxnessPercent.cb.isSelected(),
@@ -574,7 +584,7 @@ public class AngioToolGui2 extends JFrame implements ColorSizeEntry.Listener, Ac
             elemRemoveParticles.getValue(),
             elemFillHoles.cb.isSelected(),
             elemFillHoles.getValue(),
-            BatchUtils.getSomeDoubles(textSigmas.getText()),
+            Misc.getSomeDoubles(textSigmas.getText()),
             Integer.parseInt(textMaxIntensity.getText()),
             Integer.parseInt(textMinIntensity.getText()),
             shouldUseFastSkel,

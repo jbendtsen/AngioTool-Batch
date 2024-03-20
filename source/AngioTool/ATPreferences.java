@@ -1,6 +1,6 @@
 package AngioTool;
 
-import Utils.BatchUtils;
+import Utils.Misc;
 import Utils.ByteVectorOutputStream;
 import Utils.RefVector;
 import Pixels.Rgb;
@@ -27,7 +27,7 @@ public class ATPreferences
         Field[] fields = params.getClass().getDeclaredFields();
         try {
             for (Field f : fields) {
-                if (!BatchUtils.shouldPersistField(f))
+                if (!Misc.shouldPersistField(f))
                     continue;
 
                 String name = f.getName();
@@ -42,7 +42,7 @@ public class ATPreferences
             }
         }
         catch (IllegalAccessException ex) {
-            BatchUtils.showExceptionInDialogBox(ex);
+            Misc.showExceptionInDialogBox(ex);
             return;
         }
 
@@ -53,7 +53,7 @@ public class ATPreferences
             out.close();
         }
         catch (IOException ex) {
-            BatchUtils.showExceptionInDialogBox(ex);
+            Misc.showExceptionInDialogBox(ex);
         }
     }
 
@@ -63,7 +63,7 @@ public class ATPreferences
         String text = "";
 
         try (InputStream in = new FileInputStream(new File(atFolder, fileName))) {
-            ByteVectorOutputStream vec = BatchUtils.readFullyAsVector(in);
+            ByteVectorOutputStream vec = Misc.readFullyAsVector(in);
             text = vec.toString();
         }
 
@@ -181,7 +181,7 @@ public class ATPreferences
     {
         Object array;
         if (type.equals("double[]")) {
-            array = BatchUtils.getSomeDoubles(value);
+            array = Misc.getSomeDoubles(value);
         }
         else {
             throw new Exception("ATPreferences.parseArray() only works with \"double[]\", not \"" + type + "\"");

@@ -1,6 +1,6 @@
 package AngioTool;
 
-import Utils.BatchUtils;
+import Utils.Misc;
 import Utils.RefVector;
 import java.awt.Dimension;
 import java.awt.EventQueue;
@@ -46,7 +46,7 @@ public class AngioTool
         }
         catch (Throwable t) {
             t.printStackTrace();
-            BatchUtils.showExceptionInDialogBox(t.getCause());
+            Misc.showExceptionInDialogBox(t.getCause());
             return;
         }
 
@@ -87,7 +87,7 @@ public class AngioTool
             ATMinus = createImageIcon(at, "/images/minus.png");
         }
         catch (Throwable ex) {
-            BatchUtils.showExceptionInDialogBox(ex);
+            Misc.showExceptionInDialogBox(ex);
         }
 
         RefVector<String> errors = new RefVector<>(String.class);
@@ -101,7 +101,7 @@ public class AngioTool
         catch (Exception ignored) {}
 
         if (errors.size > 0)
-            BatchUtils.showDialogBox("Configuration parsing error", String.join("\n", errors));
+            Misc.showDialogBox("Configuration parsing error", String.join("\n", errors));
 
         AngioToolGui2 angioToolGui = new AngioToolGui2(analyzerParams, batchParams.defaultPath);
         angioToolGui.setLocation(new Point(200, 250));
