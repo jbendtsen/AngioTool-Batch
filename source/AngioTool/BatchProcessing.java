@@ -213,7 +213,7 @@ public class BatchProcessing
         File excelPath = new File(batchParams.excelFilePath);
         SpreadsheetWriter writer;
         try {
-            writer = Analyzer.createWriterWithNewSheet(originalSheets, excelPath.getParentFile(), excelPath.getName());
+            writer = createBatchWriterWithNewSheet(originalSheets, excelPath.getParentFile(), excelPath.getName(), params);
         }
         catch (IOException ex) {
             Misc.showExceptionInDialogBox(ex);
@@ -305,7 +305,7 @@ public class BatchProcessing
             }
 
             try {
-                Analyzer.writeResultToSheet(writer, result.stats);
+                writeBatchResultToSheet(writer, result.stats);
             }
             catch (IOException ex) {
                 workers.cancellationToken.set(true);
@@ -352,6 +352,7 @@ public class BatchProcessing
             data.analysisImage.buf,
             inputImage.pixels,
             inputImage.pixels,
+            null,
             inputImage.width,
             inputImage.height,
             inputImage.brightestChannel
@@ -472,5 +473,105 @@ public class BatchProcessing
                 images.add(f);
             }
         }
+    }
+
+    public static SpreadsheetWriter createBatchWriterWithNewSheet(
+        ArrayList<XlsxReader.SheetCells> originalSheets,
+        File folder,
+        String sheetName,
+        AnalyzerParameters params
+    ) throws IOException
+    {
+        SpreadsheetWriter writer = new SpreadsheetWriter(folder, sheetName);
+        writer.addSheets(originalSheets);
+
+        writer.writeRow(
+            "Settings"
+        );
+        writer.writeRow(
+            "Low Threshold",
+            "High Threshold",
+            "Vessel Thickness",
+            "Small Particles",
+            "Fill Holes",
+            "Max Hole Level",
+            "Min Boxness",
+            "Min Area Length Ratio",
+            "Skeletonizer",
+            "Max Skeleton Steps",
+            "Scaling Factor"
+        );
+        writer.writeRow(
+            params.thresholdLow,
+            params.thresholdHigh,
+            Misc.formatDoubleArray(params.sigmas, ""),
+            params.removeSmallParticlesThreshold,
+            params.fillHolesValue,
+            params.brightShapeThresholdFactor,
+            params.minBoxness,
+            params.minAreaLengthRatio,
+            params.shouldUseFastSkeletonizer ? "Fast" : "Thorough",
+            params.maxSkelIterations,
+            params.linearScalingFactor
+        );
+        writer.writeRow(
+            "Results"
+        );
+        writer.writeRow(
+            "Image Name",
+            "Date",
+            "Time",
+            "Image Location",
+            "Width",
+            "Height",
+            "Explant Area",
+            "Vessels Area",
+            "Vessels Percentage Area",
+            "Total Number of Junctions",
+            "Junctions Density",
+            "Total Vessels Length",
+            "Average Vessels Length",
+            "Total Number of End Points",
+            "Average Vessel Diameter",
+            "Medial E Lacunarity",
+            "Mean E Lacunarity",
+            "E Lacunarity Curve",
+            "Medial F Lacunarity",
+            "Mean F Lacunarity",
+            "F Lacunarity Curve"
+        );
+
+        return writer;
+    }
+
+    public static void writeBatchResultToSheet(SpreadsheetWriter sw, Analyzer.Stats stats) throws IOException
+    {
+        Date today = new Date();
+        String dateOut = sw.dateFormatter.format(today);
+        String timeOut = sw.timeFormatter.format(today);
+
+        sw.writeRow(
+            stats.imageFileName,
+            dateOut,
+            timeOut,
+            stats.imageAbsolutePath,
+            stats.imageWidth,
+            stats.imageHeight,
+            stats.allantoisMMArea,
+            stats.vesselMMArea,
+            stats.vesselPercentageArea,
+            stats.totalNJunctions,
+            stats.junctionsPerScaledArea,
+            stats.totalLength,
+            stats.averageBranchLength,
+            stats.totalNEndPoints,
+            stats.averageVesselDiameter,
+            stats.ELacunarityMedial,
+            stats.meanEl,
+            stats.ELacunarityCurve,
+            stats.FLacunarityMedial,
+            stats.meanFl,
+            stats.FLacunarityCurve
+        );
     }
 }

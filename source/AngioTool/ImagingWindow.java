@@ -1,10 +1,12 @@
 package AngioTool;
 
+import Algorithms.PreprocessColor;
 import Pixels.ArgbBuffer;
 import Pixels.Canvas;
 import Pixels.ImageFile;
-import Utils.Misc;
+import Utils.FloatBufferPool;
 import Utils.ISliceRunner;
+import Utils.Misc;
 import Utils.RefVector;
 import Xlsx.*;
 import java.awt.Color;
@@ -41,6 +43,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         ArgbBuffer source;
         int[] rowScratch;
         float[] blurWnd;
+        float[] luminanceTable;
         int imgWidth;
         int imgHeight;
 
@@ -90,6 +93,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             this.imgHeight = source.height;
             this.rowScratch = new int[Math.max(imgWidth, imgHeight)];
             this.blurWnd = new float[25 * 3];
+            this.luminanceTable = new float[255];
             this.drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
             this.backgroundColor = new Color(0);
             this.overlayBackColor = new Color(32, 48, 128, 192);
@@ -407,6 +411,22 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             this.didComputeLacunarity = params.shouldComputeLacunarity;
             this.didComputeThickness = params.shouldComputeThickness;
 
+            float[] preprocessedImage = null;
+            if (params.shouldRemapColors && params.shouldExpandOutputToGrayScale) {
+                preprocessedImage = FloatBufferPool.acquireAsIs(imgWidth * imgHeight);
+                PreprocessColor.transformToMonoFloatArray(
+                    preprocessedImage,
+                    source.pixels,
+                    imgWidth,
+                    imgHeight,
+                    (float)params.hueTransformWeight,
+                    (float)params.brightnessTransformWeight,
+                    params.targetRemapColor.getRGB(),
+                    params.voidRemapColor.getRGB(),
+                    luminanceTable
+                );
+            }
+
             Analyzer.drawOverlay(
                 params,
                 data.convexHull,
@@ -414,10 +434,14 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                 data.analysisImage.buf,
                 outPixels,
                 source.pixels,
+                preprocessedImage,
                 imgWidth,
                 imgHeight,
                 source.brightestChannel
             );
+
+            if (preprocessedImage != null)
+                FloatBufferPool.release(preprocessedImage);
 
             if (pendingParams != null) {
                 notifyImageProcessing(false);
@@ -651,6 +675,13 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
     void dispatchAnalysisTask(AnalyzerParameters params)
     {
+        if (params.shouldRemapColors)
+            PreprocessColor.computeBrightnessTable(
+                imageUi.luminanceTable,
+                params.brightnessLineSegments,
+                params.brightnessLineSegments.length / 2
+            );
+
         ImagingWindow.threadPool.submit(() -> {
             try {
                 analyzerData.restart();

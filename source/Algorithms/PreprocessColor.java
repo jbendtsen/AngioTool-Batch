@@ -5,6 +5,10 @@ import java.util.Arrays;
 
 public class PreprocessColor
 {
+    static final float RED_WEIGHT   = 0.299f;
+    static final float GREEN_WEIGHT = 0.587f;
+    static final float BLUE_WEIGHT  = 0.114f;
+
     public static boolean computeBrightnessTable(float[] table, int[] lineSegments, int nPoints)
     {
         if (nPoints <= 0)
@@ -77,23 +81,10 @@ public class PreprocessColor
         float weightBrightness,
         int targetColor,
         int voidColor,
-        boolean useTrueLuminance,
         float[] brightnessTable
     ) {
-        float redWeight, greenWeight, blueWeight;
-        if (useTrueLuminance) {
-            redWeight = 0.299f;
-            greenWeight = 0.587f;
-            blueWeight = 0.114f;
-        }
-        else {
-            redWeight = 0.328125f;
-            greenWeight = 0.34375f;
-            blueWeight = 0.328125f;
-        }
-
         if (weightColor <= 0f) {
-            computeImageBrightness(output, pixels, width, height, brightnessTable, redWeight, greenWeight, blueWeight);
+            computeImageBrightness(output, pixels, width, height, brightnessTable);
             return;
         }
 
@@ -142,7 +133,7 @@ public class PreprocessColor
             float diff = narrowingFactor * Math.min(6f - dHue, dHue);
             float colorValue = 255f * Math.min(Math.max(1f - diff, 0f), 1f);
 
-            int idx = (int)(r*redWeight + g*greenWeight + b*blueWeight);
+            int idx = (int)(r * RED_WEIGHT + g * GREEN_WEIGHT + b * BLUE_WEIGHT);
             float brightnessValue = brightnessTable[Math.min(idx, highestIdx)];
 
             output[i] = colorFactor * colorValue + brightnessFactor * brightnessValue;
@@ -154,10 +145,7 @@ public class PreprocessColor
         int[] pixels,
         int width,
         int height,
-        float[] brightnessTable,
-        float redWeight,
-        float greenWeight,
-        float blueWeight
+        float[] brightnessTable
     ) {
         int area = width * height;
         final float tableSizeWithScaling = (float)brightnessTable.length / 255f;
@@ -165,9 +153,9 @@ public class PreprocessColor
 
         for (int i = 0; i < area; i++) {
             int rgb = pixels[i];
-            float r = redWeight   * ((rgb >> 16) & 0xff);
-            float g = greenWeight * ((rgb >> 8) & 0xff);
-            float b = blueWeight  * (rgb & 0xff);
+            float r = RED_WEIGHT   * ((rgb >> 16) & 0xff);
+            float g = GREEN_WEIGHT * ((rgb >> 8) & 0xff);
+            float b = BLUE_WEIGHT  * (rgb & 0xff);
             int idx = (int)(tableSizeWithScaling * (r+g+b));
             output[i] = brightnessTable[Math.min(idx, highestIdx)];
         }

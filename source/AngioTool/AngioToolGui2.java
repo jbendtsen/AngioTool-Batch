@@ -148,6 +148,9 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         elemVoidColor = new ColorElement("Off Color", analyzerParams.voidRemapColor);
         elemTargetColor = new ColorElement("Target Color", analyzerParams.targetRemapColor);
 
+        elemVoidColor.setColorChangeListener(this);
+        elemTargetColor.setColorChangeListener(this);
+
         textHueWeight.setText(Misc.formatDouble(analyzerParams.hueTransformWeight));
         textBrightnessWeight.setText(Misc.formatDouble(analyzerParams.brightnessTransformWeight));
 
@@ -624,8 +627,8 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             elemResizeInputs.cb.isSelected(),
             elemResizeInputs.getValue(),
             cbTransformColors.isSelected(),
-            Double.parseDouble(textHueWeight.getText()),
-            Double.parseDouble(textBrightnessWeight.getText()),
+            Misc.parseDouble(textHueWeight.getText(), 0.0),
+            Misc.parseDouble(textBrightnessWeight.getText(), 0.0),
             elemTargetColor.color,
             elemVoidColor.color,
             Misc.getSomeInts(textBrightnessSegments.getText()),
@@ -640,8 +643,8 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             elemFillHoles.cb.isSelected(),
             elemFillHoles.getValue(),
             Misc.getSomeDoubles(textSigmas.getText()),
-            Integer.parseInt(textMaxIntensity.getText()),
-            Integer.parseInt(textMinIntensity.getText()),
+            Misc.parseInt(textMaxIntensity.getText(), 255),
+            Misc.parseInt(textMinIntensity.getText(), 0),
             shouldUseFastSkel,
             elemMaxSkelIterations.cb.isSelected(),
             (int)elemMaxSkelIterations.getValue(),

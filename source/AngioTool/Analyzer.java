@@ -133,7 +133,6 @@ public class Analyzer
                 (float)params.brightnessTransformWeight,
                 params.targetRemapColor.getRGB(),
                 params.voidRemapColor.getRGB(),
-                true,
                 data.brightnessRemapTable
             );
         else
@@ -360,29 +359,38 @@ public class Analyzer
         byte[] analysisImage,
         int[] outputImage,
         int[] inputImage,
+        float[] luminanceImage,
         int width,
         int height,
         int brightestChannel
     ) {
         int area = width * height;
 
-        if (params.shouldIsolateBrightestChannelInOutput) {
-            if (params.shouldExpandOutputToGrayScale) {
-                int shift = 8 * (2 - brightestChannel);
-                for (int i = 0; i < area; i++) {
-                    int lum = (inputImage[i] >>> shift) & 0xff;
-                    outputImage[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
-                }
-            }
-            else {
-                int mask = 0xff << (8 * (2 - brightestChannel));
-                for (int i = 0; i < area; i++)
-                    outputImage[i] = 0xff000000 | (inputImage[i] & mask);
+        if (luminanceImage != null) {
+            for (int i = 0; i < area; i++) {
+                int v = Math.min(Math.max((int)luminanceImage[i], 0), 255);
+                outputImage[i] = 0xff000000 | (v << 16) | (v << 8) | v;
             }
         }
         else {
-            for (int i = 0; i < area; i++)
-                outputImage[i] = inputImage[i] | 0xff000000;
+            if (params.shouldIsolateBrightestChannelInOutput) {
+                if (params.shouldExpandOutputToGrayScale) {
+                    int shift = 8 * (2 - brightestChannel);
+                    for (int i = 0; i < area; i++) {
+                        int lum = (inputImage[i] >>> shift) & 0xff;
+                        outputImage[i] = 0xff000000 | (lum << 16) | (lum << 8) | lum;
+                    }
+                }
+                else {
+                    int mask = 0xff << (8 * (2 - brightestChannel));
+                    for (int i = 0; i < area; i++)
+                        outputImage[i] = 0xff000000 | (inputImage[i] & mask);
+                }
+            }
+            else {
+                for (int i = 0; i < area; i++)
+                    outputImage[i] = inputImage[i] | 0xff000000;
+            }
         }
 
         if (params.shouldDrawOutline)
