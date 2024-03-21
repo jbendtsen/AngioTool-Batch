@@ -7,7 +7,6 @@ public class ArgbBuffer
     public int height;
 
     public int brightestChannel;
-    //public float brightestPixel;
 
     public ArgbBuffer() {}
 

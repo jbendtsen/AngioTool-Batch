@@ -167,8 +167,7 @@ public class XmlParser {
                 continue;
             }
 
-            boolean isTokenChar = c == '-' || c == '_' || c == '.' || c == ':' || c == '\'' || c == '"' ||
-                (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+            boolean isTokenChar = prev != '\\' && (c < 0 || c > ' ') && c != '<' && c != '>';
 
             if (c == '"' || c == '\'') {
                 if (quoteChar == 0) {
@@ -200,13 +199,10 @@ public class XmlParser {
                     prev = c;
                     continue;
                 }
-                else if (isTokenChar) {
-                    
-                }
             }
 
             if (tagLenNonWs >= 0) {
-                if (isTokenChar) {
+                if (isTokenChar && c != '?' && c != '/' && c != '=') {
                     if (cur.nameStart == 0) {
                         cur.nameStart = i;
                     }

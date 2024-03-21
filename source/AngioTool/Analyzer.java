@@ -33,17 +33,6 @@ public class Analyzer
         public String imageAbsolutePath;
         public int imageWidth;
         public int imageHeight;
-        public int thresholdLow;
-        public int thresholdHigh;
-        public double[] sigmas;
-        public double removeSmallParticlesThreshold;
-        public double fillHolesValue;
-        public double brightShapeThresholdFactor;
-        public double minBoxness;
-        public double minAreaLengthRatio;
-        public boolean usedFastSkeletonizer;
-        public int maxSkelIterations;
-        public double linearScalingFactor;
         public double allantoisMMArea;
         public double vesselMMArea;
         public double vesselPercentageArea;
@@ -158,8 +147,6 @@ public class Analyzer
 
         FloatBufferPool.release(tubenessInput);
 
-        //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " tubeness.pgm");
-
         Misc.thresholdFlexible(
             analysisImage,
             inputImage.width,
@@ -167,8 +154,6 @@ public class Analyzer
             params.thresholdLow,
             params.thresholdHigh
         );
-
-        //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, inFile.getAbsolutePath() + " thresholded.pgm");
 
         byte[] tempImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
@@ -178,9 +163,6 @@ public class Analyzer
         Filters.filterMin(analysisImage, tempImage, inputImage.width, inputImage.height); // dilate
 
         ByteBufferPool.release(tempImage);
-
-        //ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, "filtered.pgm");
-
         int[] particleBuf = IntBufferPool.acquireAsIs(inputImage.width * inputImage.height);
 
         Particles.computeShapes(
@@ -307,21 +289,8 @@ public class Analyzer
         stats.imageAbsolutePath = inFile.getAbsolutePath();
         stats.imageWidth = inputImage.width;
         stats.imageHeight = inputImage.height;
-        stats.thresholdLow = params.thresholdLow;
-        stats.thresholdHigh = params.thresholdHigh;
-        stats.sigmas = params.sigmas;
-        stats.removeSmallParticlesThreshold = params.shouldRemoveSmallParticles ? params.removeSmallParticlesThreshold : 0.0;
-        stats.fillHolesValue = params.shouldFillHoles ? params.fillHolesValue : 0.0;
-        stats.brightShapeThresholdFactor = maxHoleLevel;
-        stats.minBoxness = minBoxness;
-        stats.minAreaLengthRatio = minAreaLengthRatio;
-        stats.usedFastSkeletonizer = params.shouldUseFastSkeletonizer;
-        stats.maxSkelIterations = maxSkelIterations;
-        stats.linearScalingFactor = linearScalingFactor;
-        //stats.allantoisPixelsArea = data.convexHullArea;
         stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;
         stats.totalNJunctions = data.skelResult.isolatedJunctions.size;
-        //stats.junctionsPerArea = (double)data.skelResult.isolatedJunctions.size / data.convexHullArea;
         stats.junctionsPerScaledArea = (double)data.skelResult.isolatedJunctions.size / stats.allantoisMMArea;
         stats.vesselMMArea = (double)data.vesselPixelArea * areaScalingFactor;
         stats.vesselPercentageArea = stats.vesselMMArea * 100.0 / stats.allantoisMMArea;
@@ -332,9 +301,6 @@ public class Analyzer
         stats.FLacunarityMedial = data.lacunarity.flMedial;
         stats.meanEl = data.lacunarity.elMean;
         stats.meanFl = data.lacunarity.flMean;
-
-        //double[] branchLengths = data.skelResult.getAverageBranchLength();
-        //int[] branchNumbers = data.skelResult.getBranches();
 
         double totalLength = 0.0;
         int nTrees = data.skelResult.treeCount;
@@ -497,6 +463,12 @@ public class Analyzer
             "Skeletonizer",
             "Max Skeleton Steps",
             "Scaling Factor",
+            "Transformed Colors",
+            "Hue Transform Weight",
+            "Luminance Transform Weight",
+            "Target Color",
+            "Off Color",
+            "Brightness Graph",
             "Explant Area",
             "Vessels Area",
             "Vessels Percentage Area",
@@ -517,7 +489,7 @@ public class Analyzer
         return writer;
     }
 
-    public static void writeResultToSheet(SpreadsheetWriter sw, Stats stats) throws IOException
+    public static void writeResultToSheet(SpreadsheetWriter sw, AnalyzerParameters params, Stats stats) throws IOException
     {
         Date today = new Date();
         String dateOut = sw.dateFormatter.format(today);
@@ -530,17 +502,23 @@ public class Analyzer
             stats.imageAbsolutePath,
             stats.imageWidth,
             stats.imageHeight,
-            stats.thresholdLow,
-            stats.thresholdHigh,
-            Misc.formatDoubleArray(stats.sigmas, ""),
-            stats.removeSmallParticlesThreshold,
-            stats.fillHolesValue,
-            stats.brightShapeThresholdFactor,
-            stats.minBoxness,
-            stats.minAreaLengthRatio,
-            stats.usedFastSkeletonizer ? "Fast" : "Thorough",
-            stats.maxSkelIterations,
-            stats.linearScalingFactor,
+            params.thresholdLow,
+            params.thresholdHigh,
+            Misc.formatDoubleArray(params.sigmas, ""),
+            params.removeSmallParticlesThreshold,
+            params.fillHolesValue,
+            params.brightShapeThresholdFactor,
+            params.minBoxness,
+            params.minAreaLengthRatio,
+            params.shouldUseFastSkeletonizer ? "Fast" : "Thorough",
+            params.maxSkelIterations,
+            params.linearScalingFactor,
+            params.shouldRemapColors ? "Yes" : "No",
+            params.hueTransformWeight,
+            params.brightnessTransformWeight,
+            params.targetRemapColor.toString(),
+            params.voidRemapColor.toString(),
+            Misc.formatIntVecTwoPointArray(params.brightnessLineSegments),
             stats.allantoisMMArea,
             stats.vesselMMArea,
             stats.vesselPercentageArea,

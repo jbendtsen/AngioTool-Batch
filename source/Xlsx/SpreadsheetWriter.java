@@ -112,6 +112,7 @@ public class SpreadsheetWriter {
         if (idx == null) {
             int len = stringsList.size;
             stringsList.add(str);
+            stringsMap.put(str, len);
             return len;
         }
         return idx;

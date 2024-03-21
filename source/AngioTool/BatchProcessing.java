@@ -499,7 +499,13 @@ public class BatchProcessing
             "Min Area Length Ratio",
             "Skeletonizer",
             "Max Skeleton Steps",
-            "Scaling Factor"
+            "Scaling Factor",
+            "Transformed Colors",
+            "Hue Transform Weight",
+            "Luminance Transform Weight",
+            "Target Color",
+            "Off Color",
+            "Brightness Graph"
         );
         writer.writeRow(
             params.thresholdLow,
@@ -512,7 +518,13 @@ public class BatchProcessing
             params.minAreaLengthRatio,
             params.shouldUseFastSkeletonizer ? "Fast" : "Thorough",
             params.maxSkelIterations,
-            params.linearScalingFactor
+            params.linearScalingFactor,
+            params.shouldRemapColors ? "Yes" : "No",
+            params.hueTransformWeight,
+            params.brightnessTransformWeight,
+            params.targetRemapColor.toString(),
+            params.voidRemapColor.toString(),
+            Misc.formatIntVecTwoPointArray(params.brightnessLineSegments)
         );
         writer.writeRow(
             "Results"

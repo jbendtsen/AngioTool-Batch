@@ -18,10 +18,6 @@ import javax.imageio.ImageIO;
 
 public class ImageFile
 {
-    static final float RED_WEIGHT   = 0.299f;
-    static final float GREEN_WEIGHT = 0.587f;
-    static final float BLUE_WEIGHT  = 0.114f;
-
     public static void releaseImage(ArgbBuffer image)
     {
         image.pixels = IntBufferPool.release(image.pixels);
@@ -44,7 +40,6 @@ public class ImageFile
         long redTally = 0;
         long greenTally = 0;
         long blueTally = 0;
-        //float brightestPixel = 0f;
 
         int[] resizedPixels = null;
         int[] inputPixels = image.pixels;
@@ -115,7 +110,6 @@ public class ImageFile
                     redTally += r;
                     greenTally += g;
                     blueTally += b;
-                    //brightestPixel = Math.max(brightestPixel, r * RED_WEIGHT + g * GREEN_WEIGHT + b * BLUE_WEIGHT);
                     resizedPixels[idx >> 2] = 0xff000000 | (r << 16) | (g << 8) | b;
                 }
             }
@@ -162,8 +156,6 @@ public class ImageFile
                         (1.0f - xNeigh) * yNeigh * (c & 0xff) +
                         xNeigh * yNeigh * (d & 0xff);
 
-                    //brightestPixel = Math.max(brightestPixel, redValue * RED_WEIGHT + greenValue * GREEN_WEIGHT + blueValue * BLUE_WEIGHT);
-
                     int rr = Math.min(Math.max((int)redValue, 0), 255);
                     int gg = Math.min(Math.max((int)greenValue, 0), 255);
                     int bb = Math.min(Math.max((int)blueValue, 0), 255);
@@ -182,7 +174,6 @@ public class ImageFile
                 redTally += r;
                 greenTally += g;
                 blueTally += b;
-                //brightestPixel = Math.max(brightestPixel, r * RED_WEIGHT + g * GREEN_WEIGHT + b * BLUE_WEIGHT);
                 inputPixels[i] |= 0xff000000;
             }
         }
@@ -203,7 +194,6 @@ public class ImageFile
         image.width = width;
         image.height = height;
         image.brightestChannel = brightestChannel;
-        //image.brightestPixel = brightestPixel > 0f ? brightestPixel : 255f;
 
         return image;
     }

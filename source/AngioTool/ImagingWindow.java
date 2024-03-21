@@ -54,12 +54,11 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         int loadTicks;
         Rectangle areaRect;
 
+        AnalyzerParameters currentParams;
         Analyzer.Stats currentStats;
         RefVector<String> statsStrings;
         int statsWidth;
         int statsLineHeight;
-        boolean didComputeLacunarity;
-        boolean didComputeThickness;
         boolean shouldShowStats;
 
         int zoomLevels;
@@ -101,6 +100,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             this.loadTicks = 0;
             this.areaRect = new Rectangle();
 
+            this.currentParams = null;
             this.currentStats = null;
             this.statsStrings = new RefVector<>(String.class);
             this.statsWidth = 0;
@@ -214,9 +214,9 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                     g.fillOval(centerX + x - 6, centerY + y - 6, 13, 13);
                 }
             }
-            else if (shouldShowStats && this.currentStats != null) {
+            else if (shouldShowStats && this.currentParams != null && this.currentStats != null) {
                 if (this.statsStrings.size == 0) {
-                    double linearScaleFactor = currentStats.linearScalingFactor > 0.0 ? currentStats.linearScalingFactor : 1.0;
+                    double linearScaleFactor = currentParams.linearScalingFactor > 0.0 ? currentParams.linearScalingFactor : 1.0;
                     double areaScaleFactor = linearScaleFactor * linearScaleFactor;
                     double imageArea = currentStats.imageWidth * currentStats.imageHeight * areaScaleFactor;
                     double allantoisPercentage = currentStats.allantoisMMArea * 100.0 / imageArea;
@@ -254,13 +254,13 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                         currentStats.totalNEndPoints
                     );
 
-                    if (this.didComputeThickness) {
+                    if (currentParams.shouldComputeThickness) {
                         statsStrings.add(
                             "Average Vessel Diameter: " +
                             Misc.formatDouble(currentStats.averageVesselDiameter, 3)
                         );
                     }
-                    if (this.didComputeLacunarity) {
+                    if (currentParams.shouldComputeLacunarity) {
                         statsStrings.add(
                             "E Lacunarity: Medial, Mean, Curve: " +
                             Misc.formatDouble(currentStats.ELacunarityMedial, 4) + ", " +
@@ -377,6 +377,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         public void notifyImageProcessing(boolean shouldCopyFromSource)
         {
             this.waiting = true;
+            this.currentParams = null;
             this.currentStats = null;
             this.statsStrings.size = 0;
 
@@ -396,6 +397,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
         public AnalyzerParameters onImageFinished(AnalyzerParameters params, Analyzer.Data data, Analyzer.Stats stats)
         {
+            this.currentParams = params;
             this.currentStats = stats;
             this.statsStrings.size = 0;
 
@@ -407,9 +409,6 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                 this.repaint();
                 return null;
             }
-
-            this.didComputeLacunarity = params.shouldComputeLacunarity;
-            this.didComputeThickness = params.shouldComputeThickness;
 
             float[] preprocessedImage = null;
             if (params.shouldRemapColors && params.shouldExpandOutputToGrayScale) {
@@ -471,6 +470,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     AngioToolGui2 parentFrame;
     File inputFile;
     String defaultPath;
+    boolean everSaved;
 
     ImagingDisplay imageUi;
 
@@ -504,6 +504,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         this.imageUi = new ImagingDisplay(image, true);
         this.inputFile = sourceFile;
         this.defaultPath = defaultPath;
+        this.everSaved = false;
 
         this.labelZoom.setText("Zoom:");
         this.btnZoomIn.setIcon(AngioTool.ATPlus);
@@ -781,7 +782,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
     void saveResultSpreadsheet()
     {
-        if (imageUi.currentStats == null)
+        if (imageUi.currentParams == null || imageUi.currentStats == null)
             return;
 
         String existingXlsxFile = textSaveSpreadsheet.getText();
@@ -803,8 +804,19 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         String sheetName = outStrings[0].substring(fileNameOffset);
 
         try {
-            SpreadsheetWriter sw = Analyzer.createWriterWithNewSheet(sheets, folder, sheetName);
-            Analyzer.writeResultToSheet(sw, imageUi.currentStats);
+            SpreadsheetWriter sw;
+            if (everSaved) {
+                sw = new SpreadsheetWriter(folder, sheetName);
+                sw.addSheets(sheets);
+                sw.currentSheetIdx = Math.max(sw.currentSheetIdx - 1, 0);
+            }
+            else {
+                sw = Analyzer.createWriterWithNewSheet(sheets, folder, sheetName);
+            }
+
+            Analyzer.writeResultToSheet(sw, imageUi.currentParams, imageUi.currentStats);
+            everSaved = true;
+
             textSaveSpreadsheet.setText(outStrings[0]);
             labelSpreadsheetWasSaved.setText("saved");
         }
