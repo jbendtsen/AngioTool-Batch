@@ -513,13 +513,12 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         if (imageFile == null)
             return;
 
+        double resizeFactor = elemResizeInputs.cb.isSelected() ? elemResizeInputs.getValue() : 1.0;
+
         ArgbBuffer image = null;
         Exception error = null;
         try {
-            image = ImageFile.acquireImageForAnalysis(
-                imageFile.getAbsolutePath(),
-                elemResizeInputs.cb.isSelected() ? elemResizeInputs.getValue() : 1.0
-            );
+            image = ImageFile.acquireImageForAnalysis(imageFile.getAbsolutePath(), resizeFactor);
         }
         catch (Exception ex) {
             error = ex;
@@ -535,7 +534,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             return;
         }
 
-        imagingWindows.add(new ImagingWindow(this, image, imageFile, defaultPath).showDialog());
+        imagingWindows.add(new ImagingWindow(this, image, resizeFactor, imageFile, defaultPath).showDialog());
 
         updateMemoryMonitor();
     }

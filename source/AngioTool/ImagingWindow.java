@@ -126,6 +126,20 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             this.addMouseWheelListener(this);
         }
 
+        public void setNewImage(ArgbBuffer newImage)
+        {
+            if (source != null)
+                ImageFile.releaseImage(source);
+
+            source = newImage;
+            imgWidth = source.width;
+            imgHeight = source.height;
+            rowScratch = new int[Math.max(imgWidth, imgHeight)];
+            drawingImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
+            imageOriginX = 0.5 * imgWidth;
+            imageOriginY = 0.5 * imgHeight;
+        }
+
         public static double getZoomFactor(int zoomIndex)
         {
             double rounding = (1 << (Math.min(Math.max(-zoomIndex + 2, 2), 16)));
@@ -470,6 +484,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     AngioToolGui2 parentFrame;
     File inputFile;
     String defaultPath;
+    double prevImageScale;
     boolean everSaved;
 
     ImagingDisplay imageUi;
@@ -497,11 +512,12 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     final Analyzer.Data analyzerData = new Analyzer.Data(null, 0);
     final ISliceRunner sliceRunner = new ISliceRunner.Parallel(Analyzer.threadPool);
 
-    public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, File sourceFile, String defaultPath)
+    public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, double imageScale, File sourceFile, String defaultPath)
     {
         super("Analysis - " + sourceFile.getName());
         this.parentFrame = uiFrame;
         this.imageUi = new ImagingDisplay(image, true);
+        this.prevImageScale = imageScale;
         this.inputFile = sourceFile;
         this.defaultPath = defaultPath;
         this.everSaved = false;
@@ -580,6 +596,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
     public void release()
     {
         ImageFile.releaseImage(imageUi.source);
+        imageUi.source = null;
 
         if (imageUi.drawingImage != null) {
             imageUi.drawingImage.flush();
@@ -594,8 +611,12 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             return;
         }
 
-        imageUi.notifyImageProcessing(false);
         setUiInteractivity(false);
+
+        double newResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
+        if (newResizeFactor == prevImageScale)
+            imageUi.notifyImageProcessing(false);
+
         dispatchAnalysisTask(params);
     }
 
@@ -676,6 +697,31 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
     void dispatchAnalysisTask(AnalyzerParameters params)
     {
+        double newResizeFactor = params.shouldResizeImage ? params.resizingFactor : 1.0;
+        boolean needsReload = newResizeFactor != prevImageScale;
+
+        if (needsReload) {
+            release();
+            ArgbBuffer newImage = null;
+            try {
+                newImage = ImageFile.acquireImageForAnalysis(inputFile.getAbsolutePath(), newResizeFactor);
+                if (newImage == null)
+                    throw new IOException("Failed to load image for analysis");
+                imageUi.setNewImage(newImage);
+            }
+            catch (Exception ex) {
+                if (newImage != null)
+                    ImageFile.releaseImage(newImage);
+
+                Misc.showExceptionInDialogBox(ex);
+                setUiInteractivity(true);
+                return;
+            }
+            imageUi.notifyImageProcessing(true);
+        }
+
+        prevImageScale = newResizeFactor;
+
         if (params.shouldRemapColors)
             PreprocessColor.computeBrightnessTable(
                 imageUi.luminanceTable,

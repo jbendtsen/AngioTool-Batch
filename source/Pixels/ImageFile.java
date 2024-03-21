@@ -146,15 +146,15 @@ public class ImageFile
                         (1.0f - xNeigh) * yNeigh * ((c >> 16) & 0xff) +
                         xNeigh * yNeigh * ((d >> 16) & 0xff);
                     float blueValue =
-                        (1.0f - xNeigh) * (1.0f - yNeigh) * ((a >> 8) & 0xff) +
-                        xNeigh * (1.0f - yNeigh) * ((b >> 8) & 0xff) +
-                        (1.0f - xNeigh) * yNeigh * ((c >> 8) & 0xff) +
-                        xNeigh * yNeigh * ((d >> 8) & 0xff);
-                    float greenValue =
                         (1.0f - xNeigh) * (1.0f - yNeigh) * (a & 0xff) +
                         xNeigh * (1.0f - yNeigh) * (b & 0xff) +
                         (1.0f - xNeigh) * yNeigh * (c & 0xff) +
                         xNeigh * yNeigh * (d & 0xff);
+                    float greenValue =
+                        (1.0f - xNeigh) * (1.0f - yNeigh) * ((a >> 8) & 0xff) +
+                        xNeigh * (1.0f - yNeigh) * ((b >> 8) & 0xff) +
+                        (1.0f - xNeigh) * yNeigh * ((c >> 8) & 0xff) +
+                        xNeigh * yNeigh * ((d >> 8) & 0xff);
 
                     int rr = Math.min(Math.max((int)redValue, 0), 255);
                     int gg = Math.min(Math.max((int)greenValue, 0), 255);
