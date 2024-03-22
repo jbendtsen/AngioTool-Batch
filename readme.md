@@ -1,9 +1,9 @@
-# AngioTool-Batch
+# AngioTool 2.0
 
-This is a modified version of AngioTool 0.6a which adds batch processing.
+This is a rewritten version of AngioTool, which features advanced analysis settings and batch processing.
 
-<img style="float: left;" src="screenshots/original-window.png" alt="original window" width="48%">
-<img style="float: right;" src="screenshots/batch-window.png" alt="batch window" width="48%">
+<img style="float: left;" src="screenshots/main-window.png" alt="original window" width="48%">
+<img style="float: right;" src="screenshots/analysis-window.png" alt="batch window" width="48%">
 
 AngioTool is a program designed to analyse eye scans for potential defects,
 using various algorithms to extract data from the scanned image.

@@ -18,7 +18,7 @@ import javax.swing.ImageIcon;
 
 public class AngioTool
 {
-    public static final String VERSION = "AngioTool-Batch 2.0 r8 (16.03.24)";
+    public static final String VERSION = "AngioTool 2.0 r8 (22.03.24)";
     public static final String PREFS_TXT = "AT_Prefs.txt";
     public static final String BATCH_TXT = "AT_BatchPrefs.txt";
 
