@@ -35,10 +35,14 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
     final NumberEntry elemMinAreaLengthRatio;
 
     final JCheckBox cbTransformColors = new JCheckBox();
+    final JLabel labelSaturationFactor = new JLabel();
     final JLabel labelVoidColor = new JLabel();
     final JLabel labelTargetColor = new JLabel();
-    final JLabel labelHueLum = new JLabel();
+    final JLabel labelHueBrightness = new JLabel();
     final JLabel labelBrightnessGraph = new JLabel();
+    final JLabel labelSatPercent = new JLabel();
+    final JLabel labelHbRatio = new JLabel();
+    final JTextField textSaturationFactor = new JTextField();
     final ColorElement elemVoidColor;
     final ColorElement elemTargetColor;
     final JTextField textHueWeight = new JTextField();
@@ -135,11 +139,15 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         cbTransformColors.setText("Transform Colors");
         cbTransformColors.setSelected(analyzerParams.shouldRemapColors);
 
+        labelSaturationFactor.setText("Saturation");
         labelVoidColor.setText("Off");
         labelTargetColor.setText("Target");
-        labelHueLum.setText("Hue : Luminance");
+        labelHueBrightness.setText("Hue : Brightness");
         labelBrightnessGraph.setText("Brightness Graph");
+        labelSatPercent.setText("%");
+        labelHbRatio.setText(":");
 
+        textSaturationFactor.setText(Misc.formatDouble(100.0 * analyzerParams.saturationFactor));
         elemVoidColor = new ColorElement("Off Color", analyzerParams.voidRemapColor);
         elemTargetColor = new ColorElement("Target Color", analyzerParams.targetRemapColor);
 
@@ -150,6 +158,11 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         textBrightnessWeight.setText(Misc.formatDouble(analyzerParams.brightnessTransformWeight));
 
         textBrightnessSegments.setText(Misc.formatIntVecTwoPointArray(analyzerParams.brightnessLineSegments));
+
+        textSaturationFactor.setEnabled(analyzerParams.shouldRemapColors);
+        textHueWeight.setEnabled(analyzerParams.shouldRemapColors);
+        textBrightnessWeight.setEnabled(analyzerParams.shouldRemapColors);
+        textBrightnessSegments.setEnabled(analyzerParams.shouldRemapColors);
 
         rbImageOriginal.setText("Keep Original Colors");
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
@@ -246,6 +259,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         elemMinBoxnessPercent.update(analyzerParams.shouldApplyMinBoxness, 100.0 * analyzerParams.minBoxness);
         elemMinAreaLengthRatio.update(analyzerParams.shouldApplyMinAreaLength, analyzerParams.minAreaLengthRatio);
 
+        textSaturationFactor.setText(Misc.formatDouble(100.0 * analyzerParams.saturationFactor));
         elemVoidColor.update(analyzerParams.voidRemapColor);
         elemTargetColor.update(analyzerParams.targetRemapColor);
         textHueWeight.setText(Misc.formatDouble(analyzerParams.hueTransformWeight));
@@ -307,24 +321,38 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             )
             .addGroup(layout.createSequentialGroup()
                 .addComponent(cbTransformColors)
-                .addGap(8)
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup()
+                    .addComponent(labelSaturationFactor)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(labelSatPercent)
+                        .addGap(4)
+                        .addComponent(textSaturationFactor, 0, 48, 48)
+                    )
+                )
+                .addGap(12)
                 .addGroup(
                     elemVoidColor.addWithWidth(layout.createParallelGroup().addComponent(labelVoidColor))
                 )
+                .addGap(12)
                 .addGroup(
                     elemTargetColor.addWithWidth(layout.createParallelGroup().addComponent(labelTargetColor))
                 )
+                .addGap(0, 0, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup()
-                    .addComponent(labelHueLum)
+                    .addComponent(labelHueBrightness)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(textHueWeight, 0, 48, 48)
+                        .addGap(4)
+                        .addComponent(labelHbRatio)
+                        .addGap(4)
                         .addComponent(textBrightnessWeight, 0, 48, 48)
                     )
                 )
-                .addGroup(layout.createParallelGroup()
-                    .addComponent(labelBrightnessGraph)
-                    .addComponent(textBrightnessSegments, 0, 200, Short.MAX_VALUE)
-                )
+            )
+            .addGroup(layout.createParallelGroup()
+                .addComponent(labelBrightnessGraph)
+                .addComponent(textBrightnessSegments, 0, 200, Short.MAX_VALUE)
             )
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
@@ -408,21 +436,34 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             )
             .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(labelVoidColor)
-                .addComponent(labelTargetColor)
-                .addComponent(labelHueLum)
-                .addComponent(labelBrightnessGraph)
-            )
-            .addGroup(
-                elemTargetColor.addWithHeight(
-                    elemVoidColor.addWithHeight(
-                        layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(cbTransformColors)
+                .addGroup(layout.createSequentialGroup()
+                    .addGap(8)
+                    .addComponent(cbTransformColors)
+                    .addGap(8)
+                )
+                .addGroup(layout.createSequentialGroup()
+                    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                        .addComponent(labelSaturationFactor)
+                        .addComponent(labelVoidColor)
+                        .addComponent(labelTargetColor)
+                        .addComponent(labelHueBrightness)
+                    )
+                    .addGroup(
+                        elemTargetColor.addWithHeight(
+                            elemVoidColor.addWithHeight(
+                                layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                    .addComponent(labelSatPercent)
+                                    .addComponent(textSaturationFactor, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
+                            )
+                        )
+                        .addComponent(textHueWeight, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
+                        .addComponent(labelHbRatio)
+                        .addComponent(textBrightnessWeight, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
                     )
                 )
-                .addComponent(textHueWeight, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
-                .addComponent(textBrightnessWeight, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
-                .addComponent(textBrightnessSegments, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
             )
+            .addComponent(labelBrightnessGraph)
+            .addComponent(textBrightnessSegments, MIN_TEXT_HEIGHT, TEXT_HEIGHT, TEXT_HEIGHT)
             .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addComponent(labelSigmas)
@@ -477,6 +518,8 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             openHelpWindow();
         else if (source == btnReset)
             setAnalysisUi(AnalyzerParameters.defaults());
+        else if (source == cbTransformColors)
+            toggleTransformColors();
         else
             maybeUpdateImagingWindows();
     }
@@ -574,6 +617,15 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         return fc.showOpenDialog(this) == 0 ? fc.getSelectedFile() : null;
     }
 
+    void toggleTransformColors()
+    {
+        boolean enabled = cbTransformColors.isSelected();
+        textSaturationFactor.setEnabled(enabled);
+        textHueWeight.setEnabled(enabled);
+        textBrightnessWeight.setEnabled(enabled);
+        textBrightnessSegments.setEnabled(enabled);
+    }
+
     void maybeUpdateImagingWindows()
     {
         AnalyzerParameters params = buildAnalyzerParamsFromUi();
@@ -626,6 +678,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             Misc.parseDouble(textBrightnessWeight.getText(), 0.0),
             elemTargetColor.color,
             elemVoidColor.color,
+            Misc.parseDouble(textSaturationFactor.getText(), 100.0) / 100.0,
             Misc.getSomeInts(textBrightnessSegments.getText()),
             elemMaxHoleLevelPercent.cb.isSelected(),
             elemMaxHoleLevelPercent.getValue() / 100.0,

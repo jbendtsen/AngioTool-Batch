@@ -13,6 +13,7 @@ public class AnalyzerParameters {
     public double brightnessTransformWeight;
     public Rgb targetRemapColor;
     public Rgb voidRemapColor;
+    public double saturationFactor;
     public int[] brightnessLineSegments;
     public boolean shouldFillBrightShapes;
     public double brightShapeThresholdFactor;
@@ -59,6 +60,7 @@ public class AnalyzerParameters {
         double brightnessTransformWeight,
         Rgb targetRemapColor,
         Rgb voidRemapColor,
+        double saturationFactor,
         int[] brightnessLineSegments,
         boolean shouldFillBrightShapes,
         double brightShapeThresholdFactor,
@@ -102,6 +104,7 @@ public class AnalyzerParameters {
         this.brightnessTransformWeight = brightnessTransformWeight;
         this.targetRemapColor = targetRemapColor;
         this.voidRemapColor = voidRemapColor;
+        this.saturationFactor = saturationFactor;
         this.brightnessLineSegments = brightnessLineSegments;
         this.shouldFillBrightShapes = shouldFillBrightShapes;
         this.brightShapeThresholdFactor = brightShapeThresholdFactor;
@@ -167,6 +170,7 @@ public class AnalyzerParameters {
         p.shouldRemapColors = false;
         p.targetRemapColor = new Rgb("FF0000");
         p.voidRemapColor = new Rgb("FF9900");
+        p.saturationFactor = 1.0;
         p.hueTransformWeight = 1.0;
         p.brightnessTransformWeight = 1.0;
         p.brightnessLineSegments = new int[] {0, 0, 100, 100};
@@ -197,6 +201,7 @@ public class AnalyzerParameters {
             other.brightnessTransformWeight == brightnessTransformWeight &&
             other.targetRemapColor.value == targetRemapColor.value &&
             other.voidRemapColor.value == voidRemapColor.value &&
+            other.saturationFactor == saturationFactor &&
             Misc.isIntArrayIdentical(other.brightnessLineSegments, brightnessLineSegments) &&
             other.shouldFillBrightShapes == shouldFillBrightShapes &&
             other.brightShapeThresholdFactor == brightShapeThresholdFactor &&
@@ -249,6 +254,8 @@ public class AnalyzerParameters {
             errors.add("Off color must not be on the gray scale, ie. it must have a hue (not " + targetRemapColor.toString() + ")");
         if (shouldRemapColors && Misc.getHue(targetRemapColor.getRGB()) == Misc.getHue(voidRemapColor.getRGB()))
             errors.add("Target and off colors must have a different hue");
+        if (shouldRemapColors && (saturationFactor < 0.0 || saturationFactor > 1.0))
+            errors.add("Saturation factor must be between 0% and 100% inclusive (not " + (saturationFactor * 100.0) + "%)");
         if (shouldRemapColors && !PreprocessColor.computeBrightnessTable(null, brightnessLineSegments, brightnessLineSegments.length / 2))
             errors.add("Invalid brightness segment list. Try changing every X coordinate to be unique");
         if (shouldFillBrightShapes && brightShapeThresholdFactor <= 0.0)

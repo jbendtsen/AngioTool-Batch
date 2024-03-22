@@ -73,6 +73,7 @@ public class PreprocessColor
         float weightBrightness,
         int targetColor,
         int voidColor,
+        float saturationFactor,
         float[] brightnessTable
     ) {
         if (weightColor <= 0f) {
@@ -99,6 +100,7 @@ public class PreprocessColor
         final float hueOppositeToTarget = (targetHue + 3f) % 6f;
 
         float highestColorValue = 0f;
+        float nonSaturation = (1f - saturationFactor) * 255f;
 
         for (int i = 0; i < area; i++) {
             int rgb = pixels[i];
@@ -124,7 +126,7 @@ public class PreprocessColor
 
             float dHue = Math.abs(hue - targetHue);
             float diff = narrowingFactor * Math.min(6f - dHue, dHue);
-            float value = dMaxMin * Math.max(1f - diff, 0f);
+            float value = (saturationFactor * dMaxMin + nonSaturation) * Math.max(1f - diff, 0f);
 
             output[i] = value;
             highestColorValue = Math.max(highestColorValue, value);

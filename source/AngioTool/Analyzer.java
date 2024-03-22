@@ -122,6 +122,7 @@ public class Analyzer
                 (float)params.brightnessTransformWeight,
                 params.targetRemapColor.getRGB(),
                 params.voidRemapColor.getRGB(),
+                (float)params.saturationFactor,
                 data.brightnessRemapTable
             );
         else
@@ -465,9 +466,10 @@ public class Analyzer
             "Scaling Factor",
             "Transformed Colors",
             "Hue Transform Weight",
-            "Luminance Transform Weight",
+            "Brightness Weight",
             "Target Color",
             "Off Color",
+            "Saturation Factor",
             "Brightness Graph",
             "Explant Area",
             "Vessels Area",
@@ -518,6 +520,7 @@ public class Analyzer
             params.brightnessTransformWeight,
             params.targetRemapColor.toString(),
             params.voidRemapColor.toString(),
+            params.saturationFactor,
             Misc.formatIntVecTwoPointArray(params.brightnessLineSegments),
             stats.allantoisMMArea,
             stats.vesselMMArea,

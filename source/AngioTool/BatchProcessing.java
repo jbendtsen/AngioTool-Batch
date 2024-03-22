@@ -502,9 +502,10 @@ public class BatchProcessing
             "Scaling Factor",
             "Transformed Colors",
             "Hue Transform Weight",
-            "Luminance Transform Weight",
+            "Brightness Weight",
             "Target Color",
             "Off Color",
+            "Saturation Factor",
             "Brightness Graph"
         );
         writer.writeRow(
@@ -524,6 +525,7 @@ public class BatchProcessing
             params.brightnessTransformWeight,
             params.targetRemapColor.toString(),
             params.voidRemapColor.toString(),
+            params.saturationFactor,
             Misc.formatIntVecTwoPointArray(params.brightnessLineSegments)
         );
         writer.writeRow(

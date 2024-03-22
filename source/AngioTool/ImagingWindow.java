@@ -436,6 +436,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                     (float)params.brightnessTransformWeight,
                     params.targetRemapColor.getRGB(),
                     params.voidRemapColor.getRGB(),
+                    (float)params.saturationFactor,
                     luminanceTable
                 );
             }
