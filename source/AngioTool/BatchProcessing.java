@@ -547,10 +547,10 @@ public class BatchProcessing
             "Average Vessel Diameter",
             "Medial E Lacunarity",
             "Mean E Lacunarity",
-            "E Lacunarity Curve",
+            "E Lacunarity Gradient",
             "Medial F Lacunarity",
             "Mean F Lacunarity",
-            "F Lacunarity Curve"
+            "F Lacunarity Gradient"
         );
 
         return writer;
