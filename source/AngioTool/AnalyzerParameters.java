@@ -240,7 +240,7 @@ public class AnalyzerParameters {
         RefVector<String> errors = new RefVector<>(String.class);
 
         if (shouldResizeImage && resizingFactor <= 0.0)
-            errors.add("Image resize factor must be >0 (not " + resizingFactor + ")");
+            errors.add("Image resize factor must be >0% (not " + (resizingFactor * 100.0) + "%)");
         if (shouldRemapColors && hueTransformWeight <= 0.0 && brightnessTransformWeight <= 0.0)
             errors.add("Color transform weights must combine to have a positive weight (not " + hueTransformWeight + " and " + brightnessTransformWeight + ")");
         if (shouldRemapColors && Misc.isGrayscale(targetRemapColor.getRGB()))
@@ -266,7 +266,7 @@ public class AnalyzerParameters {
         if (thresholdLow > thresholdHigh)
             errors.add("Minimum vessel intensity must be <= to the maximum (not " + thresholdLow + "-" + thresholdHigh + ")");
         if (shouldApplyLinearScale && linearScalingFactor <= 0.0)
-            errors.add("Measurement scale factor must be >0 (not " + linearScalingFactor + ")");
+            errors.add("Measurement scale factor must be >0% (not " + (linearScalingFactor * 100.0) + "%)");
         if (shouldDrawOutline && outlineColor == null)
             errors.add("Outline color is missing");
         if (shouldDrawOutline && outlineSize <= 0)

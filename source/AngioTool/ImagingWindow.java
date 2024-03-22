@@ -276,13 +276,13 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
                     }
                     if (currentParams.shouldComputeLacunarity) {
                         statsStrings.add(
-                            "E Lacunarity: Medial, Mean, Curve: " +
+                            "E Lacunarity: Medial, Mean, Gradient: " +
                             Misc.formatDouble(currentStats.ELacunarityMedial, 4) + ", " +
                             Misc.formatDouble(currentStats.meanEl, 4) + ", " +
                             Misc.formatDouble(currentStats.ELacunarityCurve, 4)
                         );
                         statsStrings.add(
-                            "F Lacunarity: Medial, Mean, Curve: " +
+                            "F Lacunarity: Medial, Mean, Gradient: " +
                             Misc.formatDouble(currentStats.FLacunarityMedial, 4) + ", " +
                             Misc.formatDouble(currentStats.meanFl, 4) + ", " +
                             Misc.formatDouble(currentStats.FLacunarityCurve, 4)

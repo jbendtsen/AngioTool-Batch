@@ -21,15 +21,7 @@ public class PreprocessColor
         Arrays.sort(longPoints);
 
         boolean invalid = false;
-        int highestX = -1;
-        for (int i = 0; i < nPoints; i++) {
-            int x = (int)(longPoints[i] >> 32L);
-            if (x <= highestX) {
-                invalid = true;
-                break;
-            }
-            highestX = x;
-        }
+        int highestX = (int)(longPoints[nPoints - 1] >> 32L);
 
         if (highestX <= 0)
             invalid = true;
@@ -105,13 +97,14 @@ public class PreprocessColor
         float narrowingFactor = 1f / Math.min(6f - targetVoidDistance, targetVoidDistance);
 
         final float hueOppositeToTarget = (targetHue + 3f) % 6f;
-        final int highestIdx = brightnessTable.length - 1;
+
+        float highestColorValue = 0f;
 
         for (int i = 0; i < area; i++) {
             int rgb = pixels[i];
-            int r = (rgb >> 16) & 0xff;
-            int g = (rgb >> 8) & 0xff;
-            int b = rgb & 0xff;
+            float r = (rgb >> 16) & 0xff;
+            float g = (rgb >> 8) & 0xff;
+            float b = rgb & 0xff;
 
             float hue = hueOppositeToTarget;
 
@@ -131,9 +124,25 @@ public class PreprocessColor
 
             float dHue = Math.abs(hue - targetHue);
             float diff = narrowingFactor * Math.min(6f - dHue, dHue);
-            float colorValue = 255f * Math.min(Math.max(1f - diff, 0f), 1f);
+            float value = dMaxMin * Math.max(1f - diff, 0f);
 
-            int idx = (int)(r * RED_WEIGHT + g * GREEN_WEIGHT + b * BLUE_WEIGHT);
+            output[i] = value;
+            highestColorValue = Math.max(highestColorValue, value);
+        }
+
+        float scaleFactor = highestColorValue > 0f ? 255f / highestColorValue : 255f;
+        float tableSizeWithScaling = (float)brightnessTable.length / 255f;
+        int highestIdx = brightnessTable.length - 1;
+
+        for (int i = 0; i < area; i++) {
+            float colorValue = Math.min(scaleFactor * output[i], 255f);
+
+            int rgb = pixels[i];
+            float r = RED_WEIGHT   * ((rgb >> 16) & 0xff);
+            float g = GREEN_WEIGHT * ((rgb >> 8) & 0xff);
+            float b = BLUE_WEIGHT  * (rgb & 0xff);
+
+            int idx = (int)(tableSizeWithScaling * (r+g+b));
             float brightnessValue = brightnessTable[Math.min(idx, highestIdx)];
 
             output[i] = colorFactor * colorValue + brightnessFactor * brightnessValue;
