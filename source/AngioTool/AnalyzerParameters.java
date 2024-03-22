@@ -172,10 +172,10 @@ public class AnalyzerParameters {
         p.brightnessLineSegments = new int[] {0, 0, 100, 100};
         p.resizingFactor = 1.0;
         p.shouldIsolateBrightestChannelInOutput = true;
-        p.shouldExpandOutputToGrayScale = false;
+        p.shouldExpandOutputToGrayScale = true;
         p.shouldComputeLacunarity = true;
         p.shouldComputeThickness = true;
-        p.linearScalingFactor = 0.0;
+        p.linearScalingFactor = 1.0;
         p.sigmas = new double[] {12.0};
         p.thresholdLow = 15;
         p.thresholdHigh = 255;

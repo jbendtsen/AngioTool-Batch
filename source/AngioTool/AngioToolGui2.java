@@ -101,14 +101,13 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         cbComputeThickness.setSelected(analyzerParams.shouldComputeThickness);
 
         elemMaxSkelIterations = new NumberEntry("Max Skeleton Steps:", analyzerParams.shouldCapSkelIterations, analyzerParams.maxSkelIterations, "");
-
-        elemResizeInputs = new NumberEntry("Resize Inputs by:", analyzerParams.shouldResizeImage, analyzerParams.resizingFactor, "x");
-
-        elemLinearScaleFactor = new NumberEntry("Measurement Scale:", analyzerParams.shouldApplyLinearScale, analyzerParams.linearScalingFactor, "x");
-
+        elemResizeInputs = new NumberEntry("Resize Inputs to:", analyzerParams.shouldResizeImage, 100.0 * analyzerParams.resizingFactor, "%");
+        elemLinearScaleFactor = new NumberEntry("Measurement Scale:", analyzerParams.shouldApplyLinearScale, 100.0 * analyzerParams.linearScalingFactor, "%");
         elemRemoveParticles = new NumberEntry("Remove Particles:", analyzerParams.shouldRemoveSmallParticles, analyzerParams.removeSmallParticlesThreshold, "px");
-
         elemFillHoles = new NumberEntry("Fill Holes:", analyzerParams.shouldFillHoles, analyzerParams.fillHolesValue, "px");
+        elemMaxHoleLevelPercent = new NumberEntry("Max Hole Level:", analyzerParams.shouldFillBrightShapes, 100.0 * analyzerParams.brightShapeThresholdFactor, "%");
+        elemMinBoxnessPercent = new NumberEntry("Min Boxness:", analyzerParams.shouldApplyMinBoxness, 100.0 * analyzerParams.minBoxness, "%");
+        elemMinAreaLengthRatio = new NumberEntry("Min Length : Area:", analyzerParams.shouldApplyMinAreaLength, analyzerParams.minAreaLengthRatio, "1 :");
 
         labelSigmas.setText("Vessel Diameters list");
 
@@ -132,10 +131,6 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         elemBranches.setColorChangeListener(this);
         elemSkeleton.setColorChangeListener(this);
         elemConvexHull.setColorChangeListener(this);
-
-        elemMaxHoleLevelPercent = new NumberEntry("Max Hole Level:", analyzerParams.shouldFillBrightShapes, 100.0 * analyzerParams.brightShapeThresholdFactor, "%");
-        elemMinBoxnessPercent = new NumberEntry("Min Boxness:", analyzerParams.shouldApplyMinBoxness, 100.0 * analyzerParams.minBoxness, "%");
-        elemMinAreaLengthRatio = new NumberEntry("Min Length : Area:", analyzerParams.shouldApplyMinAreaLength, analyzerParams.minAreaLengthRatio, "1 :");
 
         cbTransformColors.setText("Transform Colors");
         cbTransformColors.setSelected(analyzerParams.shouldRemapColors);
@@ -233,8 +228,8 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         cbComputeThickness.setSelected(analyzerParams.shouldComputeThickness);
 
         elemMaxSkelIterations.update(analyzerParams.shouldCapSkelIterations, analyzerParams.maxSkelIterations);
-        elemResizeInputs.update(analyzerParams.shouldResizeImage, analyzerParams.resizingFactor);
-        elemLinearScaleFactor.update(analyzerParams.shouldApplyLinearScale, analyzerParams.linearScalingFactor);
+        elemResizeInputs.update(analyzerParams.shouldResizeImage, 100.0 * analyzerParams.resizingFactor);
+        elemLinearScaleFactor.update(analyzerParams.shouldApplyLinearScale, 100.0 * analyzerParams.linearScalingFactor);
         elemRemoveParticles.update(analyzerParams.shouldRemoveSmallParticles, analyzerParams.removeSmallParticlesThreshold);
         elemFillHoles.update(analyzerParams.shouldFillHoles, analyzerParams.fillHolesValue);
 
@@ -514,7 +509,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         if (imageFile == null)
             return;
 
-        double resizeFactor = elemResizeInputs.cb.isSelected() ? elemResizeInputs.getValue() : 1.0;
+        double resizeFactor = elemResizeInputs.cb.isSelected() ? elemResizeInputs.getValue() / 100.0 : 1.0;
 
         ArgbBuffer image = null;
         Exception error = null;
@@ -625,7 +620,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
 
         return new AnalyzerParameters(
             elemResizeInputs.cb.isSelected(),
-            elemResizeInputs.getValue(),
+            elemResizeInputs.getValue() / 100.0,
             cbTransformColors.isSelected(),
             Misc.parseDouble(textHueWeight.getText(), 0.0),
             Misc.parseDouble(textBrightnessWeight.getText(), 0.0),
@@ -649,7 +644,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             elemMaxSkelIterations.cb.isSelected(),
             (int)elemMaxSkelIterations.getValue(),
             elemLinearScaleFactor.cb.isSelected(),
-            elemLinearScaleFactor.getValue(),
+            elemLinearScaleFactor.getValue() / 100.0,
             elemOutline.cb.isSelected(),
             elemOutline.getColor(),
             elemOutline.getValue(),

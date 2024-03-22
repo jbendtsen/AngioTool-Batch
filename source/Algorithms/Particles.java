@@ -229,7 +229,7 @@ public class Particles
 
                 shouldFill = (shapeArea / highestDistance) < minAreaLengthRatio; // <= 16.0;
             }
-            
+
             if (shouldFill) {
                 int firstPoint = data.shapes.buf[i + 1];
                 int neighbor;
