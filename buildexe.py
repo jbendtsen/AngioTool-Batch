@@ -14,12 +14,12 @@ JAVA_JNI_MD_PATH = "/usr/lib/jvm/java-21-openjdk/include/windows"
 errors = []
 jar_file = None
 try:
-    with open("AngioTool-Batch.jar", "rb") as f:
+    with open("AngioTool2.jar", "rb") as f:
         jar_file = f.read()
 except:
     pass
 if not jar_file:
-    errors.append("Could not open AngioTool-Batch.jar. Try running ./compile.py first.")
+    errors.append("Could not open AngioTool2.jar. Try running ./compile.py first.")
 
 if shutil.which(WINDRES_32) is None:
     errors.append("Could not find " + WINDRES_32)
@@ -43,7 +43,7 @@ if errors:
     print("\n".join(errors))
     sys.exit(1)
 
-print("Generating angiotool_jar.h...")
+print("Generating angiotool2_jar.h...")
 
 hex_offsets = [0x30 if i < 10 else 0x57 for i in range(16)]
 space_char  = [0x0a if i == 15 else 0x20 for i in range(16)]
@@ -61,12 +61,12 @@ while i < len(jar_file) - 1:
     data_header[6*i+4] = 0x2c
     data_header[6*i+5] = space_char[i & 15]
 
-print("Writing angiotool_jar.h...")
+print("Writing angiotool2_jar.h...")
 
-with open("angiotool_jar.h", "wb") as f:
-    f.write(bytes("static unsigned char AngioTool_Batch_jar[] = {\n", "utf8"))
+with open("angiotool2_jar.h", "wb") as f:
+    f.write(bytes("static unsigned char AngioTool2_jar[] = {\n", "utf8"))
     f.write(data_header)
-    f.write(bytes("\n};\nstatic unsigned int AngioTool_Batch_jar_len = " + str(len(jar_file)) + ";\n", "utf8"))
+    f.write(bytes("\n};\nstatic unsigned int AngioTool2_jar_len = " + str(len(jar_file)) + ";\n", "utf8"))
 
 print("Building EXE resource...")
 
@@ -88,5 +88,5 @@ compile_args = [
     "-luser32"
 ]
 
-subprocess.run([tcc_path + "i386-win32-tcc.exe",   "-m32"] + compile_args + ["launcher32.coff", "-o", "AngioTool-Batch-32.exe"])
-subprocess.run([tcc_path + "x86_64-win32-tcc.exe", "-m64"] + compile_args + ["launcher64.coff", "-o", "AngioTool-Batch-64.exe"])
+subprocess.run([tcc_path + "i386-win32-tcc.exe",   "-m32"] + compile_args + ["launcher32.coff", "-o", "AngioTool2-32.exe"])
+subprocess.run([tcc_path + "x86_64-win32-tcc.exe", "-m64"] + compile_args + ["launcher64.coff", "-o", "AngioTool2-64.exe"])

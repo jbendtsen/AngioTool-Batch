@@ -3,7 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include "angiotool_jar.h"
+#include "angiotool2_jar.h"
 
 #ifdef _WIN64
 #define ALT_BITS "32"
@@ -159,20 +159,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     if (pos <= 0)
         bail("Failed to obtain temporary path");
 
-    addString(path, &pos, PATH_SIZE, "AngioTool-Batch");
+    addString(path, &pos, PATH_SIZE, "AngioTool2");
     if (!checkIsFolder(path)) {
         if (!CreateDirectoryA(path, NULL))
             bail("Failed to create temporary directory");
     }
 
-    addString(path, &pos, PATH_SIZE, "\\AngioTool-Batch.jar");
+    addString(path, &pos, PATH_SIZE, "\\AngioTool2.jar");
     HANDLE jarFileHandle = CreateFileA(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (jarFileHandle != INVALID_HANDLE_VALUE) {
         DWORD filePos = 0;
         while (TRUE) {
-            if (!WriteFile(jarFileHandle, AngioTool_Batch_jar, AngioTool_Batch_jar_len - filePos, &filePos, NULL))
+            if (!WriteFile(jarFileHandle, AngioTool2_jar, AngioTool2_jar_len - filePos, &filePos, NULL))
                 bail("Failed to write to temporary .jar");
-            if (filePos >= AngioTool_Batch_jar_len)
+            if (filePos >= AngioTool2_jar_len)
                 break;
         }
 

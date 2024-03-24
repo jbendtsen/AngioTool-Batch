@@ -115,15 +115,15 @@ for root, dirs, files in os.walk("build"):
         build_files.append(os.path.join(root, f))
 
 try:
-    os.remove("AngioTool-Batch.jar")
+    os.remove("AngioTool2.jar")
 except:
     pass
 
-with zipfile.ZipFile("AngioTool-Batch.jar", compression=zipfile.ZIP_DEFLATED, compresslevel=6, mode="w") as zip:
+with zipfile.ZipFile("AngioTool2.jar", compression=zipfile.ZIP_DEFLATED, compresslevel=6, mode="w") as zip:
     for f in asset_files:
         zip.write("source/" + f, arcname=f)
     for f in build_files:
         zip.write(f, arcname=f[6:])
     zip.writestr("lee94-simple-points.bin", simple_points_lut)
 
-# java -Dsun.java2d.uiScale=2 -jar AngioTool-Batch.jar
+# java -Dsun.java2d.uiScale=2 -jar AngioTool2.jar

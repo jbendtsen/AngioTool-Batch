@@ -202,7 +202,7 @@ public class ATPreferences
 
     public static File getPrefsDir() throws IOException
     {
-        File atFolder = new File(System.getProperty("user.home"), "AngioTool-Batch");
+        File atFolder = new File(System.getProperty("user.home"), "AngioTool2");
         if (!atFolder.exists())
             atFolder.mkdir();
         return atFolder;

@@ -14,7 +14,7 @@ public class HelpWindow extends JDialog
     public HelpWindow(JFrame uiFrame, byte[] htmlData)
     {
         super(uiFrame, true);
-        this.setTitle("About");
+        this.setTitle("About - " + AngioTool.VERSION);
         this.parentFrame = uiFrame;
 
         this.helpContent = new JEditorPane();

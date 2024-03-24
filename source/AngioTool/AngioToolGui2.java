@@ -75,7 +75,7 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
 
     public AngioToolGui2(AnalyzerParameters analyzerParams, String defaultPath)
     {
-        super(AngioTool.VERSION);
+        super(AngioTool.TITLE);
         this.defaultPath = defaultPath;
 
         this.setIconImage(AngioTool.ATIcon.getImage());
@@ -266,6 +266,12 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         textBrightnessWeight.setText(Misc.formatDouble(analyzerParams.brightnessTransformWeight));
         textBrightnessSegments.setText(Misc.formatIntVecTwoPointArray(analyzerParams.brightnessLineSegments));
 
+        cbTransformColors.setSelected(analyzerParams.shouldRemapColors);
+        textSaturationFactor.setEnabled(analyzerParams.shouldRemapColors);
+        textHueWeight.setEnabled(analyzerParams.shouldRemapColors);
+        textBrightnessWeight.setEnabled(analyzerParams.shouldRemapColors);
+        textBrightnessSegments.setEnabled(analyzerParams.shouldRemapColors);
+
         rbImageOriginal.setSelected(!analyzerParams.shouldIsolateBrightestChannelInOutput);
         rbImageIsolated.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && !analyzerParams.shouldExpandOutputToGrayScale);
         rbImageGray.setSelected(analyzerParams.shouldIsolateBrightestChannelInOutput && analyzerParams.shouldExpandOutputToGrayScale);
@@ -437,9 +443,9 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
             .addGap(12)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                 .addGroup(layout.createSequentialGroup()
-                    .addGap(8)
+                    .addGap(9)
                     .addComponent(cbTransformColors)
-                    .addGap(8)
+                    .addGap(9)
                 )
                 .addGroup(layout.createSequentialGroup()
                     .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
@@ -593,9 +599,10 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
     void openHelpWindow()
     {
         if (helpHtmlData == null) {
+            String boxnessUrl = getClass().getResource("/images/boxness-formula.png").toString();
             try (InputStream in = getClass().getResourceAsStream("/manual.html")) {
                 ByteVectorOutputStream vec = Misc.readFullyAsVector(in);
-                this.helpHtmlData = vec.copy();
+                this.helpHtmlData = vec.toString().replace("/images/boxness-formula.png", boxnessUrl).getBytes();
             }
             catch (Exception ex) {
                 Misc.showExceptionInDialogBox(ex);

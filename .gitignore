@@ -8,9 +8,9 @@ source/Utils/IntBufferPool.java
 source/Utils/FloatBufferPool.java
 source/Utils/DoubleBufferPool.java
 lee94-simple-points.bin
-AngioTool-Batch*.jar
-AngioTool-Batch*.exe
+AngioTool2.jar
+AngioTool2*.exe
 launcher32.coff
 launcher64.coff
-angiotool_jar.h
+angiotool2_jar.h
 ij.txt

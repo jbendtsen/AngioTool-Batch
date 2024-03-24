@@ -16,21 +16,24 @@ h3 {
 </style>
 </head>
 <body>
-<h1>AngioTool 2.0</h1>
+<h1>AngioTool 2.0 - Manual</h1>
 
 <h2>Table of Contents</h2>
 <ul>
   <li>About</li>
   <li>Features</li>
-  <li>Settings</li>
+  <li>Analysis Settings</li>
+  <li>Overlay Settings</li>
   <li>Credits</li>
+  <li>Citations</li>
 </ul>
 
 <section id="about">
   <h2>About</h2>
-  <p>AngioTool was originally written by the Center for Cancer Research in 2011. It could only process one image at a time, which made it unsuitable for certain tasks, despite the image processing features it possessed.</p>
-  <p>This version of AngioTool started by simply adding batch processing as a separate feature, where the user could select multiple folders instead of just one image at a time. However, after processing the 15th or so image, it would run out of memory and cease to function.</p>
-  <p>As such, the goal of the project was expanded, and gradually the entire program was rewritten piece by piece, including a new user interface, to allow for the batch processing feature to work as intended.</p>
+  <p><i>AngioTool 2.0</i> is a software program that analyzes photographic scans of eyes. Its collection of analysis features quantify various properties of the blood vessels in each scan. These properties are both rendered to an overlay image, which can be saved, and as statistics, which can be exported to an Excel spreadsheet.</p>
+  <p>AngioTool was originally published by the Center for Cancer Research in 2011. The original software <i>AngioTool 0.6</i> could only process one image at a time, which made it inconvenient for processing large batches of images.</p>
+  <p>This version of AngioTool, <i>AngioTool 2.0</i>, created by Jack Bendtsen and Layal El Wazan, has been rewritten from the ground up. It incorporates a batch processing feature, where the user can select multiple folders with multiple images instead of processing one image at a time. The original software was only optimized for black and white images, however <i>AngioTool 2.0</i> has a ‘Transform Colors’ feature, which lets the user analyze colored images with much greater efficacy. The user can now select between two skeletonizers, to increase the speed of processing and reduce the memory footprint of the program.</p>
+  <p>Furthermore, additional analysis settings were added: ‘Max Hole Level’, ‘Min Boxness’, ‘Min Length &#xF7 Area’, ‘Fast Skeletonizer’, ‘Max Skeleton Steps’. These features provide the user with more control over how the image is analyzed, so that the final output is of higher quality while reducing the time it takes for an image to be processed.</p>
 </section>
 
 <section id="features">
@@ -75,83 +78,278 @@ To use this feature:
   </ol>
 </section>
 
-<section id="settings">
-  <h2>Settings</h2>
+<section id="analysis-settings">
+  <h2>Analysis Settings</h2>
 
-  <p>These are the image analysis controls and toggles that AngioTool 2.0 supports.</p>
-  <p>They are found in the main window and apply to both the "View" feature and the "Batch" feature.</p>
-  <p>Every setting that has a checkbox next to it can be enabled or disabled by toggling its checkbox.</p>
+  <p>These are the image analysis controls and toggles that <i>AngioTool 2.0</i> supports.</p>
+  <p>They are found in the main window and apply to both the "View" feature and the "Batch" feature.
+When using the ‘Batch’ feature, the same settings will be applied to all images.</p>
 
   <h3>Lacunarity</h3>
-  <p>Measure how much space is empty. Leave the checkbox checked to enable the feature.</p>
-  <p>The mean and medial lacunarity, as well as the gradient of the linear regression, are reported for both the non-zero lacunarity set (F) and the complete lacunarity set (E).</p>
+  <p>This feature measures the empty (non-vascular) space in the image. Leave the checkbox checked to enable the feature. Two results are generated:</p>
+  <ul>
+    <li>Total lacunarity (E) which is the set of all spatial measurements, including those where no vessel or particle was detected in the sample</li>
+    <li>Non-zero lacunarity (F) which is the set of non-zero spatial measurements, where samples that do not contain part of a vessel or particle are excluded</li>
+  </ul>
+  <p>The mean and medial lacunarity, as well as the gradient of the linear regression, are reported for both the E and F sets. The higher the number, the more non-vascular space is present in the image.</p>
 
   <h3>Thickness</h3>
-  <p>Measure the average vessel thickness across the whole image. Leave the checkbox checked to enable the feature.</p>
+  <p>This feature measures the average vessel thickness across the whole image, once the image has been transformed [1].
+As such, it is an output of the analysis, and should not be confused with ‘Vessel Diameters’,
+which is an input (that determines which vessel diameters should be targeted, see ‘Vessel Diameters’ for more information).
+Leave the checkbox checked to enable the feature.
+  </p>
 
   <h3>Fill Holes</h3>
   <p>
-Fill in gaps between vessels below a certain size.
+Holes are regions of empty space, such as gaps between vessels and particles.
+This feature allows the user to fill in holes below a certain size, which is useful for filling in gaps between vessels.
+Enter an appropriate integer into the px (pixel) box and check the checkbox to enable this feature.
 This setting is not often necessary, since the "Max Hole Level", "Min Boxness" and "Min Length &#xF7 Area" settings
-often perform better at filling in unwanted gaps or holes.
+often perform better at filling in unwanted gaps.
 </p>
 
   <h3>Remove Particles</h3>
   <p>
-Remove small shapes below a certain size. This is useful when targeting smaller vessel diameters,
-since thinner/smaller shapes of all kinds are more likely to be detected, many of which can be filtered out with this setting.
+Particles and vessels are the regions of interest in the analyzed image, with particles being smaller isolated regions.
+By checking the ‘Remove Particles’ checkbox, particles below a given size can be erased.
+This is useful when targeting smaller vessel diameters, since thinner/smaller shapes of all kinds are more likely to be detected,
+many of which can be filtered out with this setting.
+Enter an appropriate integer into the px (pixel) box and check the checkbox to enable this feature.
   </p>
 
   <h3>Max Hole Level</h3>
   <p>
-The brightest a hole can be before it shall be filled in. Sometimes, gaps are detected in the middle of vessels, even though the color of the gap matches its surrounding, ie. the gap is actually part of the vessel. This setting can be used to fill in such gaps.
+‘Max Hole Level’ is the brightest a hole (gap in the vessel) can be before it is considered a vessel or particle.
+Sometimes, gaps are detected in the middle of vessels, even though the color of the gap matches its surrounding,
+ie. the gap is actually part of the vessel. This setting can be used to fill in such gaps.
+  </p><p>
+Check the checkbox to enable this feature. The default value is 150%, however this can be altered by entering a number.
+This number will indicate the percentage compared to the average brightness of the already detected vessels,
+such that if a hole has a brightness level above eg. 150% of the average vessel, then the hole will be filled in.
   </p>
 
   <h3>Min Boxness</h3>
-  <p>The lowest "boxness" value that a hole can have before it shall be filled in.</p>
-  <p>Boxness is defined as: min(holeWidth / holeHeight, holeHeight / holeWidth) * pixelCount / (holeWidth * holeHeight)</p>
-  <p>The more a hole resembles square, the closer the boxness value will be to 100% and the further it will be from 0%.</p>
+  <p>This is the lowest "boxness" value that a hole can have before it shall be filled in.</p>
+  <p>Boxness is defined as: <img src="/images/boxness-formula.png" width="400" height="100" alt="pixelCount * min(holeWidth / holeHeight, holeHeight / holeWidth) / (holeWidth * holeHeight)"/></p>
+  <p>The more a hole resembles a square, the closer the boxness value will be to 100% and the further it will be from 0%. Very thin objects will have an especially low “boxness”.</p>
+  <p>Check the checkbox to enable this feature. The default value is 9.375%, however this can be altered by entering any value.
+This value will indicate the percentage of closeness to being a perfect square as opposed to a line segment.
+For example, typing 9% means that any hole or gap with a boxness less than 9% will be filled in.
+  </p>
 
   <h3>Min Length &#xF7 Area</h3>
-  <p>The lowest area divided by length that a hole can have before it shall be filled in.</p>
+  <p>The lowest area divided by length that a hole can have before it is considered as being part of a vessel.
+This feature is useful for removing holes between vessels. 
+The more a hole resembles a square, the closer the boxness value will be to 100% and the further it will be from 0%. Very thin objects will have an especi
+Length is defined as the distance between the two pixels in the hole that are furthest away from each other.
+Area is defined as the total number of pixels that are part of the hole.
+  </p><p>
+The checkbox will be checked by default, however it can be switched off or on as required.
+The default ratio is 1:16, which means that any hole with less than 16 times more pixels in area than in length will be filled in.
+  </p>
 
   <h3>Skeletonizer</h3>
-  <p>Finds the center line of each vessel. The "Fast" skeletonizer is roughly 3x faster than the "Thorough" skeletonizer, but the skeleton it produces will be of lower quality.</p>
+  <p>
+The skeletonizer will find the central region of each vessel and create a line indicated vessel.
+It works by analyzing each shape and trimming its edges until only the central line remains.
+  </p><p>
+This feature is not optional, however the type of skeletonizer to be used may be selected from ‘fast’ and ‘thorough’.
+The ‘fast’ skeletonizer operates by enumerating the neighbors that have been filled in for each pixel,
+and keeping or clearing that pixel according to that number and a lookup table [2].
+The ‘thorough’ skeletonizer is more complicated and computationally intensive,
+but it produces better quality results, and can operate in 3 dimensions
+(though <i>AngioTool 2.0</i> does not make use of this capability at the time of writing) [3].
+  </p><p>
+The ‘fast’ skeletonizer is roughly 3x faster than the ‘thorough’ skeletonizer, but the skeleton it produces will be of lower quality.
+  </p>
 
   <h3>Max Skeleton Steps</h3>
-  <p>Cap the number of times an image can be iterated upon by the skeletonizer.</p>
-  <p>Each skeletonization iteration thins the edges of a shape by one or two pixels at a time.</p>
-  <p>Skeletonization is the stage in the analysis pipeline that takes the longest to complete,
-especially when there are large shapes that don't conform to anything resembling a vessel.</p>
+  <p>
+Skeletonization is the stage in the analysis pipeline that takes the longest to complete,
+especially when there are large shapes that don't conform to anything resembling a vessel.
+Hence, the ‘Max Skeleton Steps’ feature provides a way to cap the number of times an image can be iterated upon by the skeletonizer.
+Each skeletonization iteration thins the edges of a shape by one or two pixels at a time.
+  </p><p>
+The checkbox will be checked by default, however it can be switched off or on as required.
+The default value is 25 steps, which means the skeletonizer will stop trying to find the skeleton after 25 iterations
+even if it could continue searching for the thinnest line. This value can be changed by typing in a new integer in the box.
+  </p>
+
+  <h3>Transform Colors</h3>
+  <p>
+This feature transforms colored images to have an acceptable grayscale profile so they can be properly analyzed by this software.
+It is also useful for grayscale images where the vessels are darker than their surroundings,
+as this software requires them to be lighter than their neighboring gaps.
+  </p><p>
+If this setting is enabled by checking its checkbox, the image will be adjusted based on the following settings:
+  </p>
+
+<div id="transform-colors">
+      <h3>Target Hue and Off Hue</h3>
+      <p>
+    An image’s color information is not used by any other analysis stage, thus it must either be transposed or stripped away.
+    This feature does the former, using two color controls: the ‘target’ hue and the ‘off’ hue.
+    Hue is essentially the measure of where a color would land on the color wheel, once corrected for saturation and brightness.
+    The closer the input pixel’s hue is to the target hue, the brighter the grayscale output pixel at its position will be.
+      </p><p>
+    The exact response is also determined by the distance between the ‘target’ hue and the ‘off’ hue.
+    If the input pixel has a hue that is further away from the target hue than the off hue, then the output pixel will be black.
+      </p>
+
+      <h3>Saturation Factor</h3>
+      <p>
+    This setting is combined with ‘Target Hue and Off Hue’ to affect the intensity of each output pixel.
+    Each input pixel’s saturation is calculated, and is used a multiplier on the intensity generated by ‘Target Hue and Off Hue’,
+    to the extent of the ‘Saturation Factor’.
+      </p><p>
+    This extent can be altered by entering any percentage value between 0% and 100%.
+    A value of 0% means that saturation will not affect the output at all,
+    and 100% means that input pixels with low saturation of will be converted to a dark color,
+    no matter how close their hue appears to be to that of the target hue. The default value is 100%.
+      </p>
+
+      <h3>Brightness Graph</h3>
+      <p>
+    For a pixel of a given luminance, this graph dictates how the value will be mapped to a new brightness value.
+    The graph is derived from a list of continuous line segments defined by XY coordinates, which are entered into the textbox.
+    The X value represents the luminance value coming in, and the Y value represents the brightness value that the X value will turn into.
+    The X coordinate of the last point is taken as the scaling factor, which is why the default graph has it set to 100,
+    as it means each number in the graph can be interpreted as a percentage.
+      </p><p>
+    The default value is (0,0), (100, 100), which produces a graph where the output will mirror the input.
+      </p>
+
+      <h3>Hue to Brightness</h3>
+      <p>
+    The value from ‘Target Hue and Off Hue’ and ‘Saturation Factor’ and the value taken from the ‘Brightness Graph’
+    are combined according to the ratio provided by this setting. A ratio of 1:1 means hue and brightness are weighted equally.
+    1:2 means that hue is only given half the import of brightness,
+    and 3:1 means that hue is considered three times more heavily than brightness.
+      </p><p>
+    One side of the ratio can be zero, for example 0:1 means that the hue value is entirely ignored and only the brightness value is used,
+    and 1:0 means only the hue value is used and the brightness value is ignored.
+    The default value is 1:1.
+      </p>
+</div>
 
   <h3>Resize Inputs</h3>
-  <p>Scale up or down the image. For single image analysis, this is only applied when the "View" window first opens, so to observe a change for this setting, the image must be closed and re-opened.</p>
+  <p>
+‘Resize Inputs’ allows for images to be scaled up or down.
+This feature is useful for shrinking images that would otherwise be too large to process in a given amount of time
+or within a certain set of resource constraints.
+It is also convenient for normalizing images that are smaller than previously analyzed images,
+as growing the image can make the results more consistent with prior results without having to adjust the other settings.
+  </p><p>
+Check the checkbox to enable this feature. The default value is 100%, which means the image will stay in its original resolution.
+However, this can be altered by entering a percentage.
+Anything below 100% will shrink the image and anything above 100% will grow the original image,
+e.g. Typing 200% will double the width and height.
+  </p>
 
   <h3>Measurement Scale</h3>
-  <p>Scale up or down pixel measurements. This affects following spreadsheet values: "Explant Area", "Vessels Area", "Total Vessels Length", and "Average Vessels Length".</p>
+  <p>
+This feature scales up or down pixel measurements using a provided scaling factor to make them
+equivalent to their original size in millimeters (mm).
+This will affect the output values of ‘Explant Area’, ‘Vessels Area’, ‘Total Vessels Length’, and ‘Average Vessels Length’.
+  </p><p>
+Check the checkbox to enable this feature. The default value is 100%, which means 1 pixel in the image has a length of 1mm.
+However, this can be altered by entering a percentage,
+for example if it is known that in a particular image 24 pixels is equivalent to 36mm, then a value of 150% should be entered.
+  </p>
 
   <h3>Vessel Diameters</h3>
-  <p>Enter a list of target vessel thicknesses. If more than one value is provided, the values should be separated by spaces or commas.</p>
+  <p>
+Before the vessels in the image can be analyzed, the image itself must be smoothed over such that undesired noise is filtered out.
+This is done by selecting a smoothing level equivalent to the expected thickness of the average vessel in the image.
+If there are vessels of different sizes that need also be analyzed, then the diameters of these vessels also can be entered here.
+  </p><p>
+At least one value must be provided in the box below ‘Vessel Diameters list’.
+The default value is 12 pixels, which means only vessels that are larger than 12 pixels will be detected,
+and anything smaller will be blurred out. However, this can be altered by entering one or more values of target vessel thicknesses.
+If more than one value is provided, the values should be separated by spaces or commas.
+For example, entering 12, 15, 22 will analyze the image three times, each time collecting information at a different smoothing level.
+The results of these three analysis cycles are then combined as one result, such that for every pixel,
+the highest value of out of each of the cycles is preserved. This means that if smaller vessels were detected, they will be preserved,
+however larger vessels will still be smooth and can be easily processed during later analysis stages.
+  </p>
 
   <h3>Vessel Intensity</h3>
-  <p>Pixel brightness range. Any pixels of a brightness within this range are converted to white, which will in turn become part of a vessel or other shape, and any pixels outside this range will be converted to black, forming holes or gaps between vessels.</p>
-  <p>The first textbox under "Vessel Intensity range" controls the minimum brightness, and the second textbox controls the maximum brightness. The two values must be between 0-255, inclusive.</p>
+  <p>
+The ‘Vessel Diameters’ feature will output a single-channel 8-bit image,
+where each pixel is represented by a single brightness value between 0-255, in which 0 is completely black and 255 is completely white.
+This feature takes the new image and replaces all pixels within a user-specified brightness range with white,
+which will in turn become part of a vessel or other shape.
+Any pixels outside this range will be converted to black, forming holes or gaps between vessels.
+  </p><p>
+A minimum intensity and a maximum intensity must be provided. The first textbox under "Vessel Intensity range" controls the minimum intensity, and the second textbox controls the maximum intensity. The default values are 15 for the minimum and 255 for the maximum; however, this can be altered by entering an integer between 0-255 into the boxes.
+  </p>
+</section>
+
+<section id="overlay-settings">
+  <h2>Overlay Settings</h2>
+
+  <h3>Outline</h3>
+  <p>
+If enabled, draws a line over the boundaries between vessels/particles and gaps/holes. Defaults to 1px in width with a yellow color.
+  </p>
+
+  <h3>Skeleton</h3>
+  <p>
+If enabled, draws a line along the middle or “skeleton” of each vessel. Defaults to 2px in width with a red color.
+  </p>
+
+  <h3>Branches</h3>
+  <p>
+If enabled, draws circles at positions where two vessels appear to diverge. Defaults to 4px in width with a blue color.
+  </p>
+
+  <h3>Convex Hull</h3>
+  <p>
+If enabled, draws a series of straight lines around the perimeter of the image’s content. Defaults to 1px in width with a light blue color.
+  </p>
+
+  <h3>Keep Original Colors</h3>
+  <p>
+Draw the overlay over original image, before any color corrections were performed.
+  </p>
+
+  <h3>Isolate Brightest Channel</h3>
+  <p>
+Draw the overlay over the brightest channel from the original image.
+This was the only option available in <i>AngioTool 0.6</i>, and is mainly kept for backwards compatibility.
+  </p>
+
+  <h3>Convert to Grayscale</h3>
+  <p>
+If ‘Transform Colors’ was enabled, draw the overlay over the output from that step,
+otherwise draw the overlay over the default grayscale representation of the original image.
+  </p>
 </section>
 
 <section id="credits">
   <h2>Credits</h2>
-  <h3>AngioTool 2.0</h3>
+  <h3><i>AngioTool 2.0</i></h3>
   <ul>
     <li>Jack Bendtsen</li>
     <li>Layal El Wazan</li>
   </ul>
-  <h3>AngioTool 0.6</h3>
+  <h3><i>AngioTool 0.6</i></h3>
   <ul>
     <li>Enrique Zudaire</li>
     <li>Laure Gambardella</li>
     <li>Chris Kurcz</li>
     <li>Sonja Vermeren</li>
   </ul>
+</section>
+
+<section id="citations">
+  <h2>Citations</h2>
+  <ol>
+    <li>Saito, T. and J.-i. Toriwaki, <i>New algorithms for euclidean distance transformation of an n-dimensional digitized picture with applications</i>. Pattern Recognit., 1994. <b>27</b>: p. 1551-1565.</li>
+    <li>Zhang, T.Y. and C.Y. Suen, <i>A fast parallel algorithm for thinning digital patterns</i>. Commun. ACM, 1984. <b>27</b>(3): p. 236–239.</li>
+    <li>Lee, T.-C., R.L. Kashyap, and C.N. Chu, <i>Building Skeleton Models via 3-D Medial Surface/Axis Thinning Algorithms</i>. CVGIP Graph. Model. Image Process., 1994. <b>56</b>: p. 462-478.</li>
+  </ol>
 </section>
 </body>
 </html>
