@@ -631,6 +631,8 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         textHueWeight.setEnabled(enabled);
         textBrightnessWeight.setEnabled(enabled);
         textBrightnessSegments.setEnabled(enabled);
+
+        maybeUpdateImagingWindows();
     }
 
     void maybeUpdateImagingWindows()

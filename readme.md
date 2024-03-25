@@ -19,4 +19,7 @@ which are recursed fully such that every single non-output image inside those fo
 (and the folders inside those folders, and so on) are analysed all in go.
 The settings as specified in the user interface are applied to each scan.
 
+Additional settings were also implemented, for example the "Transform Colors" feature which allows for colour OCT scans to be properly analysed.
+See the [manual](source/manual.html) for more details.
+
 To download binaries, check the [Releases](https://github.com/jbendtsen/AngioTool-Batch/releases) tab.

@@ -63,6 +63,8 @@ public class Particles
             spans.addTwo(spans.size + 2, 0);
         }
 
+        spans.resize(spans.size - 2);
+
         int start = 0;
         int end = height-1;
         int dir = 1;
