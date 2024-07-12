@@ -401,9 +401,10 @@ public class ImageFile
 
     public static void writePgm(byte[] pixels, int width, int height, String title) {
         byte[] header = ("P5\n" + width + " " + height + "\n255\n").getBytes();
-        ByteVectorOutputStream out = new ByteVectorOutputStream(header.length + pixels.length);
+        int dataSize = Math.min(pixels.length, width * height);
+        ByteVectorOutputStream out = new ByteVectorOutputStream(header.length + dataSize);
         out.add(header);
-        out.add(pixels);
+        out.add(pixels, 0, dataSize);
         try {
             java.nio.file.Files.write(
                 java.nio.file.FileSystems.getDefault().getPath("", title),

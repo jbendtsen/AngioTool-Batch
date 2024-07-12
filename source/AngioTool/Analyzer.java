@@ -148,6 +148,8 @@ public class Analyzer
 
         FloatBufferPool.release(tubenessInput);
 
+        ImageFile.writePgm(analysisImage, inputImage.width, inputImage.height, "tubeness-greymap.pgm");
+
         Misc.thresholdFlexible(
             analysisImage,
             inputImage.width,

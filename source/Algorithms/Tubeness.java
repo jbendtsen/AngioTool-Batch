@@ -4,6 +4,8 @@ import Utils.*;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
+import Pixels.ImageFile;
+
 public class Tubeness
 {
     public static final int IN_PLACE_THRESHOLD = 5;
@@ -23,8 +25,8 @@ public class Tubeness
         final int area = width * height;
         float[] gaussianOutput = FloatBufferPool.acquireAsIs(area);
         float[] maxEigenOutput = FloatBufferPool.acquireZeroed(area);
+        byte[] rainbowGold = ByteBufferPool.acquireZeroed(area);
 
-        Params params = new Params();
         double maxResult = 0.0;
 
         for (int s = 0; s < nSigmas; s++) {
@@ -36,11 +38,9 @@ public class Tubeness
                 sigma[s]
             );
             double highestValue = computeEigenvalues(
-                params,
-                sliceRunner,
-                maxWorkers,
                 maxEigenOutput,
                 gaussianOutput,
+                rainbowGold,
                 width,
                 height,
                 sigma[s]
@@ -48,10 +48,10 @@ public class Tubeness
             maxResult = Math.max(maxResult, highestValue);
         }
 
-        // Help out the GC by nulling the second references to our recycled buffers
-        params.nullify();
-
         FloatBufferPool.release(gaussianOutput);
+
+        ImageFile.writePgm(rainbowGold, width, height, "pots-o-gold.pgm");
+        ByteBufferPool.release(rainbowGold);
 
         float factor = maxResult > 0.0 ? (float)(256.0 / maxResult) : 1.0f;
         //System.out.println("maxResult: " + maxResult + ", factor: " + factor);
@@ -202,126 +202,92 @@ public class Tubeness
     }
 
     static double computeEigenvalues(
-        Params params,
-        ISliceRunner runner,
-        int maxWorkers,
         float[] output,
         float[] input,
+        byte[] extra,
         int width,
         int height,
         double sigma
     ) throws ExecutionException
     {
-        params.setup(input, width, height, sigma, 3, output);
-        runner.runSlices(
-            params,
-            maxWorkers,
-            width,
-            IN_PLACE_THRESHOLD - 1
-        );
-        return params.finalMaximum;
-    }
+        final int threshold = 3;
+        double maximum = 0.0;
 
-    static float findSecondHessianEigenvalueAtPoint2D(float[] data, int width, int x, int y, double sigma)
-    {
-        double s2 = sigma * sigma;
-        int pos = x + width*y;
-        float dblCenter = 2.0F * data[pos];
-        float corners = (
-            ((data[pos+1+width] - data[pos-1+width]) / 2.0f) -
-            ((data[pos+1-width] - data[pos-1-width]) / 2.0f)
-        ) / 2.0f;
+        for (int y = 1; y < height - 1; y++) {
+            for (int x = 1; x < width - 1; x++) {
+                int pos = x + width*y;
+                if (input[pos] <= threshold)
+                    continue;
 
-        // mA = matrix[0][0]
-        // mB = matrix[0][1]
-        // mC = matrix[1][0]
-        // mD = matrix[1][1]
-        double mA = (data[pos+1] - dblCenter + data[pos-1]) * s2;
-        double mB = corners * s2;
-        double mC = mB;
-        double mD = (data[pos+width] - dblCenter + data[pos-width]) * s2;
+                double s2 = sigma * sigma;
+                float dblCenter = 2.0F * input[pos];
+                float corners = (
+                    ((input[pos+1+width] - input[pos-1+width]) / 2.0f) -
+                    ((input[pos+1-width] - input[pos-1-width]) / 2.0f)
+                ) / 2.0f;
 
-        double a = 1.0;
-        double b = -(mA + mD);
-        double c = mA * mD - mB * mB;
-        double discriminant = b * b - 4.0 * a * c;
+                // mA = matrix[0][0]
+                // mB = matrix[0][1] = matrix[1][0]
+                // mC = matrix[1][1]
+                double mA = (input[pos+1] - dblCenter + input[pos-1]) * s2;
+                double mB = corners * s2;
+                double mC = (input[pos+width] - dblCenter + input[pos-width]) * s2;
 
-        if (discriminant < 0.0)
-            return 0.0f;
+                double b = mA + mC;
+                double c = mA * mC - mB * mB;
+                double discriminant = b * b - 4.0 * c;
 
-        double dR = Math.sqrt(discriminant);
-        float e0 = (float)((-b + dR) / (2.0 * a));
-        float e1 = (float)((-b - dR) / (2.0 * a));
+                if (discriminant < 0.0)
+                    continue;
 
-        // return the second value, accounting for inverse
-        return Math.abs(e0) <= Math.abs(e1) ? e1 : e0;
-    }
+                double dR = Math.sqrt(discriminant);
+                float e0 = (float)((b + dR) / 2.0);
+                float e1 = (float)((b - dR) / 2.0);
 
-    static class Params implements ISliceCompute
-    {
-        public float[] data;
-        public int width;
-        public int height;
-        public double sigma;
-        public float threshold;
-        public float[] output;
-        public DoubleVector maximums = new DoubleVector();
-        public double finalMaximum;
+                float small, large;
+                if (Math.abs(e0) > Math.abs(e1)) {
+                    large = e0;
+                    small = e1;
+                }
+                else {
+                    large = e1;
+                    small = e0;
+                }
 
-        public void setup(float[] data, int width, int height, double sigma, float threshold, float[] output)
-        {
-            this.data = data;
-            this.width = width;
-            this.height = height;
-            this.sigma = sigma;
-            this.threshold = threshold;
-            this.output = output;
-            this.finalMaximum = 0.0;
-        }
+                if (large < 0.0f) {
+                    float sub0 = (float)mA - small;
+                    float sub1 = (float)mA - large;
 
-        public void nullify()
-        {
-            this.data = null;
-            this.output = null;
-            this.maximums = null;
-        }
-
-        @Override
-        public void initSlices(int nSlices)
-        {
-            this.maximums.resize(nSlices);
-            Arrays.fill(this.maximums.buf, 0, nSlices, 0.0);
-        }
-
-        @Override
-        public Object computeSlice(int sliceIdx, int start, int length)
-        {
-            int end = start + length;
-            if (start <= 0)
-                start = 1;
-            if (end >= width)
-                end = width - 1;
-
-            for (int y = 1; y < height - 1; ++y) {
-                for (int x = start; x < end; ++x) {
-                    int index = x + width*y;
-                    if (data[index] > threshold) {
-                        float ev = findSecondHessianEigenvalueAtPoint2D(data, width, x, y, sigma);
-                        if (ev < 0.0f) {
-                            output[index] = Math.max(output[index], -ev);
-                            maximums.buf[sliceIdx] = Math.max(maximums.buf[sliceIdx], -ev);
-                        }
+                    float a1, a2, comp;
+                    if (Math.abs(sub1) > Math.abs((float)mB)) {
+                        a1 = -(float)mB;
+                        a2 = sub1;
+                        comp = sub1;
                     }
+                    else {
+                        a1 = sub0;
+                        a2 = (float)mB;
+                        comp = sub0;
+                    }
+
+                    float len = (float)Math.sqrt(comp * comp + mB * mB);
+                    a1 *= 2.0f / len;
+                    a2 *= 2.0f / len;
+                    int x1 = (int)(((float)x + 0.5f) - a1);
+                    int x2 = (int)(((float)x + 0.5f) + a1);
+                    int y1 = (int)(((float)y + 0.5f) - a2);
+                    int y2 = (int)(((float)y + 0.5f) + a2);
+                    if (x1 >= 0 && y1 >= 0 && x1 < width && y1 < height)
+                        extra[x1 + width * y1] += (int)len;
+                    if (x2 >= 0 && y2 >= 0 && x2 < width && y2 < height)
+                        extra[x2 + width * y2] += (int)len;
+
+                    output[pos] = Math.max(output[pos], -large);
+                    maximum = Math.max(maximum, -large);
                 }
             }
-
-            return null;
         }
 
-        @Override
-        public void finishSlice(ISliceCompute.Result res)
-        {
-            finalMaximum = Math.max(finalMaximum, maximums.buf[res.idx]);
-        }
+        return maximum;
     }
 }
