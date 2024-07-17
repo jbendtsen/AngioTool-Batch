@@ -96,8 +96,15 @@ for root, dirs, files in os.walk("source"):
         if name == "manual.html" or name.startswith("images") or name.startswith("META-INF"):
             asset_files.append(name)
 
+stubbed_java = []
+for root, dirs, files in os.walk("stubs"):
+    for f in files:
+        name = os.path.join(root, f)
+        if f.endswith(".java"):
+            stubbed_java.append(os.path.join("..", name))
+
 with open("source/sources.txt", "w") as f:
-    f.write("\n".join(java_files))
+    f.write("\n".join(java_files + stubbed_java))
 
 status = subprocess.run([JAVAC, "--release=8", "-Xmaxerrs", "1000", "-d", "../build", "-cp", libs_arg, "@sources.txt"], cwd="source")
 if status.returncode != 0:
@@ -110,6 +117,11 @@ for f in libs:
 build_files = []
 for root, dirs, files in os.walk("build"):
     if root.endswith("META-INF"):
+        continue
+    parts = root.split("/")
+    if len(parts) == 1:
+        parts = root.split("\\")
+    if len(parts) > 1 and parts[1] == "ij":
         continue
     for f in files:
         build_files.append(os.path.join(root, f))
@@ -125,5 +137,6 @@ with zipfile.ZipFile("AngioTool2.jar", compression=zipfile.ZIP_DEFLATED, compres
     for f in build_files:
         zip.write(f, arcname=f[6:])
     zip.writestr("lee94-simple-points.bin", simple_points_lut)
+    zip.write("plugins.config")
 
 # java -Dsun.java2d.uiScale=2 -jar AngioTool2.jar
