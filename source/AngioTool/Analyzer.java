@@ -223,11 +223,27 @@ public class Analyzer
 
         byte[] skeletonImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
         int maxSkelIterations = params.shouldCapSkelIterations ? params.maxSkelIterations : 0;
+        int maxSkelVesselThickness = 12; // params.shouldIsolateThinVessels ? params.maxSkelThickness : 0;
 
         if (params.shouldUseFastSkeletonizer) {
             byte[] zha84ScratchImage = ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height);
-            Zha84.skeletonize(skeletonImage, zha84ScratchImage, analysisImage, inputImage.width, inputImage.height, maxSkelIterations);
+            byte[] zha84IterationsImage = maxSkelVesselThickness > 0 ?
+                ByteBufferPool.acquireAsIs(inputImage.width * inputImage.height) :
+                null;
+
+            Zha84.skeletonize(
+                skeletonImage,
+                zha84ScratchImage,
+                zha84IterationsImage,
+                analysisImage,
+                inputImage.width,
+                inputImage.height,
+                maxSkelIterations,
+                maxSkelVesselThickness
+            );
+
             ByteBufferPool.release(zha84ScratchImage);
+            ByteBufferPool.release(zha84IterationsImage);
         }
         else {
             int bitDepth = 8;

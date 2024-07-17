@@ -26,11 +26,16 @@ public class Zha84
     public static void skeletonize(
         byte[] outSkeletonImage,
         byte[] scratchSkeletonImage,
+        byte[] iterationsImage,
         byte[] inputImage,
         int width,
         int height,
-        int maxSkelIterations
+        int maxSkelIterations,
+        int maxVesselThickness
     ) {
+        if (iterationsImage != null)
+            Arrays.fill(iterationsImage, 0, width * height, (byte)0);
+
         Arrays.fill(outSkeletonImage, 0, width, (byte)0);
         Arrays.fill(scratchSkeletonImage, 0, width, (byte)0);
 
@@ -59,33 +64,10 @@ public class Zha84
             b = scratchSkeletonImage;
 
             for (int pass = 1; pass <= 2; pass++) {
-                for (int i = 1; i < height-1; i++) {
-                    for (int j = 1; j < width-1; j++) {
-                        int idx = j + width*i;
-                        int shouldKeep = 1;
-
-                        if (a[idx] != 0) {
-                            int value = lut[
-                                a[idx-width-1] |
-                                a[idx-width] << 1 |
-                                a[idx-width+1] << 2 |
-                                a[idx+1] << 3 |
-                                a[idx+width+1] << 4 |
-                                a[idx+width] << 5 |
-                                a[idx+width-1] << 6 |
-                                a[idx-1] << 7
-                            ];
-
-                            //boolean shouldKeep = value != 3 && value != pass;
-                            shouldKeep =
-                                ((value-3)    >>> 31 | -(value-3)    >>> 31) &
-                                ((value-pass) >>> 31 | -(value-pass) >>> 31);
-                        }
-
-                        b[idx] = (byte)(shouldKeep * a[idx]);
-                        nRemovals += shouldKeep ^ 1;
-                    }
-                }
+                if (iterationsImage != null)
+                    nRemovals += trimAndCount(iterationsImage, a, b, width, height, pass);
+                else
+                    nRemovals += trimSimple(a, b, width, height, pass);
 
                 byte[] temp = a;
                 a = b;
@@ -93,5 +75,90 @@ public class Zha84
             }
             //System.out.println("nRemovals: " + nRemovals);
         } while (nRemovals != 0 && (maxSkelIterations <= 0 || ++step < maxSkelIterations));
+
+        if (iterationsImage != null) {
+            //maxVesselThickness = 4;
+            System.out.println("trimming excess: " + maxVesselThickness);
+            int area = width * height;
+            for (int i = 0; i < area; i++) {
+                //totalIters += iterationsImage[i] & 0xff;
+                int mask = ((iterationsImage[i] & 0xff) - maxVesselThickness) >> 31;
+                //nTrims += outSkeletonImage[i] & ~mask;
+                outSkeletonImage[i] &= mask;
+            }
+        }
+    }
+
+    final static int trimSimple(byte[] src, byte[] dst, int width, int height, int pass)
+    {
+        int nRemovals = 0;
+
+        for (int i = 1; i < height-1; i++) {
+            for (int j = 1; j < width-1; j++) {
+                int idx = j + width*i;
+                int shouldKeep = 1;
+
+                if (src[idx] != 0) {
+                    int value = lut[
+                        src[idx-width-1] |
+                        src[idx-width] << 1 |
+                        src[idx-width+1] << 2 |
+                        src[idx+1] << 3 |
+                        src[idx+width+1] << 4 |
+                        src[idx+width] << 5 |
+                        src[idx+width-1] << 6 |
+                        src[idx-1] << 7
+                    ];
+
+                    //boolean shouldKeep = value != 3 && value != pass;
+                    shouldKeep =
+                        ((value-3)    >>> 31 | -(value-3)    >>> 31) &
+                        ((value-pass) >>> 31 | -(value-pass) >>> 31);
+                }
+
+                dst[idx] = (byte)(shouldKeep * src[idx]);
+                nRemovals += shouldKeep ^ 1;
+            }
+        }
+
+        return nRemovals;
+    }
+
+    final static int trimAndCount(byte[] iterationImage, byte[] src, byte[] dst, int width, int height, int pass)
+    {
+        int nRemovals = 0;
+
+        for (int i = 1; i < height-1; i++) {
+            for (int j = 1; j < width-1; j++) {
+                int idx = j + width*i;
+                int shouldKeep = 1;
+
+                if (src[idx] != 0) {
+                    int neighbors =
+                        src[idx-width-1] |
+                        src[idx-width] << 1 |
+                        src[idx-width+1] << 2 |
+                        src[idx+1] << 3 |
+                        src[idx+width+1] << 4 |
+                        src[idx+width] << 5 |
+                        src[idx+width-1] << 6 |
+                        src[idx-1] << 7;
+
+                    int value = lut[neighbors];
+
+                    //boolean shouldKeep = value != 3 && value != pass;
+                    shouldKeep =
+                        ((value-3)    >>> 31 | -(value-3)    >>> 31) &
+                        ((value-pass) >>> 31 | -(value-pass) >>> 31);
+
+                    iterationImage[idx] = (byte)Math.min((iterationImage[idx] & 0xff) + ((neighbors + 1) >> 8), 0xff);
+                }
+
+                dst[idx] = (byte)(shouldKeep * src[idx]);
+                nRemovals += shouldKeep ^ 1;
+            }
+        }
+
+        return nRemovals;
     }
 }
