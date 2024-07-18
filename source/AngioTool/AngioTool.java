@@ -6,7 +6,6 @@ import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.awt.Image;
-import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
@@ -27,7 +26,7 @@ public class AngioTool
     public static ImageIcon ATImage;
     public static ImageIcon ATFolder;
     public static ImageIcon ATBatch;
-    public static ImageIcon ATExit;
+    public static ImageIcon ATSubmit;
     public static ImageIcon ATHelp;
     public static ImageIcon ATExcel;
     public static ImageIcon ATFolderSmall;
@@ -42,6 +41,12 @@ public class AngioTool
     public static void main(String[] args)
     {
         // Load Lee94 lookup table on program start
+        preloadLee94();
+        EventQueue.invokeLater(AngioTool::initializeGuiFromMain);
+    }
+
+    public static void preloadLee94()
+    {
         try {
             Class.forName("Algorithms.Lee94");
         }
@@ -50,11 +55,14 @@ public class AngioTool
             Misc.showExceptionInDialogBox(t.getCause());
             return;
         }
-
-        EventQueue.invokeLater(AngioTool::initializeGui);
     }
 
-    public static void initializeGui()
+    public static void initializeGuiFromMain()
+    {
+        initializeGui(null);
+    }
+
+    public static AngioToolGui2 initializeGui(Object source)
     {
         Class at = AngioTool.class;
         String canonicalName = at.getCanonicalName();
@@ -78,6 +86,7 @@ public class AngioTool
             ATIcon = createImageIcon(at, "/images/icon.gif");
             ATFolder = createImageIcon(at, "/images/folder.png");
             ATBatch = createImageIcon(at, "/images/batch.png");
+            ATSubmit = createImageIcon(at, "/images/submit.png");
             ATHelp = createImageIcon(at, "/images/help.png");
             ATExcel = createImageIcon(at, "/images/excel.png");
 
@@ -104,9 +113,9 @@ public class AngioTool
         if (errors.size > 0)
             Misc.showDialogBox("Configuration parsing error", String.join("\n", errors));
 
-        AngioToolGui2 angioToolGui = new AngioToolGui2(analyzerParams, batchParams.defaultPath);
-        angioToolGui.setLocation(new Point(200, 250));
-        angioToolGui.setVisible(true);
+        AngioToolGui2 angioToolGui = new AngioToolGui2(source, analyzerParams, batchParams.defaultPath);
+
+        return angioToolGui;
     }
 
     static ImageIcon createImageIcon(Class c, String path)

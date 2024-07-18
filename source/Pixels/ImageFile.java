@@ -33,6 +33,13 @@ public class ImageFile
         if (image == null)
             return null;
 
+        return acquireImageForAnalysisFromBuffer(image, resizeFactor);
+    }
+
+    public static ArgbBuffer acquireImageForAnalysisFromBuffer(
+        ArgbBuffer image,
+        double resizeFactor
+    ) {
         int width  = Math.max((int)(image.width * resizeFactor), 1);
         int height = Math.max((int)(image.height * resizeFactor), 1);
         int area = width * height;

@@ -2,20 +2,22 @@ package AngioTool;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.awt.Window;
+import java.awt.Dialog;
 import javax.swing.*;
 import javax.swing.text.html.HTMLEditorKit;
 
 public class HelpWindow extends JDialog
 {
-    JFrame parentFrame;
+    Window parentWindow;
     JEditorPane helpContent;
     JScrollPane scrollView;
 
-    public HelpWindow(JFrame uiFrame, byte[] htmlData)
+    public HelpWindow(Window uiWindow, byte[] htmlData)
     {
-        super(uiFrame, true);
+        super(uiWindow, Dialog.ModalityType.APPLICATION_MODAL);
         this.setTitle("About - " + AngioTool.VERSION);
-        this.parentFrame = uiFrame;
+        this.parentWindow = uiWindow;
 
         this.helpContent = new JEditorPane();
         helpContent.setEditorKit(new HTMLEditorKit());
@@ -33,7 +35,7 @@ public class HelpWindow extends JDialog
         this.getContentPane().add(scrollView);
         this.pack();
         this.setSize(700, 700);
-        this.setLocationRelativeTo(parentFrame);
+        this.setLocationRelativeTo(parentWindow);
         this.setVisible(true);
     }
 }

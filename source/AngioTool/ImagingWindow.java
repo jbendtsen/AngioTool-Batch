@@ -21,6 +21,7 @@ import java.awt.event.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.awt.image.Raster;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -515,7 +516,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
 
     public ImagingWindow(AngioToolGui2 uiFrame, ArgbBuffer image, double imageScale, File sourceFile, String defaultPath)
     {
-        super("Analysis - " + sourceFile.getName());
+        super(sourceFile != null ? ("Analysis - " + sourceFile.getName()) : ("Analysis (Plugin)"));
         this.parentFrame = uiFrame;
         this.imageUi = new ImagingDisplay(image, true);
         this.prevImageScale = imageScale;
@@ -574,6 +575,8 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             @Override
             public void windowClosing(WindowEvent evt) {
                 parentFrame.closeImagingWindow(ImagingWindow.this);
+                if (parentFrame.pluginCtx != null)
+                    Misc.sendWindowCloseEvent(parentFrame);
             }
         });
 
@@ -592,6 +595,11 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         this.setVisible(true);
 
         return this;
+    }
+
+    public Raster getImageRaster()
+    {
+        return imageUi.drawingImage.getRaster();
     }
 
     public void release()
@@ -705,9 +713,17 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
             release();
             ArgbBuffer newImage = null;
             try {
-                newImage = ImageFile.acquireImageForAnalysis(inputFile.getAbsolutePath(), newResizeFactor);
+                if (inputFile == null) {
+                    ArgbBuffer temp = parentFrame.pluginCtx.makeArgbCopy();
+                    newImage = ImageFile.acquireImageForAnalysisFromBuffer(temp, newResizeFactor);
+                }
+                else {
+                    newImage = ImageFile.acquireImageForAnalysis(inputFile.getAbsolutePath(), newResizeFactor);
+                }
+
                 if (newImage == null)
                     throw new IOException("Failed to load image for analysis");
+
                 imageUi.setNewImage(newImage);
             }
             catch (Exception ex) {
@@ -817,7 +833,7 @@ public class ImagingWindow extends JFrame implements ActionListener, KeyListener
         String format = filePath.substring(extIdx + 1).toLowerCase();
 
         try {
-            DataBufferInt imageBuffer = (DataBufferInt)imageUi.drawingImage.getRaster().getDataBuffer();
+            DataBufferInt imageBuffer = (DataBufferInt)getImageRaster().getDataBuffer();
             ImageFile.saveImage(imageUi.drawingImage, imageBuffer, format, filePath);
             textSaveImage.setText(filePath);
             labelImageWasSaved.setText("saved");

@@ -6,6 +6,8 @@ import AngioTool.SimpleFileFilter;
 import Xlsx.*;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Window;
+import java.awt.event.WindowEvent;
 import java.lang.reflect.Field;
 import java.io.File;
 import java.io.FileInputStream;
@@ -527,6 +529,11 @@ public class Misc
             message += exSource;
 
         return message;
+    }
+
+    public static void sendWindowCloseEvent(Window window)
+    {
+        window.dispatchEvent(new WindowEvent(window, WindowEvent.WINDOW_CLOSING));
     }
 
     public static GroupLayout.SequentialGroup arrangeParallelEntries(

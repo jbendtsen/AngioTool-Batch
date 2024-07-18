@@ -286,8 +286,8 @@ public class Analyzer
         double areaScalingFactor = linearScalingFactor * linearScalingFactor;
 
         Stats stats = new Stats();
-        stats.imageFileName = inFile.getName();
-        stats.imageAbsolutePath = inFile.getAbsolutePath();
+        stats.imageFileName = inFile != null ? inFile.getName() : "null";
+        stats.imageAbsolutePath = inFile != null ? inFile.getAbsolutePath() : "null";
         stats.imageWidth = inputImage.width;
         stats.imageHeight = inputImage.height;
         stats.allantoisMMArea = data.convexHullArea * areaScalingFactor;

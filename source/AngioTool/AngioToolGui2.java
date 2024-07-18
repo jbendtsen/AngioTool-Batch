@@ -1,11 +1,17 @@
 package AngioTool;
 
+import IJPlugin.ATPlugin;
 import Utils.*;
 import Pixels.*;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.EventQueue;
+import java.awt.Frame;
+import java.awt.Point;
 import java.awt.event.*;
+import java.awt.image.DataBufferInt;
+import java.awt.image.Raster;
 import java.io.File;
 import java.io.InputStream;
 import java.util.LinkedList;
@@ -14,7 +20,9 @@ import javax.swing.border.EmptyBorder;
 
 public class AngioToolGui2 extends JFrame implements ColorElement.Listener, ActionListener, FocusListener, KeyListener
 {
-    final JButton btnLoadImage = new JButton();
+    final ATPlugin.PlugContext pluginCtx;
+
+    final JButton btnLoadImageOrSubmit = new JButton();
     final JButton btnStartBatch = new JButton();
     final JButton btnHelp = new JButton();
 
@@ -73,15 +81,23 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
     public final LinkedList<ImagingWindow> imagingWindows = new LinkedList<>();
     byte[] helpHtmlData;
 
-    public AngioToolGui2(AnalyzerParameters analyzerParams, String defaultPath)
+    public AngioToolGui2(Object source, AnalyzerParameters analyzerParams, String defaultPath)
     {
-        super(AngioTool.TITLE);
+        super(AngioTool.TITLE + (source != null ? " - ImageJ Plugin" : ""));
+        this.pluginCtx = (ATPlugin.PlugContext)source;
+        boolean isPlugin = source != null;
         this.defaultPath = defaultPath;
 
         this.setIconImage(AngioTool.ATIcon.getImage());
 
-        initButton(btnLoadImage, AngioTool.ATFolder, "View");
-        initButton(btnStartBatch, AngioTool.ATBatch, "Batch");
+        if (isPlugin) {
+            initButton(btnLoadImageOrSubmit, AngioTool.ATSubmit, "Submit");
+        }
+        else {
+            initButton(btnLoadImageOrSubmit, AngioTool.ATFolder, "View");
+            initButton(btnStartBatch, AngioTool.ATBatch, "Batch");
+        }
+
         initButton(btnHelp, AngioTool.ATHelp, "Help");
 
         labelAnalysis.setText("Analysis");
@@ -218,19 +234,39 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         container.add(dialogPanel);
         this.pack();
 
-        this.setDefaultCloseOperation(0);
+        if (pluginCtx == null)
+            this.setDefaultCloseOperation(0);
+
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent evt) {
                 ATPreferences.savePreferences(buildAnalyzerParamsFromUi(), AngioTool.PREFS_TXT);
-                AngioToolGui2.this.setVisible(false);
-                System.exit(0);
+                if (pluginCtx != null) {
+                    ImagingWindow iw = imagingWindows.poll();
+                    if (iw != null)
+                        Misc.sendWindowCloseEvent(iw);
+                }
+                else {
+                    AngioToolGui2.this.setVisible(false);
+                    System.exit(0);
+                }
             }
         });
 
         Dimension minSize = this.getPreferredSize();
         this.setMinimumSize(minSize);
         this.setSize(new Dimension(minSize.width + 50, minSize.height + 10));
+
+        this.setLocation(new Point(200, 250));
+
+        if (pluginCtx != null) {
+            EventQueue.invokeLater(() -> {
+                ArgbBuffer image = pluginCtx.makeArgbCopy();
+                imagingWindows.add(new ImagingWindow(this, image, 1.0, pluginCtx.imageFile, defaultPath).showDialog());
+            });
+        }
+
+        this.setVisible(true);
     }
 
     void setAnalysisUi(AnalyzerParameters analyzerParams)
@@ -289,12 +325,23 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
 
     private void arrangeUi(GroupLayout layout)
     {
-        layout.setHorizontalGroup(layout.createParallelGroup()
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(btnLoadImage)
-                .addComponent(btnStartBatch)
-                .addGap(0, 0, Short.MAX_VALUE)
-                .addComponent(btnHelp)
+        GroupLayout.ParallelGroup hozMainParallel = layout.createParallelGroup();
+        GroupLayout.SequentialGroup hozButtonRowLayout = layout.createSequentialGroup();
+
+        layout.setHorizontalGroup(hozMainParallel
+            .addGroup(pluginCtx != null ?
+                (
+                    hozButtonRowLayout
+                        .addComponent(btnLoadImageOrSubmit)
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(btnHelp)
+                ) : (
+                    hozButtonRowLayout
+                        .addComponent(btnLoadImageOrSubmit)
+                        .addComponent(btnStartBatch)
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(btnHelp)
+                )
             )
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup()
@@ -398,11 +445,21 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
         final int MIN_TEXT_HEIGHT = 18;
         final int TEXT_HEIGHT = 24;
 
-        layout.setVerticalGroup(layout.createSequentialGroup()
-            .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                .addComponent(btnLoadImage)
-                .addComponent(btnStartBatch)
-                .addComponent(btnHelp)
+        GroupLayout.SequentialGroup vertMainSequential = layout.createSequentialGroup();
+        GroupLayout.ParallelGroup vertButtonRowLayout = layout.createParallelGroup(GroupLayout.Alignment.BASELINE);
+
+        layout.setVerticalGroup(vertMainSequential
+            .addGroup(pluginCtx != null ?
+                (
+                    vertButtonRowLayout
+                        .addComponent(btnLoadImageOrSubmit)
+                        .addComponent(btnHelp)
+                ) : (
+                    vertButtonRowLayout
+                        .addComponent(btnLoadImageOrSubmit)
+                        .addComponent(btnStartBatch)
+                        .addComponent(btnHelp)
+                )
             )
             .addGap(20)
             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
@@ -516,7 +573,9 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
     public void actionPerformed(ActionEvent evt)
     {
         Object source = evt.getSource();
-        if (source == btnLoadImage)
+        if (pluginCtx != null && source == btnLoadImageOrSubmit)
+            submitOverlayedImage();
+        else if (source == btnLoadImageOrSubmit)
             openImageThenImagingWindow();
         else if (source == btnStartBatch)
             openBatchWindow();
@@ -551,6 +610,19 @@ public class AngioToolGui2 extends JFrame implements ColorElement.Listener, Acti
 
     @Override public void keyReleased(KeyEvent evt) {}
     @Override public void keyTyped(KeyEvent evt) {}
+
+    void submitOverlayedImage()
+    {
+        ImagingWindow imageWindow = imagingWindows.get(0);
+        Raster raster = imageWindow.getImageRaster();
+
+        int width = raster.getWidth();
+        int height = raster.getHeight();
+        int[] pixels = ((DataBufferInt)raster.getDataBuffer()).getData();
+        pluginCtx.setNewImage(pixels, width, height);
+
+        Misc.sendWindowCloseEvent(this);
+    }
 
     void openImageThenImagingWindow()
     {
