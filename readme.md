@@ -23,3 +23,8 @@ Additional settings were also implemented, for example the "Transform Colors" fe
 See the [manual](source/manual.html) for more details.
 
 To download binaries, check the [Releases](https://github.com/jbendtsen/AngioTool-Batch/releases) tab.
+
+This version of AngioTool can be run as either a standalone program or as a plugin inside ImageJ.
+ImageJ support is experimental at this stage. As such, it is recommended to use AngioTool 2.0 as a standalone program.
+
+This can be done by right-clicking on AngioTool2.jar in your file/folder browser, then navigating to Open With -> Java Runtime / Virtual Machine.
